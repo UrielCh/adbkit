@@ -36,6 +36,25 @@ We use [debug][node-debug], and our debug namespace is `adb`. Some of the depend
 
 The examples may be a bit verbose, but that's because we're trying to keep them as close to real-life code as possible, with flow control and error handling taken care of.
 
+#### List devices withPath
+```typescript
+import Adb from '@u4/adbkit';
+
+const client = Adb.createClient();
+const devices = client.listDevicesWithPaths();
+
+devices.then((devices) => {
+    devices.forEach(function (d) {
+        console.log('id: ' + d.id);
+        console.log('type: ' + d.type);
+        console.log('model ' + d.model);
+        console.log('path: ' + d.path);
+        console.log('product: ' + d.product);
+        console.log('transportId: ' + d.transportId + '\n');
+    });
+});
+```
+
 #### Checking for NFC support
 
 ```typescript
@@ -315,6 +334,9 @@ Like `client.listDevices()`, but includes the "path" of every device.
     -   **id** See `client.listDevices()`.
     -   **type** See `client.listDevices()`.
     -   **path** The device path. This can be something like `usb:FD120000` for real devices.
+    -   **model** The model of the device
+    -   **product** The product name of the device
+    -   **transportId** The transport id for the device
 
 
 #### client.trackDevices()

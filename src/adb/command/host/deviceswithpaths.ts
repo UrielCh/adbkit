@@ -21,7 +21,10 @@ export default class HostDevicesWithPathsCommand extends Command<DeviceWithPath[
       .filter((e) => e)
       .map((line) => {
         // For some reason, the columns are separated by spaces instead of tabs
-        const [id, type, path, product, model, device, transportId] = line.split(/\s+/);
+        let [id, type, path, product, model, device, transportId] = line.split(/\s+/);
+        model = model.replace('model:', '');
+        product = product.replace('product:', '');
+        transportId = transportId.replace('transport_id:', '');
         return {
           id,
           type: type as 'emulator' | 'device' | 'offline',
