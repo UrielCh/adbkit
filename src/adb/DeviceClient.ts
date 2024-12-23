@@ -1,11 +1,12 @@
 import { Duplex } from 'node:stream';
 import { ReadStream } from 'node:fs';
+import { Buffer } from 'node:buffer';
 
 import * as adbkitMonkey from '@u4/adbkit-monkey';
 // import { type Monkey as MonkeyClient } from '@u4/adbkit-monkey';
 const { Monkey } = adbkitMonkey;
 
-import Logcat from '@u4/adbkit-logcat';
+import { Logcat } from '@u4/adbkit-logcat';
 import Connection from './connection';
 import Sync from './sync';
 import ProcStat from './proc/stat';
@@ -37,7 +38,7 @@ import JdwpTracker from './jdwptracker';
 import { DeviceType } from '../models/Device';
 import DeviceWithPath from '../models/DeviceWithPath';
 import Client from './client';
-import Utils from './utils';
+import Utils, { BufferEncoding } from './utils';
 import Scrcpy from './thirdparty/scrcpy/Scrcpy';
 import type { ScrcpyOptions } from './thirdparty/scrcpy/ScrcpyModels';
 import { RebootType } from './command/host-transport/reboot';
@@ -295,7 +296,7 @@ export default class DeviceClient {
       try {
         if (await this.forward(`tcp:${preferedPort}`, remote))
           return preferedPort;
-      } catch (e) {
+      } catch (_e) {
         // need a new port
       }
     const freePort = await getPort();
@@ -552,8 +553,8 @@ export default class DeviceClient {
     await duplex.write(Protocol.encodeData(data));
     await Utils.waitforReadable(duplex, 0, `openLocal2 ${data} - ${debugCtxt}`);
     const code = await (duplex.read(4) as Promise<Buffer>);
-    if (!code.equals(Protocol.bOKAY)) {
-      if (code.equals(Protocol.bFAIL)) throw await transport.parser.readError();
+    if (!code.equals(Protocol.bOKAY as unknown as Uint8Array)) {
+      if (code.equals(Protocol.bFAIL as unknown as Uint8Array)) throw await transport.parser.readError();
       throw transport.parser.unexpected(code.toString('ascii'), 'OKAY or FAIL');
     }
     return duplex;

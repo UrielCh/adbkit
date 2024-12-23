@@ -69,7 +69,7 @@ export class ParcelReader {
     this.pos += pos + block * 4;
 
     if (chars & 1) {
-      return dest.toString('utf16le', 0, dest.length - 1);
+      return dest.toString('utf16le', 0, (dest as unknown as Uint8Array).length - 1);
     } else {
       return dest.toString('utf16le');
     }
@@ -78,7 +78,7 @@ export class ParcelReader {
   public dump(): string {
     const out: string[] = [];
     let p = 0;
-    while (p < this.data.length) {
+    while (p < (this.data as unknown as Uint8Array).length) {
       out.push(this.data.subarray(p, p + 16).toString('hex').replace(/(....)/g, '$1 '));
       p += 16;
     }

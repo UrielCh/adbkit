@@ -9,7 +9,7 @@ export default class Packet {
   public static A_WRTE = 0x45545257;
   public static A_AUTH = 0x48545541;
 
-  public static checksum(data?: Buffer): number {
+  public static checksum(data?: Uint8Array): number {
     let sum = 0;
     if (data) {
       for (let i = 0, len = data.length; i < len; i++) {
@@ -27,14 +27,15 @@ export default class Packet {
 
   public static assemble(command: number, arg0: number, arg1: number, data?: Buffer): Buffer {
     if (data) {
-      const chunk = Buffer.alloc(24 + data.length);
+      const len = (data as unknown as Uint8Array).length;
+      const chunk = Buffer.alloc(24 + len);
       chunk.writeUInt32LE(command, 0);
       chunk.writeUInt32LE(arg0, 4);
       chunk.writeUInt32LE(arg1, 8);
-      chunk.writeUInt32LE(data.length, 12);
-      chunk.writeUInt32LE(Packet.checksum(data), 16);
+      chunk.writeUInt32LE(len, 12);
+      chunk.writeUInt32LE(Packet.checksum(data as unknown as Uint8Array), 16);
       chunk.writeUInt32LE(Packet.magic(command), 20);
-      data.copy(chunk, 24);
+      data.copy(chunk as unknown as Uint8Array, 24);
       return chunk;
     } else {
       const chunk = Buffer.alloc(24);
@@ -66,7 +67,7 @@ export default class Packet {
 
   public verifyChecksum(): boolean {
     // see https://github.com/DeviceFarmer/adbkit/issues/42
-    return this.check === 0 || this.check === Packet.checksum(this.data);
+    return this.check === 0 || this.check === Packet.checksum((this.data as unknown as Uint8Array));
   }
 
   public verifyMagic(): boolean {

@@ -391,8 +391,8 @@ export default class Scrcpy extends EventEmitter {
       }
 
       // old protocol
-      const control = firstChunk.at(0);
-      if (firstChunk.at(0) !== 0) {
+      const control = (firstChunk as unknown as Uint8Array).at(0);
+      if ((firstChunk as unknown as Uint8Array).at(0) !== 0) {
         if (control)
           throw Error(`Control code should be 0x00, receves: 0x${control.toString(16).padStart(2, '0')}`);
         throw Error(`Control code should be 0x00, receves nothing.`);
@@ -491,7 +491,7 @@ export default class Scrcpy extends EventEmitter {
             /**
              * is a config package pts have PACKET_FLAG_CONFIG flag
              */
-            const sequenceParameterSet = parse_sequence_parameter_set(streamChunk);
+            const sequenceParameterSet = parse_sequence_parameter_set(streamChunk as unknown as ArrayBuffer);
             const {
               profile_idc: profileIndex,
               constraint_set: constraintSet,
@@ -528,7 +528,7 @@ export default class Scrcpy extends EventEmitter {
             if (keyframe) {
               pts &= ~PACKET_FLAG_KEY_FRAME;
             }
-            const frame = { keyframe, pts, data: streamChunk, config: this.lastConf };
+            const frame = { keyframe, pts, data: streamChunk as unknown as Uint8Array, config: this.lastConf };
             if (this.setFirstFrame) {
               this.setFirstFrame();
               this.setFirstFrame = undefined;

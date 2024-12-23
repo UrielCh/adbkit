@@ -291,7 +291,8 @@ export default class Parser {
     // read until \n
     const line = await this.readUntil(10);
     // drop tailing \r if present
-    if (line[line.length - 1] === 13) {
+    const len = (line as unknown as Uint8Array).length; 
+    if ((line as unknown as Uint8Array)[len - 1] === 13) {
       return line.slice(0, -1).toString(encoding);
     } else {
       return line.toString(encoding);

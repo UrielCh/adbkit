@@ -7,7 +7,7 @@ export default class Entry64 extends Stats64 {
     super(error, dev, ino, mode, nlink, uid, gid, size, atimeNs, mtimeNs, ctimeNs);
   }
 
-  public toString(): string {
+  public override toString(): string {
     let out = '';
     
     if (this.isDirectory()) {
