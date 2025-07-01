@@ -7,7 +7,7 @@ import PromiseDuplex from 'promise-duplex';
 import DeviceClient from '../../DeviceClient.js';
 import Utils from '../../utils.js';
 import { Duplex } from 'node:stream';
-import { MotionEvent, Orientation, ControlMessage } from './ScrcpyConst.js';
+import { type MotionEvent, MotionEventMap, OrientationMap, ControlMessageMap } from './ScrcpyConst.js';
 import { KeyCodes } from '../../keycode.js';
 import { BufWrite } from '../minicap/BufWrite.js';
 import ThirdUtils from '../ThirdUtils.js';
@@ -108,7 +108,7 @@ export default class Scrcpy extends EventEmitter {
       maxFps: 0,
       flip: false,
       bitrate: 999999999,
-      lockedVideoOrientation: Orientation.LOCK_VIDEO_ORIENTATION_UNLOCKED,
+      lockedVideoOrientation: OrientationMap.LOCK_VIDEO_ORIENTATION_UNLOCKED,
       tunnelForward: true,
       tunnelDelay: 1000,
       crop: '', //'9999:9999:0:0',
@@ -557,7 +557,7 @@ export default class Scrcpy extends EventEmitter {
    */
   async injectKeycodeEvent(action: MotionEvent, keyCode: KeyCodes, repeatCount: number, metaState: number): Promise<void> {
     const chunk = new BufWrite(14);
-    chunk.writeUint8(ControlMessage.TYPE_INJECT_KEYCODE);
+    chunk.writeUint8(ControlMessageMap.TYPE_INJECT_KEYCODE);
     chunk.writeUint8(action);
     chunk.writeUint32BE(keyCode);
     chunk.writeUint32BE(repeatCount);
@@ -569,7 +569,7 @@ export default class Scrcpy extends EventEmitter {
   // TYPE_INJECT_TEXT
   async injectText(text: string): Promise<void> {
     const chunk = new BufWrite(5);
-    chunk.writeUint8(ControlMessage.TYPE_INJECT_TEXT);
+    chunk.writeUint8(ControlMessageMap.TYPE_INJECT_TEXT);
     chunk.writeString(text);
     assert(this.controlSocket);
     await this.controlSocket.write(chunk.buffer);
@@ -587,12 +587,12 @@ export default class Scrcpy extends EventEmitter {
   // usb.data_len == 28
   async injectTouchEvent(action: MotionEvent, pointerId: bigint, position: Point, screenSize: Point, pressure?: number): Promise<void> {
     const chunk = new BufWrite(28);
-    chunk.writeUint8(ControlMessage.TYPE_INJECT_TOUCH_EVENT);
+    chunk.writeUint8(ControlMessageMap.TYPE_INJECT_TOUCH_EVENT);
     chunk.writeUint8(action);
     if (pressure === undefined) {
-      if (action == MotionEvent.ACTION_UP)
+      if (action == MotionEventMap.ACTION_UP)
         pressure = 0x0
-      else if (action == MotionEvent.ACTION_DOWN)
+      else if (action == MotionEventMap.ACTION_DOWN)
         pressure = 0xffff
       else
         pressure = 0xffff
@@ -604,7 +604,7 @@ export default class Scrcpy extends EventEmitter {
     chunk.writeUint16BE(screenSize.x | 0);
     chunk.writeUint16BE(screenSize.y | 0);
     chunk.writeUint16BE(pressure);
-    chunk.writeUint32BE(MotionEvent.BUTTON_PRIMARY);
+    chunk.writeUint32BE(MotionEventMap.BUTTON_PRIMARY);
     assert(this.controlSocket);
     await this.controlSocket.write(chunk.buffer);
     // console.log(chunk.buffer.toString('hex'))
@@ -612,7 +612,7 @@ export default class Scrcpy extends EventEmitter {
 
   async injectScrollEvent(position: Point, screenSize: Point, HScroll: number, VScroll: number): Promise<void> {
     const chunk = new BufWrite(20);
-    chunk.writeUint8(ControlMessage.TYPE_INJECT_SCROLL_EVENT);
+    chunk.writeUint8(ControlMessageMap.TYPE_INJECT_SCROLL_EVENT);
     // Writes a long to the underlying output stream as eight bytes, high byte first.
     chunk.writeUint32BE(position.x | 0);
     chunk.writeUint32BE(position.y | 0);
@@ -620,7 +620,7 @@ export default class Scrcpy extends EventEmitter {
     chunk.writeUint16BE(screenSize.y | 0);
     chunk.writeUint16BE(HScroll);
     chunk.writeInt32BE(VScroll);
-    chunk.writeInt32BE(MotionEvent.BUTTON_PRIMARY);
+    chunk.writeInt32BE(MotionEventMap.BUTTON_PRIMARY);
     assert(this.controlSocket);
     await this.controlSocket.write(chunk.buffer);
   }
@@ -628,8 +628,8 @@ export default class Scrcpy extends EventEmitter {
   // TYPE_BACK_OR_SCREEN_ON
   async injectBackOrScreenOn(): Promise<void> {
     const chunk = new BufWrite(2);
-    chunk.writeUint8(ControlMessage.TYPE_BACK_OR_SCREEN_ON);
-    chunk.writeUint8(MotionEvent.ACTION_UP);
+    chunk.writeUint8(ControlMessageMap.TYPE_BACK_OR_SCREEN_ON);
+    chunk.writeUint8(MotionEventMap.ACTION_UP);
     assert(this.controlSocket);
     await this.controlSocket.write(chunk.buffer);
   }
@@ -637,7 +637,7 @@ export default class Scrcpy extends EventEmitter {
   // TYPE_EXPAND_NOTIFICATION_PANEL
   async expandNotificationPanel(): Promise<void> {
     const chunk = Buffer.allocUnsafe(1);
-    chunk.writeUInt8(ControlMessage.TYPE_EXPAND_NOTIFICATION_PANEL);
+    chunk.writeUInt8(ControlMessageMap.TYPE_EXPAND_NOTIFICATION_PANEL);
     assert(this.controlSocket);
     await this.controlSocket.write(chunk);
   }
@@ -645,7 +645,7 @@ export default class Scrcpy extends EventEmitter {
   // TYPE_COLLAPSE_PANELS
   async collapsePannels(): Promise<void> {
     const chunk = Buffer.allocUnsafe(1);
-    chunk.writeUInt8(ControlMessage.TYPE_EXPAND_SETTINGS_PANEL);
+    chunk.writeUInt8(ControlMessageMap.TYPE_EXPAND_SETTINGS_PANEL);
     assert(this.controlSocket);
     await this.controlSocket.write(chunk);
   }
@@ -653,7 +653,7 @@ export default class Scrcpy extends EventEmitter {
   // TYPE_GET_CLIPBOARD
   async getClipboard(): Promise<string> {
     const chunk = Buffer.allocUnsafe(1);
-    chunk.writeUInt8(ControlMessage.TYPE_GET_CLIPBOARD);
+    chunk.writeUInt8(ControlMessageMap.TYPE_GET_CLIPBOARD);
     assert(this.controlSocket);
     await this.controlSocket.write(chunk);
     return this.readOneMessage(this.controlSocket);
@@ -662,7 +662,7 @@ export default class Scrcpy extends EventEmitter {
   // TYPE_SET_CLIPBOARD
   async setClipboard(text: string): Promise<void> {
     const chunk = new BufWrite(6);
-    chunk.writeUint8(ControlMessage.TYPE_SET_CLIPBOARD);
+    chunk.writeUint8(ControlMessageMap.TYPE_SET_CLIPBOARD);
     chunk.writeUint8(1); // past
     chunk.writeString(text)
     assert(this.controlSocket);
@@ -672,7 +672,7 @@ export default class Scrcpy extends EventEmitter {
   // TYPE_SET_SCREEN_POWER_MODE
   async setScreenPowerMode(): Promise<void> {
     const chunk = Buffer.allocUnsafe(1);
-    chunk.writeUInt8(ControlMessage.TYPE_SET_SCREEN_POWER_MODE);
+    chunk.writeUInt8(ControlMessageMap.TYPE_SET_SCREEN_POWER_MODE);
     assert(this.controlSocket);
     await this.controlSocket.write(chunk);
   }
@@ -680,7 +680,7 @@ export default class Scrcpy extends EventEmitter {
   // TYPE_ROTATE_DEVICE
   async rotateDevice(): Promise<void> {
     const chunk = Buffer.allocUnsafe(1);
-    chunk.writeUInt8(ControlMessage.TYPE_ROTATE_DEVICE);
+    chunk.writeUInt8(ControlMessageMap.TYPE_ROTATE_DEVICE);
     assert(this.controlSocket);
     await this.controlSocket.write(chunk);
   }

@@ -48,11 +48,11 @@ export { default as Stats } from './adb/sync/stats.js';
 export { default as ProcStat } from './adb/proc/stat.js';
 export type { LoadsWithLine, CpuStatsWithLine, ProcStats } from './adb/proc/stat.js';
 
-export { KeyEvent } from './adb/thirdparty/STFService/STFServiceModel.js';
+export { KeyEventMap, type KeyEvent } from './adb/thirdparty/STFService/STFServiceModel.js';
 export type { KeyEventRequest } from './adb/thirdparty/STFService/STFServiceModel.js';
 
-// export android key enumeration
-export { KeyCodes } from './adb/keycode.js';
+// export android key enumeration as object
+export { KeyCodesMap, type KeyCodes } from './adb/keycode.js';
 
 export type { RebootType, PsEntry, ProcessState, AdbServiceInfo } from './adb/command/host-transport/index.js';
 export { ShellCommand, IpRuleEntry, IpRouteEntry } from './adb/command/host-transport/index.js';
@@ -64,7 +64,8 @@ export { default as ServiceCallCommand, ParcelReader } from './adb/command/host-
 export { default as Utils } from './adb/utils.js';
 
 export { default as Scrcpy } from './adb/thirdparty/scrcpy/Scrcpy.js';
-export { MotionEvent, DeviceMessageType, SurfaceControl, Orientation, KeyEventMeta } from './adb/thirdparty/scrcpy/ScrcpyConst.js';
+export { MotionEventMap, DeviceMessageTypeMap, SurfaceControlMap, OrientationMap, KeyEventMetaMap } from './adb/thirdparty/scrcpy/ScrcpyConst.js';
+export type { MotionEvent, DeviceMessageType, SurfaceControl, Orientation, KeyEventMeta } from './adb/thirdparty/scrcpy/ScrcpyConst.js';
 
 export type { MinicapOptions } from './adb/thirdparty/minicap/Minicap.js';
 export { default as Minicap } from './adb/thirdparty/minicap/Minicap.js';

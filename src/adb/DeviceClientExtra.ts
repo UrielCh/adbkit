@@ -1,7 +1,7 @@
 import DeviceClient from "./DeviceClient.js";
 import xpath from 'xpath';
 import { DOMParser } from '@xmldom/xmldom';
-import { KeyCodes } from "./keycode.js";
+import { KeyCodesMap, type KeyCodes } from "./keycode.js";
 import { Utils } from "../index.js";
 
 export default class DeviceClientExtra {
@@ -12,7 +12,7 @@ export default class DeviceClientExtra {
    * @param enable
    */
   async usbTethering(enable: boolean): Promise<boolean> {
-    await this.keyCode(KeyCodes.KEYCODE_WAKEUP);
+    await this.keyCode(KeyCodesMap.KEYCODE_WAKEUP);
     await this.deviceClient.startActivity({ component: 'com.android.settings/.TetherSettings', wait: true });
     const xml = await this.deviceClient.execOut('uiautomator dump /dev/tty', 'utf8');
     const doc = new DOMParser().parseFromString(xml, "text/xml");
@@ -54,7 +54,7 @@ export default class DeviceClientExtra {
    */
   async airPlainMode(enable: boolean, twiceMs?: number): Promise<boolean> {
     // wake screen
-    await this.keyCode(KeyCodes.KEYCODE_WAKEUP);
+    await this.keyCode(KeyCodesMap.KEYCODE_WAKEUP);
     await this.deviceClient.startActivity({ action: 'android.settings.AIRPLANE_MODE_SETTINGS', wait: true });
     // await Utils.delay(100);
     let xml = await this.deviceClient.execOut('uiautomator dump /dev/tty', 'utf8');
@@ -135,7 +135,7 @@ export default class DeviceClientExtra {
    * @returns 
    */
   async back(): Promise<string> {
-    return this.keyCode(KeyCodes.KEYCODE_BACK);
+    return this.keyCode(KeyCodesMap.KEYCODE_BACK);
   }
 
 }

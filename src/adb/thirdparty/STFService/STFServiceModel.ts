@@ -1,38 +1,39 @@
 // generarted by genProto.ts
 
-export enum MessageType {
-  DO_IDENTIFY = 1,
-  DO_KEYEVENT = 2,
-  DO_TYPE = 3,
-  DO_WAKE = 4,
-  DO_ADD_ACCOUNT_MENU = 24,
-  DO_REMOVE_ACCOUNT = 20,
-  GET_ACCOUNTS = 26,
-  GET_BROWSERS = 5,
-  GET_CLIPBOARD = 6,
-  GET_DISPLAY = 19,
-  GET_PROPERTIES = 7,
-  GET_RINGER_MODE = 27,
-  GET_SD_STATUS = 25,
-  GET_VERSION = 8,
-  GET_WIFI_STATUS = 23,
-  GET_BLUETOOTH_STATUS = 29,
-  GET_ROOT_STATUS = 31,
-  SET_CLIPBOARD = 9,
-  SET_KEYGUARD_STATE = 10,
-  SET_RINGER_MODE = 21,
-  SET_ROTATION = 12,
-  SET_WAKE_LOCK = 11,
-  SET_WIFI_ENABLED = 22,
-  SET_BLUETOOTH_ENABLED = 30,
-  SET_MASTER_MUTE = 28,
-  EVENT_AIRPLANE_MODE = 13,
-  EVENT_BATTERY = 14,
-  EVENT_CONNECTIVITY = 15,
-  EVENT_PHONE_STATE = 16,
-  EVENT_ROTATION = 17,
-  EVENT_BROWSER_PACKAGE = 18,
-}
+export const MessageTypeMap = {
+  DO_IDENTIFY: 1,
+  DO_KEYEVENT: 2,
+  DO_TYPE: 3,
+  DO_WAKE: 4,
+  DO_ADD_ACCOUNT_MENU: 24,
+  DO_REMOVE_ACCOUNT: 20,
+  GET_ACCOUNTS: 26,
+  GET_BROWSERS: 5,
+  GET_CLIPBOARD: 6,
+  GET_DISPLAY: 19,
+  GET_PROPERTIES: 7,
+  GET_RINGER_MODE: 27,
+  GET_SD_STATUS: 25,
+  GET_VERSION: 8,
+  GET_WIFI_STATUS: 23,
+  GET_BLUETOOTH_STATUS: 29,
+  GET_ROOT_STATUS: 31,
+  SET_CLIPBOARD: 9,
+  SET_KEYGUARD_STATE: 10,
+  SET_RINGER_MODE: 21,
+  SET_ROTATION: 12,
+  SET_WAKE_LOCK: 11,
+  SET_WIFI_ENABLED: 22,
+  SET_BLUETOOTH_ENABLED: 30,
+  SET_MASTER_MUTE: 28,
+  EVENT_AIRPLANE_MODE: 13,
+  EVENT_BATTERY: 14,
+  EVENT_CONNECTIVITY: 15,
+  EVENT_PHONE_STATE: 16,
+  EVENT_ROTATION: 17,
+  EVENT_BROWSER_PACKAGE: 18,
+} as const;
+export type MessageType = typeof MessageTypeMap[keyof typeof MessageTypeMap];
 
 export interface Envelope {
     id?: number;
@@ -112,9 +113,10 @@ export interface SetWakeLockResponse {
     success: boolean;
 }
 
-export enum ClipboardType {
-  TEXT = 1,
-}
+export const ClipboardTypeMap = {
+  TEXT: 1,
+} as const;
+export type ClipboardType = typeof ClipboardTypeMap[keyof typeof ClipboardTypeMap];
 
 export interface SetClipboardRequest {
     type: ClipboardType;
@@ -207,11 +209,12 @@ export interface DoRemoveAccountResponse {
     success: boolean;
 }
 
-export enum RingerMode {
-  SILENT = 0,
-  VIBRATE = 1,
-  NORMAL = 2,
-}
+export const RingerModeMap = {
+  SILENT: 0,
+  VIBRATE: 1,
+  NORMAL: 2,
+} as const;
+export type RingerMode = typeof RingerModeMap[keyof typeof RingerModeMap];
 
 export interface SetRingerModeRequest {
     mode: RingerMode;
@@ -287,11 +290,12 @@ export interface SetMasterMuteResponse {
 
 // Agent
 
-export enum KeyEvent {
-  DOWN = 0,
-  UP = 1,
-  PRESS = 2,
-}
+export const KeyEventMap = {
+  DOWN: 0,
+  UP: 1,
+  PRESS: 2,
+} as const;
+export type KeyEvent = typeof KeyEventMap[keyof typeof KeyEventMap];
 
 export interface KeyEventRequest {
     event: KeyEvent;

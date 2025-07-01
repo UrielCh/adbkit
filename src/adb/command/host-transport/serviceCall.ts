@@ -3,7 +3,7 @@ import { EOL } from 'node:os';
 
 import Command from '../../command.js';
 import { KnownServices } from './servicesList.js';
-import { ParcelVal } from './Parcel.js';
+import { type ParcelVal, ParcelValMap } from './Parcel.js';
 import { Utils } from '../../../index.js';
 
 export type ServiceCallArg = ServiceCallArgNumber | ServiceCallArgString | ServiceCallArgNull;
@@ -30,7 +30,7 @@ export class ParcelReader {
   public read(): string {
     const type: ParcelVal = this.readType();
     switch (type) {
-      case ParcelVal.VAL_STRING:
+      case ParcelValMap.VAL_STRING:
         return this.readString();
       default:
         throw Error(`ParcelReader need to be complet, and do not support Type: ${type}`)
@@ -46,7 +46,7 @@ export class ParcelReader {
   public readType(): ParcelVal {
     const type = this.data.readInt32BE(this.pos);
     this.pos += 4;
-    return type;
+    return type as ParcelVal;
   }
 
   public readString(): string {

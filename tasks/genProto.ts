@@ -14,7 +14,7 @@ const __dirname = dirname(__filename);
 function convert(data: string) {
   data = data.replace(/ \[default = \d+\]/g, '');
   data = data.replace(/message (\w+) /g, 'export interface $1 ');
-  data = data.replace(/enum (\w+) /g, 'export enum $1 ');
+  data = data.replace(/enum (\w+) /g, 'export const $1Map = {'); // broken...
   data = data.replace(/ bytes /g, ' Uint8Array ');
   data = data.replace(/ bool /g, ' boolean ');
   data = data.replace(/\s(uint32|bytes|double|int32|float)\s/g, ' number ');
