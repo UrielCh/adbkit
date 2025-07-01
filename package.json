@@ -29,13 +29,13 @@
     "author": {
         "name": "openstf",
         "email": "contact@openstf.io",
-        "url": "https://urielch.github.io/"
+        "url": "https://uriel.ovh"
     },
     "contributors": [
         {
             "name": "uriel chemouni",
             "email": "uchemouni@gmail.com",
-            "url": "https://urielch.github.io/"
+            "url": "https://uriel.ovh"
         }
     ],
     "main": "./dist/index.js",
