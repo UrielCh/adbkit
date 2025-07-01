@@ -1,13 +1,15 @@
-import EventEmitter from 'events';
-import { execFile, ExecFileOptions } from 'child_process';
-import Parser from './parser';
-import dump from './dump';
-import { Socket, connect } from 'net';
-import { promisify } from 'util';
-import { ClientOptions } from '../models/ClientOptions';
-import { ObjectEncodingOptions } from 'fs';
-import { Client } from '..';
-import Utils from './utils';
+import { Socket, connect } from 'node:net';
+import { promisify } from 'node:util';
+import { ObjectEncodingOptions } from 'node:fs';
+import EventEmitter from 'node:events';
+import { execFile, ExecFileOptions } from 'node:child_process';
+import { Buffer } from 'node:buffer';
+
+import Parser from './parser.js';
+import dump from './dump.js';
+import { ClientOptions } from '../models/ClientOptions.js';
+import Client from '../adb/client.js';
+import Utils from './utils.js';
 
 const debug = Utils.debug('adb:connection');
 
@@ -36,10 +38,10 @@ export default class Connection extends EventEmitter {
     this.triedStarting = false;
   }
 
-  public on = <K extends keyof IEmissions>(event: K, listener: IEmissions[K]): this => super.on(event, listener)
-  public off = <K extends keyof IEmissions>(event: K, listener: IEmissions[K]): this => super.off(event, listener)
-  public once = <K extends keyof IEmissions>(event: K, listener: IEmissions[K]): this => super.once(event, listener)
-  public emit = <K extends keyof IEmissions>(event: K, ...args: Parameters<IEmissions[K]>): boolean => super.emit(event, ...args)
+  public override on = <K extends keyof IEmissions>(event: K, listener: IEmissions[K]): this => super.on(event, listener)
+  public override off = <K extends keyof IEmissions>(event: K, listener: IEmissions[K]): this => super.off(event, listener)
+  public override once = <K extends keyof IEmissions>(event: K, listener: IEmissions[K]): this => super.once(event, listener)
+  public override emit = <K extends keyof IEmissions>(event: K, ...args: Parameters<IEmissions[K]>): boolean => super.emit(event, ...args)
 
   public get parent(): Client {
     return this._parent;
@@ -138,13 +140,13 @@ export default class Connection extends EventEmitter {
 
       socket.once("error", writeErrorHandler)
 
-      const canWrite = socket.write(enc)
+      const canWrite = socket.write(enc as unknown as Uint8Array)
 
       socket.removeListener("error", writeErrorHandler)
 
       if (canWrite) {
         if (!rejected) {
-          resolve(data.length)
+          resolve((data as unknown as Uint8Array).length)
         }
       } else {
         const errorHandler = (err: Error): void => {
@@ -155,17 +157,17 @@ export default class Connection extends EventEmitter {
 
         const drainHandler = (): void => {
           removeListeners()
-          resolve(data.length)
+          resolve((data as unknown as Uint8Array).length)
         }
 
         const closeHandler = (): void => {
           removeListeners()
-          resolve(data.length)
+          resolve((data as unknown as Uint8Array).length)
         }
 
         const finishHandler = (): void => {
           removeListeners()
-          resolve(data.length)
+          resolve((data as unknown as Uint8Array).length)
         }
 
         const removeListeners = () => {

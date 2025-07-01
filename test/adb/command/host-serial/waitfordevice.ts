@@ -1,10 +1,11 @@
-import Chai, { expect } from 'chai';
+import { setImmediate } from "node:timers";
+import { expect, use } from 'chai';
 import simonChai from 'sinon-chai';
-Chai.use(simonChai);
-import MockConnection from '../../../mock/connection';
-import Protocol from '../../../../src/adb/protocol';
-import { WaitForDeviceCommand } from '../../../../src/adb/command/host-serial';
-import Connection from '../../../../src/adb/connection';
+use(simonChai);
+import MockConnection from '../../../mock/connection.js';
+import Protocol from '../../../../src/adb/protocol.js';
+import { WaitForDeviceCommand } from '../../../../src/adb/command/host-serial/index.js';
+import Connection from '../../../../src/adb/connection.js';
 
 describe('WaitForDeviceCommand', () => {
     it("should send 'host-serial:<serial>:wait-for-any-device'", () => {

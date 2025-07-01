@@ -1,23 +1,23 @@
-import { expect } from 'chai';
-import Adb, { Utils } from '../';
-// import Client from '../src/adb/client';
-// import { Keycode } from '../src/adb/keycode';
+import test from 'node:test';
+import assert from 'node:assert';
 
-describe('Adb', () => {
-    //it('should expose Keycode', (done) => {
-    //    expect(Adb).to.have.property('Keycode');
-    // expect(Adb.Keycode).to.equal(Keycode);
-    //    done();
-    //});
-    it('should expose utisl', (done) => {
-        expect(Adb).to.have.property('util');
-        expect(Adb.util).to.equal(Utils);
-        done();
+import Adb, { Utils } from '../src/index.js';
+
+test('Adb', (t) => {
+    // t.test('should expose Keycode', () => {
+    //     assert.ok(Adb.hasOwnProperty('Keycode'));
+    //     assert.strictEqual(Adb.Keycode, Keycode);
+    // });
+
+    t.test('should expose util', (t, done) => {
+        assert.ok(Adb.hasOwnProperty('util'));
+        assert.strictEqual(Adb.util, Utils);
+        console.log('done', done);
     });
-    // return describe('@createClient(options)', () => {
-    //     it('should return a Client instance', (done) => {
-    //         expect(Adb.createClient()).to.be.an.instanceOf(Client);
-    //         done();
+
+    // t.test('@createClient(options)', (t) => {
+    //     t.test('should return a Client instance', () => {
+    //         assert.ok(Adb.createClient() instanceof Client);
     //     });
     // });
 });

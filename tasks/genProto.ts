@@ -1,6 +1,11 @@
-import { EOL } from 'os';
-import fs from 'fs';
-import path from 'path';
+import { EOL } from 'node:os';
+import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { dirname } from 'node:path';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 /**
  * Gent Typescript interface from protobuf.
@@ -9,7 +14,7 @@ import path from 'path';
 function convert(data: string) {
   data = data.replace(/ \[default = \d+\]/g, '');
   data = data.replace(/message (\w+) /g, 'export interface $1 ');
-  data = data.replace(/enum (\w+) /g, 'export enum $1 ');
+  data = data.replace(/enum (\w+) /g, 'export const $1Map = {'); // broken...
   data = data.replace(/ bytes /g, ' Uint8Array ');
   data = data.replace(/ bool /g, ' boolean ');
   data = data.replace(/\s(uint32|bytes|double|int32|float)\s/g, ' number ');

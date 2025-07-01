@@ -1,9 +1,13 @@
-import { Duplex, EventEmitter } from 'stream';
-import DeviceClient from '../../DeviceClient';
+import { EventEmitter } from 'node:events';
+import * as fs from 'node:fs';
+import { Duplex } from 'node:stream';
+import { Buffer } from 'node:buffer';
+
+import DeviceClient from '../../DeviceClient.js';
 import PromiseDuplex from 'promise-duplex';
-import ThirdUtils from "../ThirdUtils";
-import Utils from '../../utils';
-import * as fs from 'fs';
+import ThirdUtils from "../ThirdUtils.js";
+import Utils from '../../utils.js';
+import Stats from '../../sync/stats.js';
 
 /**
  * Application binary interface known CPU
@@ -74,10 +78,10 @@ export default class Minicap extends EventEmitter {
     this._firstFrame = new Promise<void>((resolve) => this.setFirstFrame = resolve);
   }
 
-  public on = <K extends keyof IEmissions>(event: K, listener: IEmissions[K]): this => super.on(event, listener)
-  public off = <K extends keyof IEmissions>(event: K, listener: IEmissions[K]): this => super.off(event, listener)
-  public once = <K extends keyof IEmissions>(event: K, listener: IEmissions[K]): this => super.once(event, listener)
-  public emit = <K extends keyof IEmissions>(event: K, ...args: Parameters<IEmissions[K]>): boolean => super.emit(event, ...args)
+  public override on = <K extends keyof IEmissions>(event: K, listener: IEmissions[K]): this => super.on(event, listener)
+  public override off = <K extends keyof IEmissions>(event: K, listener: IEmissions[K]): this => super.off(event, listener)
+  public override once = <K extends keyof IEmissions>(event: K, listener: IEmissions[K]): this => super.once(event, listener)
+  public override emit = <K extends keyof IEmissions>(event: K, ...args: Parameters<IEmissions[K]>): boolean => super.emit(event, ...args)
 
   get version(): Promise<number> { return this._version; }
   get pid(): Promise<number> { return this._pid; }
@@ -135,7 +139,7 @@ export default class Minicap extends EventEmitter {
     try {
       binFile = require.resolve(`@devicefarmer/minicap-prebuilt/prebuilt/${abi}/bin/${minicapName}`);
     } catch (e) {
-      throw Error(`minicap not found in @devicefarmer/minicap-prebuilt/prebuilt/${abi}/bin/ please install @devicefarmer/minicap-prebuilt to use minicap`);
+      throw Error(`minicap not found in @devicefarmer/minicap-prebuilt/prebuilt/${abi}/bin/ please install @devicefarmer/minicap-prebuilt to use minicap ${e}`);
     }
 
     try {
@@ -145,7 +149,7 @@ export default class Minicap extends EventEmitter {
         soFile = require.resolve(`@devicefarmer/minicap-prebuilt/prebuilt/${abi}/lib/android-${sdkLevel}/minicap.so`);
       }
     } catch (e) {
-      throw Error(`minicap.so for your device check for @devicefarmer/minicap-prebuilt update that support android-${sdkLevel}, ${soFile} is missing`);
+      throw Error(`minicap.so for your device check for @devicefarmer/minicap-prebuilt update that support android-${sdkLevel}, ${soFile} is missing ${e}`);
     }
 
     // only upload minicap binary in tmp filder if file is missing
@@ -160,7 +164,7 @@ export default class Minicap extends EventEmitter {
 
     // only upload minicap.so in tmp filder if file is missing
     const localStats = fs.statSync(soFile);
-    let droidStats: fs.Stats | undefined;
+    let droidStats: Stats | undefined;
     try {
       droidStats = await this.client.stat('/data/local/tmp/minicap.so');
     } catch {
@@ -237,8 +241,8 @@ export default class Minicap extends EventEmitter {
       if (!firstChunk) {
         throw Error('Fail to read firstChunk 2 byte Header.');
       }
-      this.setVersion(firstChunk[0]); // == 1
-      const len = firstChunk[1]; // == 24
+      this.setVersion((firstChunk as unknown as Uint8Array)[0]); // == 1
+      const len = (firstChunk as unknown as Uint8Array)[1]; // == 24
       firstChunk = await videoSocket.read(len - 2) as Buffer;
       if (!firstChunk) {
         throw Error('Fail to read firstChunk data.');
@@ -270,13 +274,13 @@ export default class Minicap extends EventEmitter {
         await Utils.waitforReadable(videoSocket);
         chunk = videoSocket.stream.read(len) as Buffer;
         if (chunk) {
-          len -= chunk.length;
+          len -= (chunk as unknown as Uint8Array).length;
           if (!streamChunk)
             streamChunk = chunk;
           else {
-            streamChunk = Buffer.concat([streamChunk, chunk]);
+            streamChunk = Buffer.concat([streamChunk as Uint8Array, chunk as unknown as Uint8Array]);
           }
-          if (streamChunk[0] !== 0xFF || streamChunk[1] !== 0xD8) {
+          if ((streamChunk as unknown as Uint8Array)[0] !== 0xFF || (streamChunk as unknown as Uint8Array)[1] !== 0xD8) {
             console.error('Frame body does not start with JPG header');
             return;
           }

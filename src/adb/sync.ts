@@ -1,17 +1,19 @@
-import fs from 'fs';
-import Path from 'path';
-import EventEmitter from 'events';
-import Parser from './parser';
-import Protocol from './protocol';
-import Stats from './sync/stats';
-import Entry from './sync/entry';
-import PushTransfer from './sync/pushtransfer';
-import PullTransfer from './sync/pulltransfer';
-import Connection from './connection';
-import { Readable } from 'stream';
-import Stats64 from './sync/stats64';
-import Entry64 from './sync/entry64';
-import Utils from './utils';
+import fs from 'node:fs';
+import Path from 'node:path';
+import EventEmitter from 'node:events';
+import { Readable } from 'node:stream';
+import { Buffer } from 'node:buffer';
+
+import Parser from './parser.js';
+import Protocol from './protocol.js';
+import Stats from './sync/stats.js';
+import Entry from './sync/entry.js';
+import PushTransfer from './sync/pushtransfer.js';
+import PullTransfer from './sync/pulltransfer.js';
+import Connection from './connection.js';
+import Stats64 from './sync/stats64.js';
+import Entry64 from './sync/entry64.js';
+import Utils from './utils.js';
 
 const TEMP_PATH = '/data/local/tmp';
 const DEFAULT_CHMOD = 0o644;
@@ -29,30 +31,31 @@ export interface ENOENT extends Error {
 /**
  * error code from STA2
  */
-export enum AdbSyncStatErrorCode {
-  SUCCESS = 0,
-  EACCES = 13,
-  EEXIST = 17,
-  EFAULT = 14,
-  EFBIG = 27,
-  EINTR = 4,
-  EINVAL = 22,
-  EIO = 5,
-  EISDIR = 21,
-  ELOOP = 40,
-  EMFILE = 24,
-  ENAMETOOLONG = 36,
-  ENFILE = 23,
-  ENOENT = 2,
-  ENOMEM = 12,
-  ENOSPC = 28,
-  ENOTDIR = 20,
-  EOVERFLOW = 75,
-  EPERM = 1,
-  EROFS = 30,
-  ETXTBSY = 26,
-}
-
+export const AdbSyncStatErrorCodeMap = {
+  SUCCESS : 0,
+  EACCES : 13,
+  EEXIST : 17,
+  EFAULT : 14,
+  EFBIG : 27,
+  EINTR : 4,
+  EINVAL : 22,
+  EIO : 5,
+  EISDIR : 21,
+  ELOOP : 40,
+  EMFILE : 24,
+  ENAMETOOLONG : 36,
+  ENFILE : 23,
+  ENOENT : 2,
+  ENOMEM : 12,
+  ENOSPC : 28,
+  ENOTDIR : 20,
+  EOVERFLOW : 75,
+  EPERM : 1,
+  EROFS : 30,
+  ETXTBSY : 26,
+} as const;
+// export type AdbSyncStatErrorCodeNames = keyof typeof AdbSyncStatErrorCodeMap;
+export type AdbSyncStatErrorCode = typeof AdbSyncStatErrorCodeMap[keyof typeof AdbSyncStatErrorCodeMap];
 /**
  * enforce EventEmitter typing
  */
@@ -79,10 +82,10 @@ export default class Sync extends EventEmitter {
     this.parser = this.connection.parser as Parser;
   }
 
-  public on = <K extends keyof IEmissions>(event: K, listener: IEmissions[K]): this => super.on(event, listener)
-  public off = <K extends keyof IEmissions>(event: K, listener: IEmissions[K]): this => super.off(event, listener)
-  public once = <K extends keyof IEmissions>(event: K, listener: IEmissions[K]): this => super.once(event, listener)
-  public emit = <K extends keyof IEmissions>(event: K, ...args: Parameters<IEmissions[K]>): boolean => super.emit(event, ...args)
+  public override on = <K extends keyof IEmissions>(event: K, listener: IEmissions[K]): this => super.on(event, listener)
+  public override off = <K extends keyof IEmissions>(event: K, listener: IEmissions[K]): this => super.off(event, listener)
+  public override once = <K extends keyof IEmissions>(event: K, listener: IEmissions[K]): this => super.once(event, listener)
+  public override emit = <K extends keyof IEmissions>(event: K, ...args: Parameters<IEmissions[K]>): boolean => super.emit(event, ...args)
 
   /**
    * Retrieves information about the given path.

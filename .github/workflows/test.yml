@@ -27,7 +27,7 @@ jobs:
 
     strategy:
       matrix:
-        node-version: [ 18, 20 , 22]
+        node-version: [ 20, 22, 24 ]
 
     steps:
     - run: sudo apt-get install -y android-tools-adb

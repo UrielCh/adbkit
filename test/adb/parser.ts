@@ -1,8 +1,9 @@
-import Stream from 'stream';
-import { use, expect } from 'chai';
+import Stream from 'node:stream';
+import { expect, use } from 'chai';
 import simonChai from 'sinon-chai';
 import Parser from '../../src/adb/parser';
-import { AdbFailError, AdbPrematureEOFError, AdbUnexpectedDataError, Utils } from '../../src/';
+import { AdbFailError, AdbPrematureEOFError, AdbUnexpectedDataError } from '../../src/adb/errors';
+import Utils from '../../src/adb/utils';
 use(simonChai);
 
 describe('Parser', () => {

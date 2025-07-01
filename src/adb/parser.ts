@@ -1,7 +1,11 @@
-import Protocol from './protocol';
-import { Duplex } from 'stream';
-import { AdbFailError, AdbPrematureEOFError, AdbUnexpectedDataError } from './errors';
-import { AdbError } from './errors';
+import { Buffer } from 'node:buffer';
+import { Duplex } from 'node:stream';
+
+import Protocol from './protocol.js';
+import { AdbFailError, AdbPrematureEOFError, AdbUnexpectedDataError } from './errors.js';
+import { AdbError } from './errors.js';
+import { BufferEncoding } from './utils.js';
+import { Utils } from '../index.js';
 
 /**
  * helper to read in Duplex stream
@@ -67,7 +71,7 @@ export default class Parser {
       tryRead = () => {
         let chunk: Buffer;
         while ((chunk = stream.read())) {
-          all = Buffer.concat([all, chunk]);
+          all = Utils.concatBuffer([all, chunk]);
         }
         if (this.ended) {
           resolve(all);
@@ -177,7 +181,7 @@ export default class Parser {
           // Try to get the exact amount we need first. If unsuccessful, take
           // whatever is available, which will be less than the needed amount.
           while ((chunk = stream.read(howMany) || stream.read())) {
-            howMany -= chunk.length;
+            howMany -= (chunk as unknown as Uint8Array).length;
             // TODO fix missing backpressuring handling
             targetStream.write(chunk);
             if (howMany === 0) {
@@ -261,10 +265,10 @@ export default class Parser {
     let skipped = Buffer.alloc(0);
     for (; ;) {
       const chunk = await this.readBytes(1);
-      if (chunk[0] === code) {
+      if ((chunk as unknown as Uint8Array)[0] === code) {
         return skipped;
       } else {
-        skipped = Buffer.concat([skipped, chunk]);
+        skipped = Utils.concatBuffer([skipped, chunk]);
       }
     }
   }
@@ -287,7 +291,8 @@ export default class Parser {
     // read until \n
     const line = await this.readUntil(10);
     // drop tailing \r if present
-    if (line[line.length - 1] === 13) {
+    const len = (line as unknown as Uint8Array).length; 
+    if ((line as unknown as Uint8Array)[len - 1] === 13) {
       return line.slice(0, -1).toString(encoding);
     } else {
       return line.toString(encoding);

@@ -1,10 +1,11 @@
-import Chai, { expect } from 'chai';
+import { setImmediate } from "node:timers";
+import { expect, use } from 'chai';
 import simonChai from 'sinon-chai';
-Chai.use(simonChai);
-import MockConnection from '../../../mock/connection';
-import Protocol from '../../../../src/adb/protocol';
-import { AdbFailError } from '../../../../src/index';
-import ShellCommand from '../../../../src/adb/command/host-transport/shell';
+use(simonChai);
+import MockConnection from '../../../mock/connection.js';
+import Protocol from '../../../../src/adb/protocol.js';
+import { AdbFailError } from '../../../../src/index.js';
+import ShellCommand from '../../../../src/adb/command/host-transport/shell.js';
 
 describe('ShellCommand', () => {
     it('should pass String commands as-is', () => {

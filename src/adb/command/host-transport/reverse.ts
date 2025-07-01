@@ -1,4 +1,4 @@
-import Command from '../../command';
+import Command from '../../command.js';
 
 export default class ReverseCommand extends Command<true> {
   async execute(remote: string, local: string): Promise<true> {

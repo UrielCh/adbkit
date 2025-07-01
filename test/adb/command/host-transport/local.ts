@@ -1,10 +1,10 @@
-import Stream from 'stream';
-import Chai, { expect } from 'chai';
+import Stream from 'node:stream';
+import { expect, use } from 'chai';
 import simonChai from 'sinon-chai';
-Chai.use(simonChai);
-import MockConnection from '../../../mock/connection';
-import Protocol from '../../../../src/adb/protocol';
-import LocalCommand from '../../../../src/adb/command/host-transport/local';
+use(simonChai);
+import MockConnection from '../../../mock/connection.js';
+import Protocol from '../../../../src/adb/protocol.js';
+import LocalCommand from '../../../../src/adb/command/host-transport/local.js';
 
 describe('LocalCommand', () => {
     it("should send 'localfilesystem:<path>'", () => {

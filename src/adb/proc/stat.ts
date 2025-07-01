@@ -1,7 +1,7 @@
-import EventEmitter from 'events';
-import Parser from '../parser';
-import Sync from '../sync';
-import { CpuStats, Loads } from '../../models/CpuStats';
+import EventEmitter from 'node:events';
+import Parser from '../parser.js';
+import Sync from '../sync.js';
+import { CpuStats, Loads } from '../../models/CpuStats.js';
 
 const RE_CPULINE = /^cpu[0-9]+ .*$/gm;
 const RE_COLSEP = / +/g;
@@ -28,7 +28,7 @@ export default class ProcStat extends EventEmitter {
   public interval = 1000;
   public stats: ProcStats;
   private readonly _ignore: {[key: string]: string};
-  private readonly _timer: NodeJS.Timeout;
+  private readonly _timer: ReturnType<typeof setInterval>;
 
   constructor(private sync?: Sync) {
     super();
@@ -41,10 +41,10 @@ export default class ProcStat extends EventEmitter {
     this.update();
   }
 
-  public on = <K extends keyof IEmissions>(event: K, listener: IEmissions[K]): this => super.on(event, listener)
-  public off = <K extends keyof IEmissions>(event: K, listener: IEmissions[K]): this => super.off(event, listener)
-  public once = <K extends keyof IEmissions>(event: K, listener: IEmissions[K]): this => super.once(event, listener)
-  public emit = <K extends keyof IEmissions>(event: K, ...args: Parameters<IEmissions[K]>): boolean => super.emit(event, ...args)
+  public override on = <K extends keyof IEmissions>(event: K, listener: IEmissions[K]): this => super.on(event, listener)
+  public override off = <K extends keyof IEmissions>(event: K, listener: IEmissions[K]): this => super.off(event, listener)
+  public override once = <K extends keyof IEmissions>(event: K, listener: IEmissions[K]): this => super.once(event, listener)
+  public override emit = <K extends keyof IEmissions>(event: K, ...args: Parameters<IEmissions[K]>): boolean => super.emit(event, ...args)
 
   public end(): void {
     clearInterval(this._timer);

@@ -1,14 +1,16 @@
-import { exec, ExecOptions, ExecException } from 'child_process';
-import path from 'path';
-import fs from 'fs';
-import { ChildProcess } from 'child_process';
+import { fileURLToPath } from 'node:url';
+import { dirname } from 'node:path';
+import { exec, ExecOptions, ExecException } from 'node:child_process';
+import path from 'node:path';
+import fs from 'node:fs';
+import { ChildProcess } from 'node:child_process';
 
 function execPromise(command: string, options: { encoding: BufferEncoding } & ExecOptions): Promise<{ stdout: string, stderr: string, exitCode: number }> {
   return new Promise((resolve, reject) => {
-    const cp: ChildProcess = exec(command, options, (error: ExecException, stdout: string, stderr: string) => {
+    const cp: ChildProcess = exec(command, options, (error: ExecException | null, stdout: string, stderr: string) => {
       if (error)
         return reject(error);
-      resolve({ stdout, stderr, exitCode: cp.exitCode });
+      resolve({ stdout, stderr, exitCode: cp.exitCode || 0 });
     })
   })
 }
@@ -17,6 +19,8 @@ export default class GitSource {
   workDir: string;
   gitDir: string;
   constructor(public name: string, public url: string) {
+    const __filename = fileURLToPath(import.meta.url);
+    const __dirname = dirname(__filename);
     this.workDir = path.resolve(path.join(__dirname, '..', '..'));
     this.gitDir = path.resolve(path.join(this.workDir, name));
   }

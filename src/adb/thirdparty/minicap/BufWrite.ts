@@ -1,3 +1,5 @@
+import { Buffer } from 'node:buffer';
+
 /**
  * help writing message
  */
@@ -40,9 +42,10 @@ export class BufWrite {
 
   writeString(text: string) {
     const textData = Buffer.from(text, 'utf8');
-    this.writeUint32BE(textData.length);
+    const len = (textData as unknown as Uint8Array).length;
+    this.writeUint32BE(len);
     this.append(textData);
-    this.pos += textData.length;
+    this.pos += len;
   }
 
   writeInt8(val: number) {
@@ -51,6 +54,10 @@ export class BufWrite {
   }
 
   append(buf: Buffer) {
-    this.buffer = Buffer.concat([this.buffer, buf], this.buffer.length + buf.length);
+    const bufs = [
+      this.buffer as unknown as Uint8Array,
+      buf as unknown as Uint8Array,
+    ];
+    this.buffer = Buffer.concat(bufs, bufs[0].length + bufs[1].length);
   }
 }

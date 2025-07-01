@@ -1,10 +1,10 @@
-import Chai, { expect } from 'chai';
+import { expect, use } from 'chai';
 import simonChai from 'sinon-chai';
-Chai.use(simonChai);
-import MockConnection from '../../../mock/connection';
-import Protocol from '../../../../src/adb/protocol';
-import Command from '../../../../src/adb/command';
-import Connection from '../../../../src/adb/connection';
+use(simonChai);
+import MockConnection from '../../../mock/connection.js';
+import Protocol from '../../../../src/adb/protocol.js';
+import Command from '../../../../src/adb/command.js';
+import Connection from '../../../../src/adb/connection.js';
 
 interface CommandConstructor<T extends Command<U>, U> {
     new(connection: Connection): T;

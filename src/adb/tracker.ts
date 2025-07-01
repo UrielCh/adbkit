@@ -1,10 +1,10 @@
-import { AdbPrematureEOFError } from './errors';
-import EventEmitter from 'events';
-import Device from '../models/Device';
-import HostDevicesCommand from './command/host/HostDevicesCommand';
-import HostDevicesWithPathsCommand from './command/host/HostDevicesWithPathsCommand';
-import TrackerChangeSet from '../models/TrackerChangeSet';
-import { HostTrackDevicesCommand } from './command/host';
+import { AdbPrematureEOFError } from './errors.js';
+import EventEmitter from 'node:events';
+import Device from '../models/Device.js';
+import HostDevicesCommand from './command/host/HostDevicesCommand.js';
+import HostDevicesWithPathsCommand from './command/host/HostDevicesWithPathsCommand.js';
+import TrackerChangeSet from '../models/TrackerChangeSet.js';
+import { HostTrackDevicesCommand } from './command/host/index.js';
 
 /**
  * enforce EventEmitter typing
@@ -52,7 +52,7 @@ export default class Tracker extends EventEmitter {
     this.readloop();
   }
 
-  public on = <K extends keyof IEmissions>(event: K, listener: IEmissions[K]): this => {
+  public override on = <K extends keyof IEmissions>(event: K, listener: IEmissions[K]): this => {
     // never miss past events
     if (event === 'add') {
       for (const device of this.deviceMap.values())
@@ -69,9 +69,9 @@ export default class Tracker extends EventEmitter {
     super.on(event, listener);
     return this;
   }
-  public off = <K extends keyof IEmissions>(event: K, listener: IEmissions[K]): this => super.off(event, listener)
-  public once = <K extends keyof IEmissions>(event: K, listener: IEmissions[K]): this => super.once(event, listener)
-  public emit = <K extends keyof IEmissions>(event: K, ...args: Parameters<IEmissions[K]>): boolean => super.emit(event, ...args)
+  public override off = <K extends keyof IEmissions>(event: K, listener: IEmissions[K]): this => super.off(event, listener)
+  public override once = <K extends keyof IEmissions>(event: K, listener: IEmissions[K]): this => super.once(event, listener)
+  public override emit = <K extends keyof IEmissions>(event: K, ...args: Parameters<IEmissions[K]>): boolean => super.emit(event, ...args)
 
   private async readloop(): Promise<void> {
     try {

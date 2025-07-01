@@ -1,4 +1,4 @@
-import Command from '../../command';
+import Command from '../../command.js';
 
 export type RebootType = 'bootloader' | 'recovery' | 'sideload' | 'fastboot' | 'sideload-auto-reboot';
 

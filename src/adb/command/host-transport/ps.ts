@@ -1,4 +1,4 @@
-import Command from '../../command';
+import Command from '../../command.js';
 
 /**
  * usage: ps [-AadefLlnwZ] [-gG GROUP,] [-k FIELD,] [-o FIELD,] [-p PID,] [-t TTY,] [-uU USER,]

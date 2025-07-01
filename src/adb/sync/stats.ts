@@ -1,6 +1,10 @@
-import fs from 'fs';
+// import fs from 'node:fs';
+//  implements fs.Stats
+export default class Stats {
+  mode: number;
+  size: number;
+  mtime: Date;
 
-export default class Stats extends fs.Stats {
   // The following constant were extracted from `man 2 stat` on Ubuntu 12.10.
   public static S_IFMT = 0o170000; // bit mask for the file type bit fields
 
@@ -37,9 +41,46 @@ export default class Stats extends fs.Stats {
   public static S_IRGRP = 0o0040; // group has read permission
 
   constructor(mode: number, size: number, mtime: number) {
-    super();
     this.mode = mode;
     this.size = size;
     this.mtime = new Date(mtime * 1000);
   }
+
+  isFile(): boolean {
+    return !!(this.mode & Stats.S_IFREG);
+  }
+  isDirectory(): boolean {
+    return !!(this.mode & Stats.S_IFDIR);
+  }
+  isBlockDevice(): boolean {
+    return !!(this.mode & Stats.S_IFBLK);
+  }
+  isCharacterDevice(): boolean {
+    return !!(this.mode & Stats.S_IFCHR);
+  }
+  isSymbolicLink(): boolean {
+    return !!(this.mode & Stats.S_IFLNK);
+  }
+  isFIFO(): boolean {
+    return !!(this.mode & Stats.S_IFIFO);
+  }
+  isSocket(): boolean {
+    return !!(this.mode & Stats.S_IFSOCK);
+  }
+  // dev: number;
+  // ino: number;
+  // nlink: number;
+  // uid: number;
+  // gid: number;
+  // rdev: number;
+  // blksize: number;
+  // blocks: number;
+  // atimeMs: number;
+  // mtimeMs: number;
+  // ctimeMs: number;
+  // birthtimeMs: number;
+  // atime: Date;
+  // mtime: Date;
+  // ctime: Date;
+  // birthtime: Date;
 }

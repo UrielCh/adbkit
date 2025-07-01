@@ -1,7 +1,8 @@
 {
     "name": "@u4/adbkit",
-    "version": "4.1.20",
+    "version": "5.0.0",
     "description": "A Typescript client for the Android Debug Bridge.",
+    "type": "module",
     "keywords": [
         "adb",
         "adbkit",
@@ -11,6 +12,12 @@
         "monkey",
         "scrcpy"
     ],
+    "exports": {
+        ".": {
+            "types": "./dist/index.d.ts",
+            "import": "./dist/index.js"
+        }
+    },
     "bin": {
         "adbkit": "./bin/adbkit"
     },
@@ -22,13 +29,13 @@
     "author": {
         "name": "openstf",
         "email": "contact@openstf.io",
-        "url": "https://urielch.github.io/"
+        "url": "https://uriel.ovh"
     },
     "contributors": [
         {
             "name": "uriel chemouni",
             "email": "uchemouni@gmail.com",
-            "url": "https://urielch.github.io/"
+            "url": "https://uriel.ovh"
         }
     ],
     "main": "./dist/index.js",
@@ -39,55 +46,60 @@
     },
     "scripts": {
         "clean": "rimraf dist",
-        "keycode": "ts-node tasks/keycode.ts",
-        "servicemap": "ts-node tasks/servicemap.ts",
+        "keycode": "tsx tasks/keycode.ts",
+        "servicemap": "tsx tasks/servicemap.ts",
         "prepublish": "npm run clean && npm run compile",
+        "docker-clean": "npx --yes modclean -r",
         "docs": "typedoc --entryPointStrategy expand",
         "compile": "tsc -p .",
         "build": "tsc -p .",
-        "lint": "eslint   ./ --ext .ts",
+        "lint": "eslint  ./ --ext .ts",
         "format": "eslint ./ --ext .ts --fix",
         "test": "mocha -r tsx --reporter spec --colors test/**/*.ts",
         "test2": "mocha -r tsx --reporter spec --colors test/adb/thirdparty/**/*.ts",
         "test3": "mocha -r tsx --reporter spec --colors test/adb/command/host-transport/serviceCall.ts",
+        "typetest": "npx --yes @arethetypeswrong/cli --pack .",
         "ncu": "npx npm-check-updates -i"
     },
     "dependencies": {
+        "@jest/globals": "^30.0.3",
         "@u4/adbkit-logcat": "2.1.2",
         "@u4/adbkit-monkey": "^1.0.5",
         "@u4/minicap-prebuilt": "^1.0.0",
-        "@xmldom/xmldom": "^0.8.10",
-        "commander": "12.1.0",
-        "debug": "~4.4.0",
+        "@xmldom/xmldom": "^0.9.8",
+        "commander": "14.0.0",
+        "debug": "~4.4.1",
         "get-port": "7.1.0",
+        "jest": "^30.0.3",
         "node-forge": "^1.3.1",
         "promise-duplex": "^8.0.0",
         "promise-readable": "^8.0.1",
-        "protobufjs": "^7.4.0",
+        "protobufjs": "^7.5.3",
         "xpath": "^0.0.34"
     },
     "devDependencies": {
         "@types/debug": "^4.1.12",
+        "@types/jest": "^30.0.0",
         "@types/mocha": "^10.0.10",
-        "@types/node": "^20.11.7",
+        "@types/node": "^24.0.8",
         "@types/node-forge": "^1.3.11",
-        "@types/sinon": "^17.0.3",
+        "@types/sinon": "^17.0.4",
         "@types/sinon-chai": "^4.0.0",
-        "@typescript-eslint/eslint-plugin": "^8.18.1",
-        "@typescript-eslint/parser": "^8.18.1",
-        "chai": "~5.1.2",
-        "eslint": "^8.56.0",
-        "mocha": "~10.8.2",
+        "@typescript-eslint/eslint-plugin": "^8.35.1",
+        "@typescript-eslint/parser": "^8.35.1",
+        "chai": "~5.2.0",
+        "eslint": "^9.30.0",
+        "mocha": "~11.7.1",
         "picocolors": "^1.1.1",
-        "prettier": "^3.4.2",
+        "prettier": "^3.6.2",
         "rimraf": "^6.0.1",
-        "sinon": "~19.0.2",
+        "sinon": "~21.0.0",
         "sinon-chai": "~4.0.0",
-        "tsx": "^4.19.2",
-        "typedoc": "^0.27.5",
-        "typedoc-plugin-rename-defaults": "^0.7.2",
-        "typescript": "5.6.3",
-        "why-is-node-running": "^3.2.1"
+        "tsx": "^4.20.3",
+        "typedoc": "^0.28.7",
+        "typedoc-plugin-rename-defaults": "^0.7.3",
+        "typescript": "5.8.3",
+        "why-is-node-running": "^3.2.2"
     },
     "engines": {
         "node": ">= 12.20.0"
@@ -97,6 +109,6 @@
         "bin"
     ],
     "optionalDependencies": {
-        "@devicefarmer/minicap-prebuilt": "^2.7.2"
+        "@devicefarmer/minicap-prebuilt": "^2.7.3"
     }
 }

@@ -1,8 +1,9 @@
-import Stream from 'stream';
+import { Buffer } from 'node:buffer';
+import Stream from 'node:stream';
 import simonChai from 'sinon-chai';
-import { use, expect } from 'chai';
-import LineTransform from '../../src/adb/linetransform';
-import MockDuplex from '../mock/duplex';
+import { expect, use } from 'chai';
+import LineTransform from '../../src/adb/linetransform.js';
+import MockDuplex from '../mock/duplex.js';
 use(simonChai);
 
 describe('LineTransform', () => {

@@ -1,16 +1,16 @@
-import Fs from 'fs';
-import Stream from 'stream';
+import Fs from 'node:fs';
+import Stream from 'node:stream';
 import Sinon from 'sinon';
 import { use, expect, assert } from 'chai';
 import simonChai from 'sinon-chai';
-import Adb, { Client } from '../../src/index';
-import Sync, { ENOENT } from '../../src/adb/sync';
-import Stats from '../../src/adb/sync/stats';
-import Entry from '../../src/adb/sync/entry';
-import PushTransfer from '../../src/adb/sync/pushtransfer';
-import PullTransfer from '../../src/adb/sync/pulltransfer';
-import MockConnection from '../mock/connection';
-import Device from '../../src/models/Device';
+import Adb, { Client } from '../../src/index.js';
+import Sync, { ENOENT } from '../../src/adb/sync.js';
+import Stats from '../../src/adb/sync/stats.js';
+import Entry from '../../src/adb/sync/entry.js';
+import PushTransfer from '../../src/adb/sync/pushtransfer.js';
+import PullTransfer from '../../src/adb/sync/pulltransfer.js';
+import MockConnection from '../mock/connection.js';
+import Device from '../../src/models/Device.js';
 use(simonChai);
 
 // This test suite is a bit special in that it requires a connected Android
@@ -72,7 +72,8 @@ describe('Sync', () => {
             const sync = new Sync(conn);
             // const stream = new Stream.PassThrough();
             Sinon.stub(sync, 'pushFile');
-            sync.push(__filename, 'foo');
+            // __filename
+            sync.push(import.meta.url, 'foo');
             return expect(sync.pushFile).to.have.been.called;
         });
         // now return a promise
@@ -200,10 +201,11 @@ describe('Sync', () => {
             }).finally(done);
         });
         describe('Stats', () => {
-            it('should implement Fs.Stats', (done) => {
-                expect(new Stats(0, 0, 0)).to.be.an.instanceof(Fs.Stats);
-                done();
-            });
+            // Fs.Stats constructor is now private  and can not be instanciated
+            // it('should implement Fs.Stats', (done) => {
+            //     expect(new Stats(0, 0, 0)).to.be.an.instanceof(Fs.Stats);
+            //     done();
+            // });
             dt('should set the `.mode` property for isFile() etc', (done) => {
                 return forEachSyncDevice(async (sync) => {
                     const stats = await sync.stat(SURELY_EXISTING_FILE);

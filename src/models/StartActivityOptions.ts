@@ -1,4 +1,4 @@
-import StartServiceOptions from './StartServiceOptions';
+import StartServiceOptions from './StartServiceOptions.js';
 
 export default interface StartActivityOptions extends StartServiceOptions {
   /**

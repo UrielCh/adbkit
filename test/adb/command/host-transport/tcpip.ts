@@ -1,9 +1,9 @@
-import Chai, { expect } from 'chai';
+import { expect, use } from 'chai';
 import simonChai from 'sinon-chai';
-Chai.use(simonChai);
-import MockConnection from '../../../mock/connection';
-import Protocol from '../../../../src/adb/protocol';
-import TcpIpCommand from '../../../../src/adb/command/host-transport/tcpip';
+use(simonChai);
+import MockConnection from '../../../mock/connection.js';
+import Protocol from '../../../../src/adb/protocol.js';
+import TcpIpCommand from '../../../../src/adb/command/host-transport/tcpip.js';
 
 describe('TcpIpCommand', () => {
     it("should send 'tcp:<port>'", () => {

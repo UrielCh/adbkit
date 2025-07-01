@@ -1,9 +1,9 @@
-import Chai, { expect } from 'chai';
+import { expect, use } from 'chai';
 import simonChai from 'sinon-chai';
-Chai.use(simonChai);
-import MockConnection from '../../../mock/connection';
-import Protocol from '../../../../src/adb/protocol';
-import StartServiceCommand from '../../../../src/adb/command/host-transport/startservice';
+use(simonChai);
+import MockConnection from '../../../mock/connection.js';
+import Protocol from '../../../../src/adb/protocol.js';
+import StartServiceCommand from '../../../../src/adb/command/host-transport/startservice.js';
 
 describe('StartServiceCommand', () => {
     it("should succeed when 'Success' returned", () => {

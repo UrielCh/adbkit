@@ -1,5 +1,5 @@
-import { DeviceType } from '../../../models/Device';
-import Command from '../../command';
+import { DeviceType } from '../../../models/Device.js';
+import Command from '../../command.js';
 
 export default class GetStateCommand extends Command<string> {
   async execute(serial: string): Promise<DeviceType> {

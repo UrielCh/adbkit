@@ -1,6 +1,6 @@
-import { createClient } from './adb';
-import Device from './models/Device';
-import DeviceClient from './adb/DeviceClient';
+import { createClient } from './adb.js';
+import Device from './models/Device.js';
+import DeviceClient from './adb/DeviceClient.js';
 
 export async function getClientDevice(serials: string[]): Promise<DeviceClient[]> {
   const adb = createClient();

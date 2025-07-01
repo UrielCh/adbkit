@@ -1,10 +1,10 @@
-import Chai, { expect } from 'chai';
+import { expect, use } from 'chai';
 import simonChai from 'sinon-chai';
-Chai.use(simonChai);
-import MockConnection from '../../../mock/connection';
-import Protocol from '../../../../src/adb/protocol';
-import InstallCommand from '../../../../src/adb/command/host-transport/install';
-import Tester from './Tester';
+use(simonChai);
+import MockConnection from '../../../mock/connection.js';
+import Protocol from '../../../../src/adb/protocol.js';
+import InstallCommand from '../../../../src/adb/command/host-transport/install.js';
+import Tester from './Tester.js';
 const t = new Tester(InstallCommand);
 
 describe('InstallCommand', () => {

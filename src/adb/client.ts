@@ -1,5 +1,5 @@
-import EventEmitter from 'events';
-import Connection from './connection';
+import EventEmitter from 'node:events';
+import Connection from './connection.js';
 
 import {
   HostVersionCommand,
@@ -9,14 +9,14 @@ import {
   HostDisconnectCommand,
   HostTrackDevicesCommand,
   HostKillCommand,
-} from './command/host';
-import TcpUsbServer from './tcpusb/server';
-import Device from '../models/Device';
-import { ClientOptions } from '../models/ClientOptions';
-import SocketOptions from '../models/SocketOptions';
-import Tracker from './tracker';
-import DeviceWithPath from '../models/DeviceWithPath';
-import DeviceClient from './DeviceClient';
+} from './command/host/index.js';
+import TcpUsbServer from './tcpusb/server.js';
+import Device from '../models/Device.js';
+import { ClientOptions } from '../models/ClientOptions.js';
+import SocketOptions from '../models/SocketOptions.js';
+import Tracker from './tracker.js';
+import DeviceWithPath from '../models/DeviceWithPath.js';
+import DeviceClient from './DeviceClient.js';
 
 /**
  * enforce EventEmitter typing
@@ -54,10 +54,10 @@ export default class Client extends EventEmitter {
     this.options = { host, port, bin };
   }
 
-  public on = <K extends keyof IEmissions>(event: K, listener: IEmissions[K]): this => super.on(event, listener)
-  public off = <K extends keyof IEmissions>(event: K, listener: IEmissions[K]): this => super.off(event, listener)
-  public once = <K extends keyof IEmissions>(event: K, listener: IEmissions[K]): this => super.once(event, listener)
-  public emit = <K extends keyof IEmissions>(event: K, ...args: Parameters<IEmissions[K]>): boolean => super.emit(event, ...args)
+  public override on = <K extends keyof IEmissions>(event: K, listener: IEmissions[K]): this => super.on(event, listener)
+  public override off = <K extends keyof IEmissions>(event: K, listener: IEmissions[K]): this => super.off(event, listener)
+  public override once = <K extends keyof IEmissions>(event: K, listener: IEmissions[K]): this => super.once(event, listener)
+  public override emit = <K extends keyof IEmissions>(event: K, ...args: Parameters<IEmissions[K]>): boolean => super.emit(event, ...args)
 
   public createTcpUsbBridge(serial: string, options: SocketOptions): TcpUsbServer {
     return new TcpUsbServer(this, serial, options);

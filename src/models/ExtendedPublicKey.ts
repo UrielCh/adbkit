@@ -1,5 +1,5 @@
-import { pki } from 'node-forge';
-import PublicKey = pki.rsa.PublicKey;
+import { type pki } from 'node-forge';
+type PublicKey = pki.rsa.PublicKey;
 
 export default interface ExtendedPublicKey extends PublicKey {
   /**

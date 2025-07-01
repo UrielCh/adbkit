@@ -1,9 +1,10 @@
-import Chai, { expect } from 'chai';
+import {use, expect } from 'chai';
 import simonChai from 'sinon-chai';
-Chai.use(simonChai);
-import MockConnection from '../../../mock/connection';
-import Protocol from '../../../../src/adb/protocol';
-import HostConnectCommand from '../../../../src/adb/command/host/HostConnectCommand';
+import { setImmediate } from "node:timers";
+use(simonChai);
+import MockConnection from '../../../mock/connection.js';
+import Protocol from '../../../../src/adb/protocol.js';
+import HostConnectCommand from '../../../../src/adb/command/host/HostConnectCommand.js';
 
 describe('ConnectCommand', () => {
     it("should send 'host:connect:<host>:<port>'", () => {

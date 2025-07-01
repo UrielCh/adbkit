@@ -1,17 +1,23 @@
-import fs from 'fs';
+import fs from 'node:fs';
 import { program } from 'commander';
 import forge from 'node-forge';
-import { createClient } from './adb';
-import Auth from './adb/auth';
-import PacketReader from './adb/tcpusb/packetreader';
-import path from 'path';
-import Utils from './adb/utils';
-import { getClientDevice } from './cli-common';
+import { createClient } from './adb.js';
+import Auth from './adb/auth.js';
+import PacketReader from './adb/tcpusb/packetreader.js';
+import path from 'node:path';
+import Utils from './adb/utils.js';
+import { getClientDevice } from './cli-common.js';
 
-import './cli-airplane';
-import './cli-connectivity';
-import './cli-tethering';
-import './cli-boatware'
+import './cli-airplane.js';
+import './cli-connectivity.js';
+import './cli-tethering.js';
+import './cli-boatware.js'
+
+import { fileURLToPath } from 'node:url';
+import { dirname } from 'node:path';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 const pkg: { version: string } = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'package.json'), { encoding: 'utf-8' }));
 

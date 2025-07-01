@@ -1,4 +1,4 @@
-import Command from '../../command';
+import Command from '../../command.js';
 
 /**
  * Usage: ip rule { add | del } SELECTOR ACTION

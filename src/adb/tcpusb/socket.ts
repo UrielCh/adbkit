@@ -1,16 +1,18 @@
-import EventEmitter from 'events';
-import crypto from 'crypto';
-import { promisify } from 'util';
-import PacketReader from './packetreader';
-import RollingCounter from './rollingcounter';
-import Packet from './packet';
-import Auth from '../auth';
-import Client from '../client';
-import Net from 'net';
-import ServiceMap from './servicemap';
-import Service from './service';
-import SocketOptions from '../../models/SocketOptions';
-import Utils from '../utils';
+import EventEmitter from 'node:events';
+import crypto from 'node:crypto';
+import { promisify } from 'node:util';
+import { Buffer } from 'node:buffer';
+
+import PacketReader from './packetreader.js';
+import RollingCounter from './rollingcounter.js';
+import Packet from './packet.js';
+import Auth from '../auth.js';
+import Client from '../client.js';
+import Net from 'node:net';
+import ServiceMap from './servicemap.js';
+import Service from './service.js';
+import SocketOptions from '../../models/SocketOptions.js';
+import Utils from '../utils.js';
 
 const debug = Utils.debug('adb:tcpusb:socket');
 const UINT32_MAX = 0xffffffff;
@@ -87,10 +89,10 @@ export default class Socket extends EventEmitter {
     this.signature = undefined;
   }
 
-  public on = <K extends keyof IEmissions>(event: K, listener: IEmissions[K]): this => super.on(event, listener)
-  public off = <K extends keyof IEmissions>(event: K, listener: IEmissions[K]): this => super.off(event, listener)
-  public once = <K extends keyof IEmissions>(event: K, listener: IEmissions[K]): this => super.once(event, listener)
-  public emit = <K extends keyof IEmissions>(event: K, ...args: Parameters<IEmissions[K]>): boolean => super.emit(event, ...args)
+  public override on = <K extends keyof IEmissions>(event: K, listener: IEmissions[K]): this => super.on(event, listener)
+  public override off = <K extends keyof IEmissions>(event: K, listener: IEmissions[K]): this => super.off(event, listener)
+  public override once = <K extends keyof IEmissions>(event: K, listener: IEmissions[K]): this => super.once(event, listener)
+  public override emit = <K extends keyof IEmissions>(event: K, ...args: Parameters<IEmissions[K]>): boolean => super.emit(event, ...args)
 
   public end(): Socket {
     if (this.ended) {
@@ -174,6 +176,7 @@ export default class Socket extends EventEmitter {
     debug('I:A_AUTH', packet);
     switch (packet.arg0) {
       case AUTH_SIGNATURE:
+      {
         // Store first signature, ignore the rest
         if (packet.data) debug(`Received signature '${packet.data.toString('base64')}'`);
         if (!this.signature) {
@@ -182,11 +185,14 @@ export default class Socket extends EventEmitter {
         debug('O:A_AUTH');
         const b = this.write(Packet.assemble(Packet.A_AUTH, AUTH_TOKEN, 0, this.token));
         return b;
+      }
       case AUTH_RSAPUBLICKEY:
+      {
+
         if (!this.signature) {
           throw new Socket.AuthError('Public key sent before signature');
         }
-        if (!packet.data || packet.data.length < 2) {
+        if (!packet.data || (packet.data as unknown as Uint8Array).length < 2) {
           throw new Socket.AuthError('Empty RSA public key');
         }
         debug(`Received RSA public key '${packet.data.toString('base64')}'`);
@@ -212,6 +218,7 @@ export default class Socket extends EventEmitter {
         this.authorized = true;
         debug('O:A_CNXN');
         return this.write(Packet.assemble(Packet.A_CNXN, Packet.swap32(this.version), this.maxPayload, id));
+      }
       default:
         throw new Error(`Unknown authentication method ${packet.arg0}`);
     }
@@ -223,7 +230,7 @@ export default class Socket extends EventEmitter {
     }
     const remoteId = packet.arg0;
     const localId = this.remoteId.next();
-    if (!(packet.data && packet.data.length >= 2)) {
+    if (!(packet.data && (packet.data as unknown as Uint8Array).length >= 2)) {
       throw new Error('Empty service name');
     }
     const name = this._skipNull(packet.data);
@@ -236,7 +243,10 @@ export default class Socket extends EventEmitter {
       debug(`Handling ${this.services.count} services simultaneously`);
       return service.handle(packet);
     })
-      .catch(() => true)
+      .catch((err) => {
+        debug(`Got error handling service ${service}. ${err}`)
+        return true;
+      })
       .finally(() => {
         this.services.remove(localId);
         debug(`Handling ${this.services.count} services simultaneously`);
@@ -262,7 +272,7 @@ export default class Socket extends EventEmitter {
     if (this.ended) {
       return false;
     }
-    return this.socket.write(chunk);
+    return this.socket.write(chunk as unknown as Uint8Array);
   }
 
   private _createToken(): Promise<Buffer> {

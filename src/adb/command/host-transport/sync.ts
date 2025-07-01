@@ -1,5 +1,5 @@
-import Sync from '../../sync';
-import Command from '../../command';
+import Sync from '../../sync.js';
+import Command from '../../command.js';
 
 export default class SyncCommand extends Command<Sync> {
   async execute(): Promise<Sync> {

@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
-import https from 'https';
+import https from 'node:https';
 import GitSource from './GitSource'
 
 // import strip from 'strip-comments';

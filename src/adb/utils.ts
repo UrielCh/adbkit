@@ -1,14 +1,29 @@
-import Parser from './parser';
-import Auth from './auth';
-import ExtendedPublicKey from '../models/ExtendedPublicKey';
-import { Duplex, Readable } from 'stream';
+import { Buffer } from 'node:buffer';
+import Parser from './parser.js';
+import Auth from './auth.js';
+import ExtendedPublicKey from '../models/ExtendedPublicKey.js';
+import { Duplex, Readable } from 'node:stream';
 import PromiseDuplex from 'promise-duplex';
 import Debug from 'debug';
 import PromiseReadable from 'promise-readable';
+import { type Stream } from 'node:stream';
 
 export type CancellablePromise<T> = Promise<T> & { cancel: () => void };
 
+/**
+ * Missing from Deno ?
+ */
+
+export type BufferEncoding = Parameters<typeof Stream.PassThrough.prototype.write>[1]
+
+
 export default class Utils {
+  /**
+   * concat buffer to fix deno typing errors.
+   */
+  public static concatBuffer(buffs: Buffer[]): Buffer {
+    return Buffer.concat(buffs as unknown as Uint8Array[]);
+  }
   /**
    * Takes a [`Stream`][node-stream] and reads everything it outputs until the stream ends. Then it resolves with the collected output. Convenient with `client.shell()`.
    * 
@@ -35,7 +50,7 @@ export default class Utils {
    * @returns void
    */
   public static delay(ms: number): CancellablePromise<void> {
-    let timeout: null | NodeJS.Timeout = null;
+    let timeout: null | ReturnType<typeof setTimeout> = null;
     const promise = new Promise<void>((resolve) => {
       timeout = setTimeout(() => {
         timeout = null;

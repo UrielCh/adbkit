@@ -1,7 +1,10 @@
-import Command from '../../command';
-import { KnownServices } from './servicesList';
-import { EOL } from 'os';
-import { ParcelVal } from './Parcel';
+import { Buffer } from 'node:buffer';
+import { EOL } from 'node:os';
+
+import Command from '../../command.js';
+import { KnownServices } from './servicesList.js';
+import { type ParcelVal, ParcelValMap } from './Parcel.js';
+import { Utils } from '../../../index.js';
 
 export type ServiceCallArg = ServiceCallArgNumber | ServiceCallArgString | ServiceCallArgNull;
 
@@ -27,7 +30,7 @@ export class ParcelReader {
   public read(): string {
     const type: ParcelVal = this.readType();
     switch (type) {
-      case ParcelVal.VAL_STRING:
+      case ParcelValMap.VAL_STRING:
         return this.readString();
       default:
         throw Error(`ParcelReader need to be complet, and do not support Type: ${type}`)
@@ -43,7 +46,7 @@ export class ParcelReader {
   public readType(): ParcelVal {
     const type = this.data.readInt32BE(this.pos);
     this.pos += 4;
-    return type;
+    return type as ParcelVal;
   }
 
   public readString(): string {
@@ -66,7 +69,7 @@ export class ParcelReader {
     this.pos += pos + block * 4;
 
     if (chars & 1) {
-      return dest.toString('utf16le', 0, dest.length - 1);
+      return dest.toString('utf16le', 0, (dest as unknown as Uint8Array).length - 1);
     } else {
       return dest.toString('utf16le');
     }
@@ -75,7 +78,7 @@ export class ParcelReader {
   public dump(): string {
     const out: string[] = [];
     let p = 0;
-    while (p < this.data.length) {
+    while (p < (this.data as unknown as Uint8Array).length) {
       out.push(this.data.subarray(p, p + 16).toString('hex').replace(/(....)/g, '$1 '));
       p += 16;
     }
@@ -127,7 +130,7 @@ export default class ServiceCallCommand extends Command<ParcelReader> {
       }
     }
     if (data.length) {
-      return Buffer.concat(data);
+      return Utils.concatBuffer(data);
     }
     // sinngle line Parcel
     const m1 = value.match(/Parcel\(([0-9a-f]{8}) ([0-9a-f ]{8})? ([0-9a-f ]{8}) ([0-9a-f ]{8}) '.{16}'\)/);
@@ -138,7 +141,7 @@ export default class ServiceCallCommand extends Command<ParcelReader> {
           break;
         data.push(Buffer.from(chunk, 'hex'));
       }
-      return Buffer.concat(data);
+      return Utils.concatBuffer(data);
     }
     // Read Error Parcel
     const m2 = value.match(/Parcel\(Error: 0x([0-9a-f]+) "(.+)"\)/);
@@ -146,6 +149,6 @@ export default class ServiceCallCommand extends Command<ParcelReader> {
       throw new Error(`0x${m2[1]} ${m2[2]}`);
     }
     throw new Error(`Fail to parse Parcel`);
-    // return Buffer.concat(data);
+    // return Utils.concatBuffer(data);
   }
 }

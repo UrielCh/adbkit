@@ -4,5 +4,6 @@
         "lib/**/*.d.ts": true,
         "lib/**/*.map": true
     },
-    "eslint.format.enable": true
+    "eslint.format.enable": true,
+    "deno.enable": false
 }

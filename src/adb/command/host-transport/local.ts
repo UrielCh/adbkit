@@ -1,5 +1,5 @@
-import Command from '../../command';
-import { Duplex } from 'stream';
+import Command from '../../command.js';
+import { Duplex } from 'node:stream';
 
 export default class LocalCommand extends Command<Duplex> {
   async execute(path: string): Promise<Duplex> {

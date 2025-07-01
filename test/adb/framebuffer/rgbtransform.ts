@@ -1,9 +1,9 @@
-import Stream from 'stream';
-import Chai, { expect } from 'chai';
+import Stream from 'node:stream';
+import { expect, use } from 'chai';
 import simonChai from 'sinon-chai';
-Chai.use(simonChai);
-import RgbTransform from '../../../src/adb/framebuffer/rgbtransform';
-import { FramebufferMeta } from '../../../src';
+use(simonChai);
+import RgbTransform from '../../../src/adb/framebuffer/rgbtransform.js';
+import { FramebufferMeta } from '../../../src/index.js';
 
 describe('RgbTransform', () => {
     it('should transform BGRA into RGB', (done) => {

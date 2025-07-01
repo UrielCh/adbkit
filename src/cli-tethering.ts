@@ -1,7 +1,7 @@
 import { program } from 'commander';
-import DeviceClient from './adb/DeviceClient';
-import Utils from './adb/utils';
-import { getClientDevice } from './cli-common';
+import DeviceClient from './adb/DeviceClient.js';
+import Utils from './adb/utils.js';
+import { getClientDevice } from './cli-common.js';
 
 program
   .command('usb-tethering-off [serials...]')

@@ -1,10 +1,12 @@
-import { spawn } from 'child_process';
-import RgbTransform from '../../framebuffer/rgbtransform';
-import Command from '../../command';
-import { Readable } from 'stream';
-import FramebufferMeta, { ColorFormat } from '../../../models/FramebufferMeta';
-import FramebufferStreamWithMeta from '../../../models/FramebufferStreamWithMeta';
-import Utils from '../../utils';
+import { spawn } from 'node:child_process';
+import { Readable } from 'node:stream';
+import { Buffer } from 'node:buffer';
+
+import RgbTransform from '../../framebuffer/rgbtransform.js';
+import Command from '../../command.js';
+import FramebufferMeta, { ColorFormat } from '../../../models/FramebufferMeta.js';
+import FramebufferStreamWithMeta from '../../../models/FramebufferStreamWithMeta.js';
+import Utils from '../../utils.js';
 
 const debug = Utils.debug('adb:command:framebuffer');
 
@@ -34,11 +36,13 @@ export default class FrameBufferCommand extends Command<FramebufferStreamWithMet
       case 'rgba':
         break;
       default:
+      {
         // Known to be supported by GraphicsMagick
         debug(`Silently transforming '${meta.format}' into 'rgb' for \`gm\``);
         const transform = new RgbTransform(meta);
         meta.format = 'rgb';
         raw = this.parser.raw().pipe(transform);
+      }
     }
     const proc = spawn('gm', ['convert', '-size', `${meta.width}x${meta.height}`, `${meta.format}:-`, `${format}:-`]);
     if (raw) {

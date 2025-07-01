@@ -1,6 +1,6 @@
-import Command from '../../command';
-import Device, { DeviceType } from '../../../models/Device';
-import DeviceClient from '../../DeviceClient';
+import Command from '../../command.js';
+import Device, { DeviceType } from '../../../models/Device.js';
+import DeviceClient from '../../DeviceClient.js';
 
 export default class HostDevicesCommand extends Command<Device[]> {
   async execute(): Promise<Device[]> {

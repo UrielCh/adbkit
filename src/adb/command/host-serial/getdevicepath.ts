@@ -1,4 +1,4 @@
-import Command from '../../command';
+import Command from '../../command.js';
 
 export default class GetDevicePathCommand extends Command<string> {
   async execute(serial: string): Promise<string> {

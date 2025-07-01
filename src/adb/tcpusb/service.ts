@@ -1,12 +1,14 @@
-import EventEmitter from 'events';
-import Packet from './packet';
-import Protocol from '../protocol';
-import Client from '../client';
-import Socket from './socket';
-import ReadableStream = NodeJS.ReadableStream;
-import Connection from '../connection';
-import Utils from '../utils';
+import EventEmitter from 'node:events';
+import { Buffer } from 'node:buffer';
+
+import Packet from './packet.js';
+import Protocol from '../protocol.js';
+import Client from '../client.js';
+import Socket from './socket.js';
+import Connection from '../connection.js';
+import Utils from '../utils.js';
 const debug = Utils.debug('adb:tcpusb:service');
+type ReadableStream = NodeJS.ReadableStream;
 
 export class PrematurePacketError extends Error {
   constructor(public packet: Packet) {
@@ -55,10 +57,10 @@ export default class Service extends EventEmitter {
     super();
   }
 
-  public on = <K extends keyof IEmissions>(event: K, listener: IEmissions[K]): this => super.on(event, listener)
-  public off = <K extends keyof IEmissions>(event: K, listener: IEmissions[K]): this => super.off(event, listener)
-  public once = <K extends keyof IEmissions>(event: K, listener: IEmissions[K]): this => super.once(event, listener)
-  public emit = <K extends keyof IEmissions>(event: K, ...args: Parameters<IEmissions[K]>): boolean => super.emit(event, ...args)
+  public override on = <K extends keyof IEmissions>(event: K, listener: IEmissions[K]): this => super.on(event, listener)
+  public override off = <K extends keyof IEmissions>(event: K, listener: IEmissions[K]): this => super.off(event, listener)
+  public override once = <K extends keyof IEmissions>(event: K, listener: IEmissions[K]): this => super.once(event, listener)
+  public override emit = <K extends keyof IEmissions>(event: K, ...args: Parameters<IEmissions[K]>): boolean => super.emit(event, ...args)
 
   public end(): this {
     if (this.transport) {
@@ -111,32 +113,31 @@ export default class Service extends EventEmitter {
 
   private async _handleOpenPacket(packet: Packet): Promise<void> {
     debug('I:A_OPEN', packet);
-    try {
-      const transport = await this.client.getDevice(this.serial).transport()
-      this.transport = transport;
-      if (this.ended) {
-        throw new LateTransportError();
-      }
-      if (!packet.data)
-        throw Error("missing data in packet");
-      this.transport.write(Protocol.encodeData(packet.data.subarray(0, -1))); // Discard null byte at end
-      await this.transport.parser.readCode(Protocol.OKAY);
-      debug('O:A_OKAY');
-      this.socket.write(Packet.assemble(Packet.A_OKAY, this.localId, this.remoteId));
-      this.opened = true;
-      return new Promise<void>((resolve, reject) => {
-        if (!this.transport) {
-          return reject('transport is closed')
-        }
-        this.transport.socket
-          .on('readable', () => this._tryPush())
-          .on('end', resolve)
-          .on('error', reject);
-        this._tryPush();
-      });
-    } finally {
-      this.end();
+    const transport = await this.client.getDevice(this.serial).transport()
+    this.transport = transport;
+    if (this.ended) {
+      throw new LateTransportError();
     }
+    if (!packet.data)
+      throw Error("missing data in packet");
+    this.transport.write(Protocol.encodeData(packet.data.subarray(0, -1))); // Discard null byte at end
+    await this.transport.parser.readCode(Protocol.OKAY);
+    debug('O:A_OKAY');
+    this.socket.write(Packet.assemble(Packet.A_OKAY, this.localId, this.remoteId));
+    this.opened = true;
+    return new Promise<void>((resolve, reject) => {
+      if (!this.transport) {
+        return reject('transport is closed')
+      }
+      this.transport.socket
+        .on('readable', () => this._tryPush())
+        .on('end', () => {
+          this.end();
+          resolve()
+        })
+        .on('error', reject);
+      this._tryPush();
+    });
   }
 
   private _handleOkayPacket(packet: Packet): boolean {

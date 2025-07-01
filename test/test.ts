@@ -1,4 +1,4 @@
-// import Adb from "../src/adb";
+// import Adb from "../src/adb.js";
 
 //async function main() {
 //    const client = Adb.createClient();

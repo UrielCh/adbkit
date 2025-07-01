@@ -1,4 +1,4 @@
-import DeviceClient from './DeviceClient';
+import DeviceClient from './DeviceClient.js';
 
 // export interface DevicePackageDump {
 //     'Activity Resolver Table': {

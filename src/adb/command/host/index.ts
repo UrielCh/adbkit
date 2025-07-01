@@ -1,8 +1,8 @@
-export { default as HostConnectCommand } from './HostConnectCommand';
-export { default as HostDevicesCommand } from './HostDevicesCommand';
-export { default as HostDevicesWithPathsCommand } from './HostDevicesWithPathsCommand';
-export { default as HostDisconnectCommand } from './HostDisconnectCommand';
-export { default as HostKillCommand } from './HostKillCommand';
-export { default as HostTrackDevicesCommand } from './HostTrackDevicesCommand';
-export { default as HostTransportCommand } from './HostTransportCommand';
-export { default as HostVersionCommand } from './HostVersionCommand';
+export { default as HostConnectCommand } from './HostConnectCommand.js';
+export { default as HostDevicesCommand } from './HostDevicesCommand.js';
+export { default as HostDevicesWithPathsCommand } from './HostDevicesWithPathsCommand.js';
+export { default as HostDisconnectCommand } from './HostDisconnectCommand.js';
+export { default as HostKillCommand } from './HostKillCommand.js';
+export { default as HostTrackDevicesCommand } from './HostTrackDevicesCommand.js';
+export { default as HostTransportCommand } from './HostTransportCommand.js';
+export { default as HostVersionCommand } from './HostVersionCommand.js';

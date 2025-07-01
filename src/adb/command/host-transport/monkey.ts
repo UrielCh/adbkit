@@ -1,8 +1,8 @@
-import Connection from '../../connection';
-import Command from '../../command';
-import { Duplex } from 'stream';
-import Utils from '../../utils';
-import { DeviceClientOptions } from '../../../models/DeviceClientOptions';
+import Connection from '../../connection.js';
+import Command from '../../command.js';
+import { Duplex } from 'node:stream';
+import Utils from '../../utils.js';
+import { DeviceClientOptions } from '../../../models/DeviceClientOptions.js';
 
 export default class MonkeyCommand extends Command<Duplex> {
   constructor(connection: Connection, private timeout = 1000, options?: Partial<DeviceClientOptions>) {

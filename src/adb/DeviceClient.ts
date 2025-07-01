@@ -1,11 +1,18 @@
-import { Monkey, Client as MonkeyClient } from '@u4/adbkit-monkey';
-import Logcat from '@u4/adbkit-logcat';
-import Connection from './connection';
-import Sync from './sync';
-import ProcStat from './proc/stat';
+import { Duplex } from 'node:stream';
+import { ReadStream } from 'node:fs';
+import { Buffer } from 'node:buffer';
 
-import { HostTransportCommand } from './command/host';
-import * as hostCmd from './command/host-transport';
+import * as adbkitMonkey from '@u4/adbkit-monkey';
+// import { type Monkey as MonkeyClient } from '@u4/adbkit-monkey';
+const { Monkey } = adbkitMonkey;
+
+import { Logcat } from '@u4/adbkit-logcat';
+import Connection from './connection.js';
+import Sync from './sync.js';
+import ProcStat from './proc/stat.js';
+
+import { HostTransportCommand } from './command/host/index.js';
+import * as hostCmd from './command/host-transport/index.js';
 import {
   ForwardCommand,
   GetDevicePathCommand,
@@ -14,39 +21,37 @@ import {
   KillForwardCommand,
   ListForwardsCommand,
   WaitForDeviceCommand,
-} from './command/host-serial';
-import Forward from '../models/Forward';
-import Reverse from '../models/Reverse';
-import StartActivityOptions from '../models/StartActivityOptions';
-import StartServiceOptions from '../models/StartServiceOptions';
-import { Duplex } from 'stream';
-import Stats from './sync/stats';
-import Entry from './sync/entry';
-import PushTransfer from './sync/pushtransfer';
-import { ReadStream } from 'fs';
-import PullTransfer from './sync/pulltransfer';
-import { Properties } from '../models/Properties';
-import { Features } from '../models/Features';
-import FramebufferStreamWithMeta from '../models/FramebufferStreamWithMeta';
-import WithToString from '../models/WithToString';
-import JdwpTracker from './jdwptracker';
-import { DeviceType } from '../models/Device';
-import DeviceWithPath from '../models/DeviceWithPath';
-import Client from './client';
-import Utils from './utils';
-import Scrcpy from './thirdparty/scrcpy/Scrcpy';
-import type { ScrcpyOptions } from './thirdparty/scrcpy/ScrcpyModels';
-import { RebootType } from './command/host-transport/reboot';
-import Minicap, { MinicapOptions } from './thirdparty/minicap/Minicap';
-import STFService, { STFServiceOptions } from './thirdparty/STFService/STFService';
+} from './command/host-serial/index.js';
+import Forward from '../models/Forward.js';
+import Reverse from '../models/Reverse.js';
+import StartActivityOptions from '../models/StartActivityOptions.js';
+import StartServiceOptions from '../models/StartServiceOptions.js';
+import Stats from './sync/stats.js';
+import Entry from './sync/entry.js';
+import PushTransfer from './sync/pushtransfer.js';
+import PullTransfer from './sync/pulltransfer.js';
+import { Properties } from '../models/Properties.js';
+import { Features } from '../models/Features.js';
+import FramebufferStreamWithMeta from '../models/FramebufferStreamWithMeta.js';
+import WithToString from '../models/WithToString.js';
+import JdwpTracker from './jdwptracker.js';
+import { DeviceType } from '../models/Device.js';
+import DeviceWithPath from '../models/DeviceWithPath.js';
+import Client from './client.js';
+import Utils, { BufferEncoding } from './utils.js';
+import Scrcpy from './thirdparty/scrcpy/Scrcpy.js';
+import type { ScrcpyOptions } from './thirdparty/scrcpy/ScrcpyModels.js';
+import { RebootType } from './command/host-transport/reboot.js';
+import Minicap, { MinicapOptions } from './thirdparty/minicap/Minicap.js';
+import STFService, { STFServiceOptions } from './thirdparty/STFService/STFService.js';
 import PromiseDuplex from 'promise-duplex';
-import Protocol from './protocol';
-import { DeviceClientOptions } from '../models/DeviceClientOptions';
-import ServiceCallCommand, { ParcelReader, ServiceCallArg } from './command/host-transport/serviceCall';
-import DeviceClientExtra from './DeviceClientExtra';
-import Stats64 from './sync/stats64';
-import Entry64 from './sync/entry64';
-import DevicePackage from './DevicePackage';
+import Protocol from './protocol.js';
+import { DeviceClientOptions } from '../models/DeviceClientOptions.js';
+import ServiceCallCommand, { ParcelReader, ServiceCallArg } from './command/host-transport/serviceCall.js';
+import DeviceClientExtra from './DeviceClientExtra.js';
+import Stats64 from './sync/stats64.js';
+import Entry64 from './sync/entry64.js';
+import DevicePackage from './DevicePackage.js';
 import getPort from 'get-port';
 
 const debug = Utils.debug('adb:client');
@@ -291,7 +296,7 @@ export default class DeviceClient {
       try {
         if (await this.forward(`tcp:${preferedPort}`, remote))
           return preferedPort;
-      } catch (e) {
+      } catch (_e) {
         // need a new port
       }
     const freePort = await getPort();
@@ -548,8 +553,8 @@ export default class DeviceClient {
     await duplex.write(Protocol.encodeData(data));
     await Utils.waitforReadable(duplex, 0, `openLocal2 ${data} - ${debugCtxt}`);
     const code = await (duplex.read(4) as Promise<Buffer>);
-    if (!code.equals(Protocol.bOKAY)) {
-      if (code.equals(Protocol.bFAIL)) throw await transport.parser.readError();
+    if (!code.equals(Protocol.bOKAY as unknown as Uint8Array)) {
+      if (code.equals(Protocol.bFAIL as unknown as Uint8Array)) throw await transport.parser.readError();
       throw transport.parser.unexpected(code.toString('ascii'), 'OKAY or FAIL');
     }
     return duplex;
@@ -589,11 +594,11 @@ export default class DeviceClient {
    *
    * @returns The Monkey client. Please see the [adbkit-monkey][adbkit-monkey] documentation for details.
    */
-  public async openMonkey(port = 1080): Promise<MonkeyClient> {
-    const tryConnect = async (times: number): Promise<MonkeyClient> => {
+  public async openMonkey(port = 1080): Promise<ReturnType<typeof Monkey.connectStream>> {
+    const tryConnect = async (times: number): Promise<ReturnType<typeof Monkey.connectStream>> => {
       try {
         const stream: Duplex = await this.openTcp(port);
-        const client: MonkeyClient = Monkey.connectStream(stream);
+        const client: ReturnType<typeof Monkey.connectStream> = Monkey.connectStream(stream);
         return client;
       } catch (err) {
         if ((times -= 1)) {
@@ -681,7 +686,7 @@ export default class DeviceClient {
    * ```ts
    * import Adb from '@u4/adbkit';
    * import request from 'request';
-   * import { Readable } from 'stream';
+   * import { Readable } from 'node:stream';
    * 
    * const client = Adb.createClient();
    * 
@@ -920,7 +925,7 @@ export default class DeviceClient {
    * Pulling a file from all cofnnected devices
    * ```ts
    * import Bluebird from 'bluebird';
-   * import fs from 'fs';
+   * import fs from 'node:fs';
    * import Adb from '@u4/adbkit';
    * const client = Adb.createClient();
    * 

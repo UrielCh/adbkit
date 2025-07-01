@@ -1,7 +1,7 @@
-import LineTransform from '../../linetransform';
-import { AdbPrematureEOFError } from '../../errors';
-import Command from '../../command';
-import { Duplex } from 'stream';
+import LineTransform from '../../linetransform.js';
+import { AdbPrematureEOFError } from '../../errors.js';
+import Command from '../../command.js';
+import { Duplex } from 'node:stream';
 
 export default class ScreencapCommand extends Command<Duplex> {
   async execute(): Promise<Duplex> {

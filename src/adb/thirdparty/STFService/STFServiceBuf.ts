@@ -1,7 +1,11 @@
 // generarted by genProto.ts
-import { Message, Root, load } from 'protobufjs';
-import ThirdUtils from '../ThirdUtils';
-import * as STF from './STFServiceModel';
+import { Buffer } from 'node:buffer';
+import * as protobuf from 'protobufjs';
+import { Message, Root } from 'protobufjs';
+import ThirdUtils from '../ThirdUtils.js';
+import * as STF from './STFServiceModel.js';
+
+const { load } = protobuf;
 
 let singleton: Promise<STFServiceBuf> | null = null;
 export type MyMessage<T extends object = object> = Message<T> & T;

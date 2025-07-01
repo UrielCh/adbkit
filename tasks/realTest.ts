@@ -1,12 +1,20 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
-import adb, { DeviceClient, KeyCodes, Utils, MotionEvent, Client, Minicap, Scrcpy, VideoStreamFramePacket } from '../src';
+import fs from 'node:fs';
+import path from 'node:path';
+
+import adb, { DeviceClient, KeyCodesMap, Utils, MotionEventMap, Client, Minicap, Scrcpy, VideoStreamFramePacket } from '../src';
 import { IpRouteEntry, IpRuleEntry } from '../src/adb/command/host-transport';
 import Parser from '../src/adb/parser';
-import { KeyEvent } from '../src/adb/thirdparty/STFService/STFServiceModel';
+import { KeyEventMap } from '../src/adb/thirdparty/STFService/STFServiceModel';
 import ThirdUtils from '../src/adb/thirdparty/ThirdUtils';
-import fs from 'fs';
-import path from 'path';
 import pc from 'picocolors';
+
+import { fileURLToPath } from 'node:url';
+import { dirname } from 'node:path';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 // const logRunning = require('why-is-node-running');
 
@@ -82,10 +90,10 @@ const testScrcpyTextInput = async (deviceClient: DeviceClient) => {
     await Utils.delay(100);
     await scrcpy.injectText('foo bar')
     await Utils.delay(100);
-    await scrcpy.injectKeycodeEvent(MotionEvent.ACTION_DOWN, KeyCodes.KEYCODE_D, 1, 0);
-    await scrcpy.injectKeycodeEvent(MotionEvent.ACTION_UP, KeyCodes.KEYCODE_D, 1, 0);
-    await scrcpy.injectKeycodeEvent(MotionEvent.ACTION_DOWN, KeyCodes.KEYCODE_D, 1, 0);
-    await scrcpy.injectKeycodeEvent(MotionEvent.ACTION_UP, KeyCodes.KEYCODE_D, 1, 0);
+    await scrcpy.injectKeycodeEvent(MotionEventMap.ACTION_DOWN, KeyCodesMap.KEYCODE_D, 1, 0);
+    await scrcpy.injectKeycodeEvent(MotionEventMap.ACTION_UP, KeyCodesMap.KEYCODE_D, 1, 0);
+    await scrcpy.injectKeycodeEvent(MotionEventMap.ACTION_DOWN, KeyCodesMap.KEYCODE_D, 1, 0);
+    await scrcpy.injectKeycodeEvent(MotionEventMap.ACTION_UP, KeyCodesMap.KEYCODE_D, 1, 0);
     await Utils.delay(1000);
     console.log(`stop`);
     scrcpy.stop();
@@ -108,15 +116,15 @@ const testScrcpyswap = async (deviceClient: DeviceClient) => {
     const position = { x: width / 2, y: height * 0.2 };
     const bottom = height * 0.8;
     const screenSize = { x: width, y: height }
-    await scrcpy.injectTouchEvent(MotionEvent.ACTION_DOWN, pointerId, position, screenSize, 0xFFFF);
+    await scrcpy.injectTouchEvent(MotionEventMap.ACTION_DOWN, pointerId, position, screenSize, 0xFFFF);
     console.log('start position', position);
     while (position.y < bottom) {
       await Utils.delay(2);
-      await scrcpy.injectTouchEvent(MotionEvent.ACTION_MOVE, pointerId, position, screenSize, 0xFFFF);
+      await scrcpy.injectTouchEvent(MotionEventMap.ACTION_MOVE, pointerId, position, screenSize, 0xFFFF);
       position.y += 5;
     }
     console.log('end position', position);
-    await scrcpy.injectTouchEvent(MotionEvent.ACTION_UP, pointerId, position, screenSize, 0x0000);
+    await scrcpy.injectTouchEvent(MotionEventMap.ACTION_UP, pointerId, position, screenSize, 0x0000);
     await Utils.delay(1000);
     console.log(`done`);
   } catch (e) {
@@ -346,8 +354,8 @@ const testSTFService = async (deviceClient: DeviceClient) => {
     // 42["input.touchCommit","lltyo9nLCZaZdViaqnTeSMafku8=",{"seq":28}]
     // await Util.delay(1000);
     await STFService.doWake({});
-    await STFService.doKeyEvent({ event: KeyEvent.PRESS, keyCode: KeyCodes.KEYCODE_0 });
-    await STFService.doKeyEvent({ event: KeyEvent.PRESS, keyCode: KeyCodes.KEYCODE_0 });
+    await STFService.doKeyEvent({ event: KeyEventMap.PRESS, keyCode: KeyCodesMap.KEYCODE_0 });
+    await STFService.doKeyEvent({ event: KeyEventMap.PRESS, keyCode: KeyCodesMap.KEYCODE_0 });
     await STFService.doType({ text: 'test' });
 
 

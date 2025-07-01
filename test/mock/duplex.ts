@@ -1,6 +1,6 @@
 // var MockDuplex;
 
-import Stream from 'stream';
+import Stream from 'node:stream';
 
 export default class MockDuplex extends Stream.Duplex {
     _read(size: number): void {

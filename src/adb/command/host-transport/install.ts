@@ -1,4 +1,4 @@
-import Command from '../../command';
+import Command from '../../command.js';
 
 /**
  *  install [-rtfdgw] [-i PACKAGE] [--user USER_ID|all|current]

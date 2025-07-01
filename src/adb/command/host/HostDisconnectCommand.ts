@@ -1,4 +1,4 @@
-import Command from '../../command';
+import Command from '../../command.js';
 
 // Possible replies:
 // "No such device 192.168.2.2:5555"

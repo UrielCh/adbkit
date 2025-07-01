@@ -1,4 +1,5 @@
-import Stream, { TransformCallback, TransformOptions } from 'stream';
+import { Buffer } from 'node:buffer';
+import Stream, { TransformCallback, TransformOptions } from 'node:stream';
 
 interface LineTransformOptions extends TransformOptions {
   autoDetect?: boolean;
@@ -29,12 +30,12 @@ export default class LineTransform extends Stream.Transform {
   // unfortunately it's not available by default (you'd have to install busybox)
   // or something similar. On the up side, it really does do this for all line
   // feeds, so a simple transform works fine.
-  _transform(chunk: Buffer, encoding: string, done: TransformCallback): void {
+  override _transform(chunk: Buffer, encoding: string, done: TransformCallback): void {
     // If auto detection is enabled, check the first byte. The first two
     // bytes must be either 0x0a .. or 0x0d 0x0a. This causes a need to skip
     // either one or two bytes. The autodetection runs only once.
     if (this.autoDetect) {
-      if (chunk[0] === 0x0a) {
+      if ((chunk as unknown as Uint8Array)[0] === 0x0a) {
         this.transformNeeded = false;
         this.skipBytes = 1;
       } else {
@@ -46,11 +47,11 @@ export default class LineTransform extends Stream.Transform {
     // in two separate chunks. That's why the autodetect bytes are skipped
     // here, separately.
     if (this.skipBytes) {
-      const skip = Math.min(chunk.length, this.skipBytes);
+      const skip = Math.min((chunk as unknown as Uint8Array).length, this.skipBytes);
       chunk = chunk.slice(skip);
       this.skipBytes -= skip;
     }
-    if (!chunk.length) {
+    if (!(chunk as unknown as Uint8Array).length) {
       // It's possible that skipping bytes has created an empty chunk.
       return done();
     }
@@ -63,18 +64,18 @@ export default class LineTransform extends Stream.Transform {
     let lo = 0;
     let hi = 0;
     if (this.savedR) {
-      if (chunk[0] !== 0x0a) {
+      if ((chunk as unknown as Uint8Array)[0] !== 0x0a) {
         this.push(this.savedR);
       }
       this.savedR = undefined;
     }
-    const last = chunk.length - 1;
+    const last = (chunk as unknown as Uint8Array).length - 1;
     while (hi <= last) {
-      if (chunk[hi] === 0x0d) {
+      if ((chunk as unknown as Uint8Array)[hi] === 0x0d) {
         if (hi === last) {
           this.savedR = chunk.slice(last);
           break; // Stop hi from incrementing, we want to skip the last byte.
-        } else if (chunk[hi + 1] === 0x0a) {
+        } else if ((chunk as unknown as Uint8Array)[hi + 1] === 0x0a) {
           this.push(chunk.slice(lo, hi));
           lo = hi + 1;
         }
@@ -88,7 +89,7 @@ export default class LineTransform extends Stream.Transform {
   }
 
   // When the stream ends on an '\r', output it as-is (assume binary data).
-  _flush(done: TransformCallback): void {
+  override _flush(done: TransformCallback): void {
     if (this.savedR) {
       this.push(this.savedR);
     }
