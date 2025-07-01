@@ -1,7 +1,7 @@
-import Chai, { expect } from 'chai';
+import { expect, use } from 'chai';
 import simonChai from 'sinon-chai';
-Chai.use(simonChai);
-import { IpRouteCommand } from '../../../../src/adb/command/host-transport.js';
+use(simonChai);
+import IpRouteCommand from '../../../../src/adb/command/host-transport/ipRoute.js';
 import Tester from './Tester.js';
 
 const t = new Tester(IpRouteCommand);

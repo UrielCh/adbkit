@@ -1,7 +1,7 @@
-import Chai, { expect } from 'chai';
+import {use, expect } from 'chai';
 import simonChai from 'sinon-chai';
 import { setImmediate } from "node:timers";
-Chai.use(simonChai);
+use(simonChai);
 import MockConnection from '../../../mock/connection.js';
 import Protocol from '../../../../src/adb/protocol.js';
 import HostConnectCommand from '../../../../src/adb/command/host/HostConnectCommand.js';

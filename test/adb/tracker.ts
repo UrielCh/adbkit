@@ -1,6 +1,6 @@
 import Stream, { Transform } from 'node:stream';
 import Sinon from 'sinon';
-import { use, expect } from 'chai';
+import { expect, use } from 'chai';
 import sinonChai from 'sinon-chai';
 import Parser from '../../src/adb/parser.ts';
 import Tracker from '../../src/adb/tracker.ts';

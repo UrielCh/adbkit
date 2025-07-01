@@ -1,5 +1,5 @@
 import Stream from 'node:stream';
-import { use, expect } from 'chai';
+import { expect, use } from 'chai';
 import simonChai from 'sinon-chai';
 import Parser from '../../src/adb/parser';
 import { AdbFailError, AdbPrematureEOFError, AdbUnexpectedDataError } from '../../src/adb/errors';

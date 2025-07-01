@@ -1,7 +1,7 @@
-import Chai, { expect } from 'chai';
+import { expect, use } from 'chai';
 import simonChai from 'sinon-chai';
-import { ServiceCallCommand, ParcelReader } from '../../../../src/.js';
-Chai.use(simonChai);
+import { ServiceCallCommand, ParcelReader } from '../../../../src/index.js';
+use(simonChai);
 import Tester from './Tester.js';
 const t = new Tester(ServiceCallCommand);
 

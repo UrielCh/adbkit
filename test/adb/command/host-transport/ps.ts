@@ -1,6 +1,6 @@
-import Chai, { expect } from 'chai';
+import { expect, use } from 'chai';
 import simonChai from 'sinon-chai';
-Chai.use(simonChai);
+use(simonChai);
 import PsCommand from '../../../../src/adb/command/host-transport/ps.js';
 import Tester from './Tester.js';
 const t = new Tester(PsCommand);
