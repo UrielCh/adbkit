@@ -1,6 +1,6 @@
 import { program } from 'commander';
-import DeviceClient from './adb/DeviceClient';
-import { getClientDevice } from './cli-common';
+import DeviceClient from './adb/DeviceClient.js';
+import { getClientDevice } from './cli-common.js';
 
 for (const type of ['bluetooth', 'data', 'wifi'] as const) {
   program

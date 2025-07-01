@@ -2,10 +2,10 @@ import { setImmediate } from "node:timers";
 import Chai, { expect } from 'chai';
 import simonChai from 'sinon-chai';
 Chai.use(simonChai);
-import MockConnection from '../../../mock/connection';
-import Protocol from '../../../../src/adb/protocol';
-import HostDisconnectCommand from '../../../../src/adb/command/host/HostDisconnectCommand';
-import Connection from '../../../../src/adb/connection';
+import MockConnection from '../../../mock/connection.js';
+import Protocol from '../../../../src/adb/protocol.js';
+import HostDisconnectCommand from '../../../../src/adb/command/host/HostDisconnectCommand.js';
+import Connection from '../../../../src/adb/connection.js';
 
 describe('DisconnectCommand', () => {
     it("should send 'host:disconnect:<host>:<port>'", () => {

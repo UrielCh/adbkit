@@ -1,4 +1,4 @@
-import Command from '../../command';
+import Command from '../../command.js';
 
 const RE_OK = /restarting adbd as root/;
 

@@ -1,7 +1,7 @@
-import { AdbPrematureEOFError } from '../../errors';
-import Command from '../../command';
-import StartActivityOptions from '../../../models/StartActivityOptions';
-import { Extra, ExtraObject, ExtraValue } from '../../../models/StartServiceOptions';
+import { AdbPrematureEOFError } from '../../errors.js';
+import Command from '../../command.js';
+import StartActivityOptions from '../../../models/StartActivityOptions.js';
+import { Extra, ExtraObject, ExtraValue } from '../../../models/StartServiceOptions.js';
 
 const RE_ERROR = /^Error: (.*)$/;
 

@@ -1,8 +1,8 @@
 import Net from 'node:net';
-import Socket from './socket';
+import Socket from './socket.js';
 import EventEmitter from 'node:events';
-import Client from '../client';
-import SocketOptions from '../../models/SocketOptions';
+import Client from '../client.js';
+import SocketOptions from '../../models/SocketOptions.js';
 
 /**
  * enforce EventEmitter typing

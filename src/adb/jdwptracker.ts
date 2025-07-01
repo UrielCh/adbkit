@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import EventEmitter from 'node:events';
-import { AdbPrematureEOFError } from './errors';
-import Command from './command';
+import { AdbPrematureEOFError } from './errors.js';
+import Command from './command.js';
 
 /**
  * An object with the following properties always present:

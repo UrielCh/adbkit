@@ -1,5 +1,5 @@
-import LineTransform from '../../linetransform';
-import Command from '../../command';
+import LineTransform from '../../linetransform.js';
+import Command from '../../command.js';
 
 export default class LogcatCommand extends Command<LineTransform> {
   async execute(options: { clear?: boolean } = {}): Promise<LineTransform> {

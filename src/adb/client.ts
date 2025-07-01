@@ -1,5 +1,5 @@
 import EventEmitter from 'node:events';
-import Connection from './connection';
+import Connection from './connection.js';
 
 import {
   HostVersionCommand,
@@ -9,14 +9,14 @@ import {
   HostDisconnectCommand,
   HostTrackDevicesCommand,
   HostKillCommand,
-} from './command/host/index';
-import TcpUsbServer from './tcpusb/server';
-import Device from '../models/Device';
-import { ClientOptions } from '../models/ClientOptions';
-import SocketOptions from '../models/SocketOptions';
-import Tracker from './tracker';
-import DeviceWithPath from '../models/DeviceWithPath';
-import DeviceClient from './DeviceClient';
+} from './command/host/index.js';
+import TcpUsbServer from './tcpusb/server.js';
+import Device from '../models/Device.js';
+import { ClientOptions } from '../models/ClientOptions.js';
+import SocketOptions from '../models/SocketOptions.js';
+import Tracker from './tracker.js';
+import DeviceWithPath from '../models/DeviceWithPath.js';
+import DeviceClient from './DeviceClient.js';
 
 /**
  * enforce EventEmitter typing

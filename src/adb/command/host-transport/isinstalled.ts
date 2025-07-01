@@ -1,5 +1,5 @@
-import { AdbPrematureEOFError } from '../../errors';
-import Command from '../../command';
+import { AdbPrematureEOFError } from '../../errors.js';
+import Command from '../../command.js';
 
 export default class IsInstalledCommand extends Command<boolean> {
   async execute(pkg: string): Promise<boolean> {

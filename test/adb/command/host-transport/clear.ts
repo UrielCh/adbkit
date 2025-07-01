@@ -1,10 +1,10 @@
 import Chai, { expect } from 'chai';
 import simonChai from 'sinon-chai';
 Chai.use(simonChai);
-import MockConnection from '../../../mock/connection';
-import Protocol from '../../../../src/adb/protocol';
-import ClearCommand from '../../../../src/adb/command/host-transport/clear';
-import Tester from './Tester';
+import MockConnection from '../../../mock/connection.js';
+import Protocol from '../../../../src/adb/protocol.js';
+import ClearCommand from '../../../../src/adb/command/host-transport/clear.js';
+import Tester from './Tester.js';
 const t = new Tester(ClearCommand);
 
 describe('ClearCommand', () => {

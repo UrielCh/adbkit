@@ -3,14 +3,14 @@ import Stream from 'node:stream';
 import Sinon from 'sinon';
 import { use, expect, assert } from 'chai';
 import simonChai from 'sinon-chai';
-import Adb, { Client } from '../../src/index';
-import Sync, { ENOENT } from '../../src/adb/sync';
-import Stats from '../../src/adb/sync/stats';
-import Entry from '../../src/adb/sync/entry';
-import PushTransfer from '../../src/adb/sync/pushtransfer';
-import PullTransfer from '../../src/adb/sync/pulltransfer';
-import MockConnection from '../mock/connection';
-import Device from '../../src/models/Device';
+import Adb, { Client } from '../../src/index.js';
+import Sync, { ENOENT } from '../../src/adb/sync.js';
+import Stats from '../../src/adb/sync/stats.js';
+import Entry from '../../src/adb/sync/entry.js';
+import PushTransfer from '../../src/adb/sync/pushtransfer.js';
+import PullTransfer from '../../src/adb/sync/pulltransfer.js';
+import MockConnection from '../mock/connection.js';
+import Device from '../../src/models/Device.js';
 use(simonChai);
 
 // This test suite is a bit special in that it requires a connected Android

@@ -1,4 +1,4 @@
-import Command from '../../command';
+import Command from '../../command.js';
 
 export default class GetPackagesCommand extends Command<string[]> {
   async execute(flags?: string): Promise<string[]> {

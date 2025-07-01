@@ -1,4 +1,4 @@
-import Command from '../../command';
+import Command from '../../command.js';
 
 /**
  * see Android Interface Definition Language (AIDL) files

@@ -2,10 +2,10 @@ import { setImmediate } from "node:timers";
 import Chai, { expect } from 'chai';
 import simonChai from 'sinon-chai';
 Chai.use(simonChai);
-import MockConnection from '../../../mock/connection';
-import Protocol from '../../../../src/adb/protocol';
-import { AdbPrematureEOFError } from '../../../../src/index';
-import UninstallCommand from '../../../../src/adb/command/host-transport/uninstall';
+import MockConnection from '../../../mock/connection.js';
+import Protocol from '../../../../src/adb/protocol.js';
+import { AdbPrematureEOFError } from '../../../../src/index.js';
+import UninstallCommand from '../../../../src/adb/command/host-transport/uninstall.js';
 
 describe('UninstallCommand', () => {
     it("should succeed when command responds with 'Success'", () => {

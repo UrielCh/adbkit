@@ -2,9 +2,9 @@ import { setImmediate } from "node:timers";
 import Chai, { expect } from 'chai';
 import simonChai from 'sinon-chai';
 Chai.use(simonChai);
-import MockConnection from '../../../mock/connection';
-import Protocol from '../../../../src/adb/protocol';
-import HostVersionCommand from '../../../../src/adb/command/host/HostVersionCommand';
+import MockConnection from '../../../mock/connection.js';
+import Protocol from '../../../../src/adb/protocol.js';
+import HostVersionCommand from '../../../../src/adb/command/host/HostVersionCommand.js';
 
 describe('HostVersionCommand', () => {
     it("should send 'host:version'", () => {

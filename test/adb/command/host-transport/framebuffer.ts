@@ -1,9 +1,9 @@
 import Chai, { expect } from 'chai';
 import simonChai from 'sinon-chai';
 Chai.use(simonChai);
-import MockConnection from '../../../mock/connection';
-import Protocol from '../../../../src/adb/protocol';
-import FrameBufferCommand from '../../../../src/adb/command/host-transport/framebuffer';
+import MockConnection from '../../../mock/connection.js';
+import Protocol from '../../../../src/adb/protocol.js';
+import FrameBufferCommand from '../../../../src/adb/command/host-transport/framebuffer.js';
 
 describe('FrameBufferCommand', () => {
     it("should send 'framebuffer:'", () => {

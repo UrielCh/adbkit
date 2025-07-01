@@ -1,6 +1,6 @@
-import Command from '../../command';
-import ShellExecError from './ShellExecError';
-import Connection from '../../connection';
+import Command from '../../command.js';
+import ShellExecError from './ShellExecError.js';
+import Connection from '../../connection.js';
 
 export default class IpRouteCommand extends Command<Array<IpRouteEntry>> {
 

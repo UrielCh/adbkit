@@ -15,7 +15,7 @@ The stucture of an ADB RSAPublicKey is as follows:
 
 import { Buffer } from 'node:buffer';
 import forge from 'node-forge';
-import ExtendedPublicKey from '../models/ExtendedPublicKey';
+import ExtendedPublicKey from '../models/ExtendedPublicKey.js';
 
 const BigInteger = forge.jsbn.BigInteger;
 

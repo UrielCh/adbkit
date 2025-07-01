@@ -1,8 +1,8 @@
 import Stream from 'node:stream';
 import { use, expect } from 'chai';
 import simonChai from 'sinon-chai';
-import { Utils } from '../../src/';
-use(simonChai);
+import Utils from '../../src/adb/utils.ts';
+use(simonChai); 
 
 describe('util', () => {
     return describe('readAll(stream)', () => {

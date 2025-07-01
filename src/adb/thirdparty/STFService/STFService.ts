@@ -3,14 +3,14 @@ import { Buffer } from 'node:buffer';
 import { Duplex } from 'node:stream';
 import fs from 'node:fs';
 
-import DeviceClient from '../../DeviceClient';
+import DeviceClient from '../../DeviceClient.js';
 import PromiseDuplex from 'promise-duplex';
-import ThirdUtils from '../ThirdUtils';
-import * as STF from './STFServiceModel';
-// import * as STFAg from "./STFAgentModel";
+import ThirdUtils from '../ThirdUtils.js';
+import * as STF from './STFServiceModel.js';
+// import * as STFAg from "./STFAgentModel.js";
 import * as protobuf from 'protobufjs';
-import STFServiceBuf from './STFServiceBuf';
-import Utils from '../../utils';
+import STFServiceBuf from './STFServiceBuf.js';
+import Utils from '../../utils.js';
 
 const { Reader } = protobuf;
 

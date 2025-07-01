@@ -1,5 +1,5 @@
-import Command from '../../command';
-import JdwpTracker from '../../jdwptracker';
+import Command from '../../command.js';
+import JdwpTracker from '../../jdwptracker.js';
 
 export default class TrackJdwpCommand extends Command<JdwpTracker> {
   async execute(): Promise<JdwpTracker> {

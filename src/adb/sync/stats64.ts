@@ -1,4 +1,4 @@
-import Stats from './stats';
+import Stats from './stats.js';
 import fs from 'node:fs';
 
 const b1k = BigInt(1000);

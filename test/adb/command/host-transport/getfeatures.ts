@@ -1,9 +1,9 @@
 import Chai, { expect } from 'chai';
 import simonChai from 'sinon-chai';
 Chai.use(simonChai);
-import MockConnection from '../../../mock/connection';
-import Protocol from '../../../../src/adb/protocol';
-import GetFeaturesCommand from '../../../../src/adb/command/host-transport/getfeatures';
+import MockConnection from '../../../mock/connection.js';
+import Protocol from '../../../../src/adb/protocol.js';
+import GetFeaturesCommand from '../../../../src/adb/command/host-transport/getfeatures.js';
 
 describe('GetFeaturesCommand', () => {
     it("should send 'pm list features'", () => {

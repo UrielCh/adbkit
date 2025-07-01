@@ -1,10 +1,10 @@
 import Chai, { expect } from 'chai';
 import simonChai from 'sinon-chai';
 Chai.use(simonChai);
-import MockConnection from '../../../mock/connection';
-import Protocol from '../../../../src/adb/protocol';
-import Parser from '../../../../src/adb/parser';
-import ScreencapCommand from '../../../../src/adb/command/host-transport/screencap';
+import MockConnection from '../../../mock/connection.js';
+import Protocol from '../../../../src/adb/protocol.js';
+import Parser from '../../../../src/adb/parser.js';
+import ScreencapCommand from '../../../../src/adb/command/host-transport/screencap.js';
 
 describe('ScreencapCommand', () => {
     it("should send 'screencap -p'", () => {

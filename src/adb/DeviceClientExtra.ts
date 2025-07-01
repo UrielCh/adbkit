@@ -1,8 +1,8 @@
-import DeviceClient from "./DeviceClient";
+import DeviceClient from "./DeviceClient.js";
 import xpath from 'xpath';
 import { DOMParser } from '@xmldom/xmldom';
-import { KeyCodes } from "./keycode";
-import { Utils } from "../index";
+import { KeyCodes } from "./keycode.js";
+import { Utils } from "../index.js";
 
 export default class DeviceClientExtra {
   constructor(private deviceClient: DeviceClient) { }

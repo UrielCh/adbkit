@@ -1,5 +1,5 @@
-import Command from '../../command';
-import { KnownServices } from './servicesList';
+import Command from '../../command.js';
+import { KnownServices } from './servicesList.js';
 
 export default class ServiceCheckCommand extends Command<boolean> {
   async execute(serviceName: KnownServices | string): Promise<boolean> {

@@ -1,4 +1,4 @@
-import Service from './service';
+import Service from './service.js';
 
 export default class ServiceMap {
   private remotes: Record<number, Service> = Object.create(null);

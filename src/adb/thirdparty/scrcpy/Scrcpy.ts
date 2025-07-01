@@ -4,16 +4,16 @@ import fs from 'node:fs';
 import assert from 'node:assert';
 
 import PromiseDuplex from 'promise-duplex';
-import DeviceClient from '../../DeviceClient';
-import Utils from '../../utils';
+import DeviceClient from '../../DeviceClient.js';
+import Utils from '../../utils.js';
 import { Duplex } from 'node:stream';
-import { MotionEvent, Orientation, ControlMessage } from './ScrcpyConst';
-import { KeyCodes } from '../../keycode';
-import { BufWrite } from '../minicap/BufWrite';
-import ThirdUtils from '../ThirdUtils';
-import Stats from '../../sync/stats';
-import { parse_sequence_parameter_set } from './sps';
-import { Point, ScrcpyOptions, H264Configuration, VideoStreamFramePacket } from './ScrcpyModels';
+import { MotionEvent, Orientation, ControlMessage } from './ScrcpyConst.js';
+import { KeyCodes } from '../../keycode.js';
+import { BufWrite } from '../minicap/BufWrite.js';
+import ThirdUtils from '../ThirdUtils.js';
+import Stats from '../../sync/stats.js';
+import { parse_sequence_parameter_set } from './sps.js';
+import { Point, ScrcpyOptions, H264Configuration, VideoStreamFramePacket } from './ScrcpyModels.js';
 
 const debug = Utils.debug('adb:scrcpy');
 

@@ -1,10 +1,10 @@
 import Chai, { expect } from 'chai';
 import simonChai from 'sinon-chai';
 Chai.use(simonChai);
-import MockConnection from '../../../mock/connection';
-import Protocol from '../../../../src/adb/protocol';
-import { AdbPrematureEOFError } from '../../../../src/index';
-import WaitBootCompleteCommand from '../../../../src/adb/command/host-transport/waitbootcomplete';
+import MockConnection from '../../../mock/connection.js';
+import Protocol from '../../../../src/adb/protocol.js';
+import { AdbPrematureEOFError } from '../../../../src/index.js';
+import WaitBootCompleteCommand from '../../../../src/adb/command/host-transport/waitbootcomplete.js';
 
 describe('WaitBootCompleteCommand', () => {
     it('should send a while loop with boot check', () => {

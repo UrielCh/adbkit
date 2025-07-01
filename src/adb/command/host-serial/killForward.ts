@@ -1,4 +1,4 @@
-import Command from '../../command';
+import Command from '../../command.js';
 
 export default class KillForwardCommand extends Command<boolean> {
   async execute(serial: string, local: string): Promise<boolean> {

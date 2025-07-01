@@ -1,9 +1,9 @@
 import Chai, { expect } from 'chai';
 import simonChai from 'sinon-chai';
 Chai.use(simonChai);
-import MockConnection from '../../../mock/connection';
-import Protocol from '../../../../src/adb/protocol';
-import RemountCommand from '../../../../src/adb/command/host-transport/remount';
+import MockConnection from '../../../mock/connection.js';
+import Protocol from '../../../../src/adb/protocol.js';
+import RemountCommand from '../../../../src/adb/command/host-transport/remount.js';
 
 describe('RemountCommand', () => {
     it("should send 'remount:'", () => {

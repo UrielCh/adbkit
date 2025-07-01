@@ -1,8 +1,8 @@
 import Chai, { expect } from 'chai';
 import simonChai from 'sinon-chai';
 Chai.use(simonChai);
-import GetPropertiesCommand from '../../../../src/adb/command/host-transport/getproperties';
-import Tester from './Tester';
+import GetPropertiesCommand from '../../../../src/adb/command/host-transport/getproperties.js';
+import Tester from './Tester.js';
 const t = new Tester(GetPropertiesCommand);
 
 describe('GetPropertiesCommand', () => {

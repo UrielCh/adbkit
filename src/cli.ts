@@ -1,12 +1,12 @@
 import fs from 'node:fs';
 import { program } from 'commander';
 import forge from 'node-forge';
-import { createClient } from './adb';
-import Auth from './adb/auth';
-import PacketReader from './adb/tcpusb/packetreader';
+import { createClient } from './adb.js';
+import Auth from './adb/auth.js';
+import PacketReader from './adb/tcpusb/packetreader.js';
 import path from 'node:path';
-import Utils from './adb/utils';
-import { getClientDevice } from './cli-common';
+import Utils from './adb/utils.js';
+import { getClientDevice } from './cli-common.js';
 
 import './cli-airplane';
 import './cli-connectivity';

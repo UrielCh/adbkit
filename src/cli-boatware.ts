@@ -1,6 +1,6 @@
 import { program } from 'commander';
-import DeviceClient from './adb/DeviceClient';
-import { getClientDevice } from './cli-common';
+import DeviceClient from './adb/DeviceClient.js';
+import { getClientDevice } from './cli-common.js';
 import { stdin, stdout } from 'node:process';
 import readlinePromises from 'node:readline/promises';
 

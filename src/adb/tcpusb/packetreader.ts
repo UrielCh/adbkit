@@ -1,8 +1,8 @@
 import { Buffer } from 'node:buffer';
 import { setImmediate } from "node:timers";
 import EventEmitter from 'node:events';
-import Packet from './packet';
-import Utils from '../utils';
+import Packet from './packet.js';
+import Utils from '../utils.js';
 
 type ReadableStream = NodeJS.ReadableStream;
 

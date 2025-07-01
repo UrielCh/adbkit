@@ -1,5 +1,5 @@
-import Client from './adb/client';
-import { ClientOptions } from './models/ClientOptions';
+import Client from './adb/client.js';
+import { ClientOptions } from './models/ClientOptions.js';
 
 export interface AdbOptions {
   /**

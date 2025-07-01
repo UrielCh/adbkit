@@ -1,9 +1,9 @@
-import Connection from './connection';
-import Protocol from './protocol';
-import Parser from './parser';
-import WithToString from '../models/WithToString';
-import { DeviceClientOptions } from '../models/DeviceClientOptions';
-import Utils from './utils';
+import Connection from './connection.js';
+import Protocol from './protocol.js';
+import Parser from './parser.js';
+import WithToString from '../models/WithToString.js';
+import { DeviceClientOptions } from '../models/DeviceClientOptions.js';
+import Utils from './utils.js';
 
 const debug = Utils.debug('adb:command');
 const RE_SQUOT = /'/g;

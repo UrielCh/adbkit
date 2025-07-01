@@ -2,9 +2,9 @@ import Stream from 'node:stream';
 import Chai, { expect } from 'chai';
 import simonChai from 'sinon-chai';
 Chai.use(simonChai);
-import MockConnection from '../../../mock/connection';
-import Protocol from '../../../../src/adb/protocol';
-import TcpCommand from '../../../../src/adb/command/host-transport/tcp';
+import MockConnection from '../../../mock/connection.js';
+import Protocol from '../../../../src/adb/protocol.js';
+import TcpCommand from '../../../../src/adb/command/host-transport/tcp.js';
 
 describe('TcpCommand', () => {
     it("should send 'tcp:<port>' when no host given", () => {

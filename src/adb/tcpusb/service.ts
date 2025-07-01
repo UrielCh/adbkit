@@ -1,12 +1,12 @@
 import EventEmitter from 'node:events';
 import { Buffer } from 'node:buffer';
 
-import Packet from './packet';
-import Protocol from '../protocol';
-import Client from '../client';
-import Socket from './socket';
-import Connection from '../connection';
-import Utils from '../utils';
+import Packet from './packet.js';
+import Protocol from '../protocol.js';
+import Client from '../client.js';
+import Socket from './socket.js';
+import Connection from '../connection.js';
+import Utils from '../utils.js';
 const debug = Utils.debug('adb:tcpusb:service');
 type ReadableStream = NodeJS.ReadableStream;
 

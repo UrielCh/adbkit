@@ -1,5 +1,5 @@
-import StartActivityCommand from './startactivity';
-import StartServiceOptions from '../../../models/StartServiceOptions';
+import StartActivityCommand from './startactivity.js';
+import StartServiceOptions from '../../../models/StartServiceOptions.js';
 
 export default class StartServiceCommand extends StartActivityCommand {
   override execute(options: StartServiceOptions): Promise<boolean> {

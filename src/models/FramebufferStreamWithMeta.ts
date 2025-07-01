@@ -1,5 +1,5 @@
 import { Duplex } from 'node:stream';
-import FramebufferMeta from './FramebufferMeta';
+import FramebufferMeta from './FramebufferMeta.js';
 
 export default interface FramebufferStreamWithMeta extends Duplex {
   /**

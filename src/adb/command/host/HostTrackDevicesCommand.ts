@@ -1,7 +1,7 @@
-import Command from '../../command';
-import Device, { DeviceType } from '../../../models/Device';
-import DeviceClient from '../../DeviceClient';
-import Tracker from '../../tracker';
+import Command from '../../command.js';
+import Device, { DeviceType } from '../../../models/Device.js';
+import DeviceClient from '../../DeviceClient.js';
+import Tracker from '../../tracker.js';
 
 export default class HostTrackDevicesCommand extends Command<Tracker> {
   async execute(): Promise<Tracker> {

@@ -2,8 +2,8 @@
 import { Buffer } from 'node:buffer';
 import * as protobuf from 'protobufjs';
 import { Message, Root } from 'protobufjs';
-import ThirdUtils from '../ThirdUtils';
-import * as STF from './STFServiceModel';
+import ThirdUtils from '../ThirdUtils.js';
+import * as STF from './STFServiceModel.js';
 
 const { load } = protobuf;
 

@@ -4,16 +4,16 @@ import EventEmitter from 'node:events';
 import { Readable } from 'node:stream';
 import { Buffer } from 'node:buffer';
 
-import Parser from './parser';
-import Protocol from './protocol';
-import Stats from './sync/stats';
-import Entry from './sync/entry';
-import PushTransfer from './sync/pushtransfer';
-import PullTransfer from './sync/pulltransfer';
-import Connection from './connection';
-import Stats64 from './sync/stats64';
-import Entry64 from './sync/entry64';
-import Utils from './utils';
+import Parser from './parser.js';
+import Protocol from './protocol.js';
+import Stats from './sync/stats.js';
+import Entry from './sync/entry.js';
+import PushTransfer from './sync/pushtransfer.js';
+import PullTransfer from './sync/pulltransfer.js';
+import Connection from './connection.js';
+import Stats64 from './sync/stats64.js';
+import Entry64 from './sync/entry64.js';
+import Utils from './utils.js';
 
 const TEMP_PATH = '/data/local/tmp';
 const DEFAULT_CHMOD = 0o644;

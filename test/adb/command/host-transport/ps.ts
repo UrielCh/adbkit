@@ -1,8 +1,8 @@
 import Chai, { expect } from 'chai';
 import simonChai from 'sinon-chai';
 Chai.use(simonChai);
-import PsCommand from '../../../../src/adb/command/host-transport/ps';
-import Tester from './Tester';
+import PsCommand from '../../../../src/adb/command/host-transport/ps.js';
+import Tester from './Tester.js';
 const t = new Tester(PsCommand);
 
 describe('psCommand', () => {

@@ -1,8 +1,8 @@
 import { Buffer } from 'node:buffer';
 import Assert from 'node:assert';
 import { Stream, TransformCallback, TransformOptions } from 'node:stream';
-import FramebufferMeta from '../../models/FramebufferMeta';
-import { Utils } from '../../index';
+import FramebufferMeta from '../../models/FramebufferMeta.js';
+import { Utils } from '../../index.js';
 
 export default class RgbTransform extends Stream.Transform {
   private _buffer = Buffer.from('');

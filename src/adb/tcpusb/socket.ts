@@ -3,16 +3,16 @@ import crypto from 'node:crypto';
 import { promisify } from 'node:util';
 import { Buffer } from 'node:buffer';
 
-import PacketReader from './packetreader';
-import RollingCounter from './rollingcounter';
-import Packet from './packet';
-import Auth from '../auth';
-import Client from '../client';
+import PacketReader from './packetreader.js';
+import RollingCounter from './rollingcounter.js';
+import Packet from './packet.js';
+import Auth from '../auth.js';
+import Client from '../client.js';
 import Net from 'node:net';
-import ServiceMap from './servicemap';
-import Service from './service';
-import SocketOptions from '../../models/SocketOptions';
-import Utils from '../utils';
+import ServiceMap from './servicemap.js';
+import Service from './service.js';
+import SocketOptions from '../../models/SocketOptions.js';
+import Utils from '../utils.js';
 
 const debug = Utils.debug('adb:tcpusb:socket');
 const UINT32_MAX = 0xffffffff;

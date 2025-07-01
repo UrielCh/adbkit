@@ -1,4 +1,4 @@
-import Command from '../../command';
+import Command from '../../command.js';
 
 export default class WaitBootCompleteCommand extends Command<boolean> {
   async execute(): Promise<boolean> {

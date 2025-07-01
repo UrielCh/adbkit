@@ -3,11 +3,11 @@ import * as fs from 'node:fs';
 import { Duplex } from 'node:stream';
 import { Buffer } from 'node:buffer';
 
-import DeviceClient from '../../DeviceClient';
+import DeviceClient from '../../DeviceClient.js';
 import PromiseDuplex from 'promise-duplex';
-import ThirdUtils from "../ThirdUtils";
-import Utils from '../../utils';
-import Stats from '../../sync/stats';
+import ThirdUtils from "../ThirdUtils.js";
+import Utils from '../../utils.js';
+import Stats from '../../sync/stats.js';
 
 /**
  * Application binary interface known CPU

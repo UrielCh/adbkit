@@ -1,4 +1,4 @@
-import Stats64 from './stats64';
+import Stats64 from './stats64.js';
 
 export default class Entry64 extends Stats64 {
   constructor(public name: string, error: number, dev: bigint, ino: bigint,

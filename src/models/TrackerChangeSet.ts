@@ -1,4 +1,4 @@
-import Device from './Device';
+import Device from './Device.js';
 
 /**
  * An object with the following properties always present:

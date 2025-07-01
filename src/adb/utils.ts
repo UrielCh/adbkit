@@ -1,7 +1,7 @@
 import { Buffer } from 'node:buffer';
-import Parser from './parser';
-import Auth from './auth';
-import ExtendedPublicKey from '../models/ExtendedPublicKey';
+import Parser from './parser.js';
+import Auth from './auth.js';
+import ExtendedPublicKey from '../models/ExtendedPublicKey.js';
 import { Duplex, Readable } from 'node:stream';
 import PromiseDuplex from 'promise-duplex';
 import Debug from 'debug';

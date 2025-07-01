@@ -2,10 +2,10 @@ import { setImmediate } from "node:timers";
 import Chai, { expect } from 'chai';
 import simonChai from 'sinon-chai';
 Chai.use(simonChai);
-import MockConnection from '../../../mock/connection';
-import Protocol from '../../../../src/adb/protocol';
-import StartActivityCommand from '../../../../src/adb/command/host-transport/startactivity';
-import { StartActivityOptions } from '../../../../src/index';
+import MockConnection from '../../../mock/connection.js';
+import Protocol from '../../../../src/adb/protocol.js';
+import StartActivityCommand from '../../../../src/adb/command/host-transport/startactivity.js';
+import { StartActivityOptions } from '../../../../src/index.js';
 
 describe('StartActivityCommand', () => {
     it("should succeed when 'Success' returned", () => {

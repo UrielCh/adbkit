@@ -1,10 +1,10 @@
 import { Buffer } from 'node:buffer';
 import { EOL } from 'node:os';
 
-import Command from '../../command';
-import { KnownServices } from './servicesList';
-import { ParcelVal } from './Parcel';
-import { Utils } from '../../../index';
+import Command from '../../command.js';
+import { KnownServices } from './servicesList.js';
+import { ParcelVal } from './Parcel.js';
+import { Utils } from '../../../index.js';
 
 export type ServiceCallArg = ServiceCallArgNumber | ServiceCallArgString | ServiceCallArgNull;
 

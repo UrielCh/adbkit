@@ -1,5 +1,5 @@
 import { Buffer } from 'node:buffer';
-import Utils from './utils';
+import Utils from './utils.js';
 
 /**
  * adb Protocol is a 4 byte prefixed message.

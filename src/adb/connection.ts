@@ -5,11 +5,11 @@ import EventEmitter from 'node:events';
 import { execFile, ExecFileOptions } from 'node:child_process';
 import { Buffer } from 'node:buffer';
 
-import Parser from './parser';
-import dump from './dump';
-import { ClientOptions } from '../models/ClientOptions';
-import Client from '../adb/client';
-import Utils from './utils';
+import Parser from './parser.js';
+import dump from './dump.js';
+import { ClientOptions } from '../models/ClientOptions.js';
+import Client from '../adb/client.js';
+import Utils from './utils.js';
 
 const debug = Utils.debug('adb:connection');
 

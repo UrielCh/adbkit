@@ -1,6 +1,6 @@
 import { Buffer } from 'node:buffer';
 import { Stream } from 'node:stream';
-import { BufferEncoding } from '../utils';
+import { BufferEncoding } from '../utils.js';
 
 /**
  * `PullTransfer` is a [`Stream`][node-stream]. Use [`fs.createWriteStream()`][node-fs] to pipe the stream to a file if necessary.

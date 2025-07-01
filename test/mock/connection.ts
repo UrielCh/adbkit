@@ -1,7 +1,7 @@
-import Connection from '../../src/adb/connection';
-import Parser from '../../src/adb/parser';
-import MockDuplex from './duplex';
-import MockClient from './client';
+import Connection from '../../src/adb/connection.js';
+import Parser from '../../src/adb/parser.js';
+import MockDuplex from './duplex.js';
+import MockClient from './client.js';
 
 export default class MockConnection extends Connection {
     _socket = new MockDuplex();

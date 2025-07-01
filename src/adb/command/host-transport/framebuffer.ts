@@ -2,11 +2,11 @@ import { spawn } from 'node:child_process';
 import { Readable } from 'node:stream';
 import { Buffer } from 'node:buffer';
 
-import RgbTransform from '../../framebuffer/rgbtransform';
-import Command from '../../command';
-import FramebufferMeta, { ColorFormat } from '../../../models/FramebufferMeta';
-import FramebufferStreamWithMeta from '../../../models/FramebufferStreamWithMeta';
-import Utils from '../../utils';
+import RgbTransform from '../../framebuffer/rgbtransform.js';
+import Command from '../../command.js';
+import FramebufferMeta, { ColorFormat } from '../../../models/FramebufferMeta.js';
+import FramebufferStreamWithMeta from '../../../models/FramebufferStreamWithMeta.js';
+import Utils from '../../utils.js';
 
 const debug = Utils.debug('adb:command:framebuffer');
 

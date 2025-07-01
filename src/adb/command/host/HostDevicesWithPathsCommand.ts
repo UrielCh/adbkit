@@ -1,7 +1,7 @@
-import Command from '../../command';
-import DeviceWithPath from '../../../models/DeviceWithPath';
-import DeviceClient from '../../DeviceClient';
-import { isDeviceType } from '../../../models/Device';
+import Command from '../../command.js';
+import DeviceWithPath from '../../../models/DeviceWithPath.js';
+import DeviceClient from '../../DeviceClient.js';
+import { isDeviceType } from '../../../models/Device.js';
 
 
 export default class HostDevicesWithPathsCommand extends Command<DeviceWithPath[]> {

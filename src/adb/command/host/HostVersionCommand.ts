@@ -1,5 +1,5 @@
-import Command from '../../command';
-import Protocol from '../../protocol';
+import Command from '../../command.js';
+import Protocol from '../../protocol.js';
 
 export default class HostVersionCommand extends Command<number> {
   async execute(): Promise<number> {

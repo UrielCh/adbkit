@@ -3,9 +3,9 @@ import { setImmediate } from "node:timers";
 import Chai, { expect } from 'chai';
 import simonChai from 'sinon-chai';
 Chai.use(simonChai);
-import MockConnection from '../../../mock/connection';
-import Protocol from '../../../../src/adb/protocol';
-import MonkeyCommand from '../../../../src/adb/command/host-transport/monkey';
+import MockConnection from '../../../mock/connection.js';
+import Protocol from '../../../../src/adb/protocol.js';
+import MonkeyCommand from '../../../../src/adb/command/host-transport/monkey.js';
 
 describe('MonkeyCommand', () => {
     it("should send 'monkey --port <port> -v'", () => {

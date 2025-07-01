@@ -1,4 +1,4 @@
-import Command from '../../command';
+import Command from '../../command.js';
 
 // Possible replies:
 // "unable to connect to 192.168.2.2:5555"

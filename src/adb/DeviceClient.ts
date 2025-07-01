@@ -7,12 +7,12 @@ import * as adbkitMonkey from '@u4/adbkit-monkey';
 const { Monkey } = adbkitMonkey;
 
 import { Logcat } from '@u4/adbkit-logcat';
-import Connection from './connection';
-import Sync from './sync';
-import ProcStat from './proc/stat';
+import Connection from './connection.js';
+import Sync from './sync.js';
+import ProcStat from './proc/stat.js';
 
-import { HostTransportCommand } from './command/host/index';
-import * as hostCmd from './command/host-transport/index';
+import { HostTransportCommand } from './command/host/index.js';
+import * as hostCmd from './command/host-transport/index.js';
 import {
   ForwardCommand,
   GetDevicePathCommand,
@@ -21,37 +21,37 @@ import {
   KillForwardCommand,
   ListForwardsCommand,
   WaitForDeviceCommand,
-} from './command/host-serial/index';
-import Forward from '../models/Forward';
-import Reverse from '../models/Reverse';
-import StartActivityOptions from '../models/StartActivityOptions';
-import StartServiceOptions from '../models/StartServiceOptions';
-import Stats from './sync/stats';
-import Entry from './sync/entry';
-import PushTransfer from './sync/pushtransfer';
-import PullTransfer from './sync/pulltransfer';
-import { Properties } from '../models/Properties';
-import { Features } from '../models/Features';
-import FramebufferStreamWithMeta from '../models/FramebufferStreamWithMeta';
-import WithToString from '../models/WithToString';
-import JdwpTracker from './jdwptracker';
-import { DeviceType } from '../models/Device';
-import DeviceWithPath from '../models/DeviceWithPath';
-import Client from './client';
-import Utils, { BufferEncoding } from './utils';
-import Scrcpy from './thirdparty/scrcpy/Scrcpy';
-import type { ScrcpyOptions } from './thirdparty/scrcpy/ScrcpyModels';
-import { RebootType } from './command/host-transport/reboot';
-import Minicap, { MinicapOptions } from './thirdparty/minicap/Minicap';
-import STFService, { STFServiceOptions } from './thirdparty/STFService/STFService';
+} from './command/host-serial/index.js';
+import Forward from '../models/Forward.js';
+import Reverse from '../models/Reverse.js';
+import StartActivityOptions from '../models/StartActivityOptions.js';
+import StartServiceOptions from '../models/StartServiceOptions.js';
+import Stats from './sync/stats.js';
+import Entry from './sync/entry.js';
+import PushTransfer from './sync/pushtransfer.js';
+import PullTransfer from './sync/pulltransfer.js';
+import { Properties } from '../models/Properties.js';
+import { Features } from '../models/Features.js';
+import FramebufferStreamWithMeta from '../models/FramebufferStreamWithMeta.js';
+import WithToString from '../models/WithToString.js';
+import JdwpTracker from './jdwptracker.js';
+import { DeviceType } from '../models/Device.js';
+import DeviceWithPath from '../models/DeviceWithPath.js';
+import Client from './client.js';
+import Utils, { BufferEncoding } from './utils.js';
+import Scrcpy from './thirdparty/scrcpy/Scrcpy.js';
+import type { ScrcpyOptions } from './thirdparty/scrcpy/ScrcpyModels.js';
+import { RebootType } from './command/host-transport/reboot.js';
+import Minicap, { MinicapOptions } from './thirdparty/minicap/Minicap.js';
+import STFService, { STFServiceOptions } from './thirdparty/STFService/STFService.js';
 import PromiseDuplex from 'promise-duplex';
-import Protocol from './protocol';
-import { DeviceClientOptions } from '../models/DeviceClientOptions';
-import ServiceCallCommand, { ParcelReader, ServiceCallArg } from './command/host-transport/serviceCall';
-import DeviceClientExtra from './DeviceClientExtra';
-import Stats64 from './sync/stats64';
-import Entry64 from './sync/entry64';
-import DevicePackage from './DevicePackage';
+import Protocol from './protocol.js';
+import { DeviceClientOptions } from '../models/DeviceClientOptions.js';
+import ServiceCallCommand, { ParcelReader, ServiceCallArg } from './command/host-transport/serviceCall.js';
+import DeviceClientExtra from './DeviceClientExtra.js';
+import Stats64 from './sync/stats64.js';
+import Entry64 from './sync/entry64.js';
+import DevicePackage from './DevicePackage.js';
 import getPort from 'get-port';
 
 const debug = Utils.debug('adb:client');

@@ -1,9 +1,9 @@
 import Chai, { expect } from 'chai';
 import simonChai from 'sinon-chai';
 Chai.use(simonChai);
-import MockConnection from '../../../mock/connection';
-import Protocol from '../../../../src/adb/protocol';
-import UsbCommand from '../../../../src/adb/command/host-transport/usb';
+import MockConnection from '../../../mock/connection.js';
+import Protocol from '../../../../src/adb/protocol.js';
+import UsbCommand from '../../../../src/adb/command/host-transport/usb.js';
 
 describe('UsbCommand', () => {
     it("should send 'usb:'", async () => {

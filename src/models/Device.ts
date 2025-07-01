@@ -1,4 +1,4 @@
-import DeviceClient from "../adb/DeviceClient";
+import DeviceClient from "../adb/DeviceClient.js";
 
 const deviceTypes = ['emulator', 'device', 'offline', 'unauthorized', 'recovery'] as const;
 /**

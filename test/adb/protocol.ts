@@ -1,6 +1,6 @@
 import { expect } from 'chai';
 
-import Protocol from '../../src/adb/protocol';
+import Protocol from '../../src/adb/protocol.js';
 
 describe('Protocol', () => {
     it("should expose a 'FAIL' property", (done) => {
