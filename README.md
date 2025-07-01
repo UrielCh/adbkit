@@ -60,6 +60,8 @@ const main = async () => {
 ## Incompatible changes in version 5.x
 
 - the project only contains ESM modules
+- all enum values are replaced by a const TypeMap as const and a type having the same name as the enum
+  - example `enum KeyCodes` => `KeyCodesMap` and `type KeyCodes`
 
 ## Incompatible changes in version 3.x
 
