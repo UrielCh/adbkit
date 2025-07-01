@@ -243,7 +243,10 @@ export default class Socket extends EventEmitter {
       debug(`Handling ${this.services.count} services simultaneously`);
       return service.handle(packet);
     })
-      .catch(() => true)
+      .catch((err) => {
+        debug(`Got error handling service ${service}. ${err}`)
+        return true;
+      })
       .finally(() => {
         this.services.remove(localId);
         debug(`Handling ${this.services.count} services simultaneously`);

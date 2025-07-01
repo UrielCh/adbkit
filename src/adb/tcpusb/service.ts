@@ -113,32 +113,31 @@ export default class Service extends EventEmitter {
 
   private async _handleOpenPacket(packet: Packet): Promise<void> {
     debug('I:A_OPEN', packet);
-    try {
-      const transport = await this.client.getDevice(this.serial).transport()
-      this.transport = transport;
-      if (this.ended) {
-        throw new LateTransportError();
-      }
-      if (!packet.data)
-        throw Error("missing data in packet");
-      this.transport.write(Protocol.encodeData(packet.data.subarray(0, -1))); // Discard null byte at end
-      await this.transport.parser.readCode(Protocol.OKAY);
-      debug('O:A_OKAY');
-      this.socket.write(Packet.assemble(Packet.A_OKAY, this.localId, this.remoteId));
-      this.opened = true;
-      return new Promise<void>((resolve, reject) => {
-        if (!this.transport) {
-          return reject('transport is closed')
-        }
-        this.transport.socket
-          .on('readable', () => this._tryPush())
-          .on('end', resolve)
-          .on('error', reject);
-        this._tryPush();
-      });
-    } finally {
-      this.end();
+    const transport = await this.client.getDevice(this.serial).transport()
+    this.transport = transport;
+    if (this.ended) {
+      throw new LateTransportError();
     }
+    if (!packet.data)
+      throw Error("missing data in packet");
+    this.transport.write(Protocol.encodeData(packet.data.subarray(0, -1))); // Discard null byte at end
+    await this.transport.parser.readCode(Protocol.OKAY);
+    debug('O:A_OKAY');
+    this.socket.write(Packet.assemble(Packet.A_OKAY, this.localId, this.remoteId));
+    this.opened = true;
+    return new Promise<void>((resolve, reject) => {
+      if (!this.transport) {
+        return reject('transport is closed')
+      }
+      this.transport.socket
+        .on('readable', () => this._tryPush())
+        .on('end', () => {
+          this.end();
+          resolve()
+        })
+        .on('error', reject);
+      this._tryPush();
+    });
   }
 
   private _handleOkayPacket(packet: Packet): boolean {
