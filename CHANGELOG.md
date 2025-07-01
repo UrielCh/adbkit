@@ -1,7 +1,9 @@
 # CHANGELOG
 
-## V5.0.0 (2024-12-23)
+## V5.0.0 (2025-07-01)
 * migration to ESM
+* Don't close connection after A_OPEN in tcp handling [#24](https://github.com/UrielCh/adbkit/issues/24)
+
 
 ## V4.1.19 (2023-05-23)
 * update project shape
