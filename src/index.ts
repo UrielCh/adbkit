@@ -54,7 +54,6 @@ export type { KeyEventRequest } from './adb/thirdparty/STFService/STFServiceMode
 // export android key enumeration
 export { KeyCodes } from './adb/keycode.js';
 
-
 export type { RebootType, PsEntry, ProcessState, AdbServiceInfo } from './adb/command/host-transport/index.js';
 export { ShellCommand, IpRuleEntry, IpRouteEntry } from './adb/command/host-transport/index.js';
 

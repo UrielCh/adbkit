@@ -15,12 +15,15 @@ export default class DeviceClientExtra {
     await this.keyCode(KeyCodes.KEYCODE_WAKEUP);
     await this.deviceClient.startActivity({ component: 'com.android.settings/.TetherSettings', wait: true });
     const xml = await this.deviceClient.execOut('uiautomator dump /dev/tty', 'utf8');
-    const doc = new DOMParser().parseFromString(xml)
+    const doc = new DOMParser().parseFromString(xml, "text/xml");
     // https://gist.github.com/LeCoupa/8c305ec8c713aad07b14
-    const nodes = xpath.select('//*[contains(@text,"USB")]/../..', doc) as Element[];
+    const nodesRaw = xpath.select('//*[contains(@text,"USB")]/../..', doc as unknown as Node);
+    const nodes = Array.isArray(nodesRaw)
+      ? nodesRaw.filter((n): n is Element => n instanceof Element)
+      : [];
     if (!nodes.length)
       throw Error('can not find USB labeled node');
-    const switch_widget = xpath.select('./*/node[@class="android.widget.Switch"]', nodes[0]) as Element[];
+    const switch_widget = xpath.select('./*/node[@class="android.widget.Switch"]', nodes[0]) as unknown as Element[];
     if (!Array.isArray(switch_widget)) {
       throw Error('no switch on screen.');
     }
@@ -61,7 +64,7 @@ export default class DeviceClientExtra {
     const textFilter = (text: string) => text.toLowerCase();
     const doc = new DOMParser().parseFromString(textFilter(xml), 'text/xml')
 
-    const all_switch_widget = xpath.select(textFilter('//*/node[@class="android.widget.Switch"]'), doc) as Element[];
+    const all_switch_widget = xpath.select(textFilter('//*/node[@class="android.widget.Switch"]'), doc as unknown as Node) as Element[];
     if (!Array.isArray(all_switch_widget)) {
       throw Error('no switch on screen.');
     }

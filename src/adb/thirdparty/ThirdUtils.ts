@@ -4,9 +4,15 @@
 
 import PromiseDuplex from 'promise-duplex';
 import { Duplex } from 'node:stream';
-import Utils from '../../adb/utils.js';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { dirname } from 'node:path';
+
+import Utils from '../../adb/utils.js';
 import DeviceClient from '../DeviceClient.js';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 export default class ThirdUtils {
   /**

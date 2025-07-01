@@ -17,7 +17,8 @@
         "forceConsistentCasingInFileNames": true,
         "resolveJsonModule": true,
         "isolatedModules": true,
-        "types": ["node", "mocha"]
+        "types": ["node", "mocha"],
+        "lib": ["ES2022", "dom"]
     },
     "include": [ "./src/**/*.ts" ],
     "typedocOptions": {

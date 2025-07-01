@@ -6,25 +6,15 @@ import { Duplex, Readable } from 'node:stream';
 import PromiseDuplex from 'promise-duplex';
 import Debug from 'debug';
 import PromiseReadable from 'promise-readable';
+import { type Stream } from 'node:stream';
 
 export type CancellablePromise<T> = Promise<T> & { cancel: () => void };
 
 /**
  * Missing from Deno ?
  */
-export type BufferEncoding = 
-"ascii"
-| "utf8"
-| "utf-8"
-| "utf16le"
-| "utf-16le"
-| "ucs2"
-| "ucs-2"
-| "base64"
-| "base64url"
-| "latin1"
-| "binary"
-| "hex"
+
+export type BufferEncoding = Parameters<typeof Stream.PassThrough.prototype.write>[1]
 
 
 export default class Utils {

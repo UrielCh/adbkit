@@ -28,7 +28,7 @@ export default class PullTransfer extends Stream.PassThrough {
     if (typeof encoding === 'function') {
       return super.write(chunk, encoding);
     }
-    return super.write(chunk, encoding, callback);
+    return super.write(chunk, encoding || "utf8", callback);
   }
 
   promiseWrite(
@@ -38,7 +38,7 @@ export default class PullTransfer extends Stream.PassThrough {
     this.stats.bytesTransferred += (chunk as unknown as Uint8Array).length;
     this.emit('progress', this.stats);
     return new Promise<void>((accept, reject) => {
-      super.write(chunk, encoding, (err) => {
+      super.write(chunk, encoding || "utf8", (err) => {
         if (err) reject(err);
         else accept();
       });

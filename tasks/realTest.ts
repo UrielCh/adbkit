@@ -1,12 +1,20 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
+import fs from 'node:fs';
+import path from 'node:path';
+
 import adb, { DeviceClient, KeyCodes, Utils, MotionEvent, Client, Minicap, Scrcpy, VideoStreamFramePacket } from '../src';
 import { IpRouteEntry, IpRuleEntry } from '../src/adb/command/host-transport';
 import Parser from '../src/adb/parser';
 import { KeyEvent } from '../src/adb/thirdparty/STFService/STFServiceModel';
 import ThirdUtils from '../src/adb/thirdparty/ThirdUtils';
-import fs from 'node:fs';
-import path from 'node:path';
 import pc from 'picocolors';
+
+import { fileURLToPath } from 'node:url';
+import { dirname } from 'node:path';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 // const logRunning = require('why-is-node-running');
 
