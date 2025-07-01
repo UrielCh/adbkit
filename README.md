@@ -10,7 +10,7 @@ Internally, we use this library to drive a multitude of Android devices from a v
 
 ## Requirements
 
-*   [Node.js][nodejs] >= 14
+*   [Node.js][nodejs] >= 18
 *   The `adb` command line tool
 
 Please note that although it may happen at some point, **this project is NOT an implementation of the ADB *server***. The target host (where the devices are connected) must still have ADB installed and either already running (e.g. via `adb start-server`) or available in `$PATH`. An attempt will be made to start the server locally via the aforementioned command if the initial connection fails. This is the only case where we fall back to the `adb` binary.
@@ -55,6 +55,11 @@ const main = async () => {
 ```
 
 [full documentaion is available here](https://urielch.github.io/adbkit/)
+
+
+## Incompatible changes in version 5.x
+
+- the project only contains ESM modules
 
 ## Incompatible changes in version 3.x
 
