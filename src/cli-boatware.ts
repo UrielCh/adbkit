@@ -20,10 +20,12 @@ program
     const process = async (device: DeviceClient) => {
       const pkgs = await device.listPackages();
       console.log(`${pkgs.length} Packages availible`);
+      let cnt = 0;
       // const samsung = pkgs.filter(a => a.name.startsWith('com.samsung'))
       // samsung.forEach(a => console.log(a.name));
       const bixby = pkgs.filter(a => a.name.includes('bixby') || BixbySet.has(a.name))
       if (bixby.length) {
+        cnt++;
         console.log(`${bixby.length} bixby Packages`);
         for (const pkg of bixby) {
           console.log(`- ${pkg.name}`)
@@ -38,6 +40,11 @@ program
         } else {
           console.log(`response: "${r}", Skip`);
         }
+      }
+      if (!cnt) {
+        console.log('No boatware, you may want to register some new boatware in cli-boatware.ts');
+      } else {
+        console.log(`${cnt} boatware removed`);
       }
     }
     for (const device of devices) {
