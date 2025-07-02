@@ -1,9 +1,13 @@
 # CHANGELOG
 
+## V5.1.0 (2025-07-01)
+* remove some dev depencences from depencences
+* Allow authorization of known public keys in the tcp usb bridge [#540](https://github.com/DeviceFarmer/adbkit/pull/540)
+* Add attach / detach commands [#534](https://github.com/DeviceFarmer/adbkit/pull/534)
+
 ## V5.0.0 (2025-07-01)
 * migration to ESM
 * Don't close connection after A_OPEN in tcp handling [#24](https://github.com/UrielCh/adbkit/issues/24)
-
 
 ## V4.1.19 (2023-05-23)
 * update project shape
