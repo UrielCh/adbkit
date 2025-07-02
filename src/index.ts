@@ -97,7 +97,6 @@ export const Adb = {
 
 export * as STFServiceModel from './adb/thirdparty/STFService/STFServiceModel.js';
 
-
 /**
  * Keep @u4/adbkit v3.x default export shape
  */

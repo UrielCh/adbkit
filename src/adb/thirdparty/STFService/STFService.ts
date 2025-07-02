@@ -14,7 +14,6 @@ import Utils from '../../utils.js';
 
 const { Reader } = protobuf;
 
-
 interface IEmissions {
   airplaneMode: (data: STF.AirplaneModeEvent) => void
   battery: (data: STF.BatteryEvent) => void

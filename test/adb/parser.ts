@@ -195,7 +195,7 @@ describe('Parser', () => {
                 done();
             });
             stream.write('000cepic')
-            return stream.end();
+            stream.end();
         });
     });
     describe('searchLine(re)', () => {
@@ -278,19 +278,19 @@ describe('Parser', () => {
         });
     });
     describe('raw()', () => {
-        it('should return the resumed raw stream', () => {
+        it('should return the resumed raw stream', (done) => {
             const stream = new Stream.PassThrough();
             const parser = new Parser(stream);
             const raw = parser.raw();
             expect(raw).to.equal(stream);
             raw.on('data', () => {
-                // done();
+                done();
             });
-            return raw.write('foo');
+            raw.write('foo');
         });
     });
     return describe('unexpected(data, expected)', () => {
-        it('should reject with AdbUnexpectedDataError', (done) => {
+        it('should reject with AdbUnexpectedDataError', async () => {
             const stream = new Stream.PassThrough();
             const parser = new Parser(stream);
             const e = parser.unexpected('foo', "'bar' or end of stream");
@@ -299,7 +299,6 @@ describe('Parser', () => {
             expect(err.message).to.equal("Unexpected 'foo', was expecting 'bar' or end of stream lastMessage:");
             expect(err.unexpected).to.equal('foo');
             expect(err.expected).to.equal("'bar' or end of stream");
-            done();
         });
     });
 });
