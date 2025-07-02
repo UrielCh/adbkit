@@ -14,6 +14,8 @@ import ProcStat from './proc/stat.js';
 import { HostTransportCommand } from './command/host/index.js';
 import * as hostCmd from './command/host-transport/index.js';
 import {
+  AttachCommand,
+  DetachCommand,
   ForwardCommand,
   GetDevicePathCommand,
   GetSerialNoCommand,
@@ -1044,6 +1046,26 @@ export default class DeviceClient {
   public async waitForDevice(): Promise<string> {
     const conn = await this.connection();
     return new WaitForDeviceCommand(conn).execute(this.serial);
+  }
+
+  /**
+   * Reattaches ADB to the device's ADB USB interface. This re-enables communication between ADB and device, reversing `client.detach()`.
+   *
+   * @returns true
+   */
+  public async attach(): Promise<boolean> {
+    const conn = await this.connection();
+    return new AttachCommand(conn).execute(this.serial);
+  }
+
+  /**
+   * Detaches ADB's USB interface from ADB. This releases the device from ADB control, allowing other processes to use it.
+   *
+   * @returns true
+   */
+  public async detach(): Promise<boolean> {
+    const conn = await this.connection();
+    return new DetachCommand(conn).execute(this.serial);
   }
 
   /**

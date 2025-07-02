@@ -1,3 +1,5 @@
+export { default as AttachCommand } from './attach.js';
+export { default as DetachCommand } from './detach.js';
 export { default as ForwardCommand } from './forward.js';
 export { default as KillForwardCommand } from './killForward.js';
 export { default as GetDevicePathCommand } from './getdevicepath.js';

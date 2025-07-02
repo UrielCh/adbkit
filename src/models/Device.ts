@@ -1,6 +1,6 @@
 import DeviceClient from "../adb/DeviceClient.js";
 
-const deviceTypes = ['emulator', 'device', 'offline', 'unauthorized', 'recovery'] as const;
+const deviceTypes = ['emulator', 'device', 'offline', 'unauthorized', 'recovery', 'unknown'] as const;
 /**
  * adb device starts
  */
