@@ -1,5 +1,8 @@
 # CHANGELOG
 
+## V5.1.2 (2025-07-03)
+* fix Minicap add a missing url.pathname
+
 ## V5.1.1 (2025-07-03)
 * fix Minicap resource loading issue in nodeJS using npm:import-meta-resolve
 

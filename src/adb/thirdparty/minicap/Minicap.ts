@@ -38,9 +38,8 @@ function getResource(path: string): string | null {
   } catch (e) {
     try {
       if (e instanceof Error && e.message.includes('require is not defined')) {
-        return resolve(path, import.meta.url);
-        // .pathname;
-        // return new URL(path, import.meta.url).pathname;
+        const url = resolve(path, import.meta.url);
+        return new URL(url).pathname;
       }
     } catch (e) {
       return null;

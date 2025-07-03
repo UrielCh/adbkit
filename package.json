@@ -1,6 +1,6 @@
 {
     "name": "@u4/adbkit",
-    "version": "5.1.1",
+    "version": "5.1.2",
     "description": "A Typescript client for the Android Debug Bridge.",
     "type": "module",
     "keywords": [
@@ -77,19 +77,19 @@
         "xpath": "^0.0.34"
     },
     "devDependencies": {
-        "@jest/globals": "^30.0.3",
+        "@jest/globals": "^30.0.4",
         "@types/debug": "^4.1.12",
         "@types/jest": "^30.0.0",
         "@types/mocha": "^10.0.10",
         "@types/node": "^24.0.10",
-        "@types/node-forge": "^1.3.11",
+        "@types/node-forge": "^1.3.12",
         "@types/sinon": "^17.0.4",
         "@types/sinon-chai": "^4.0.0",
         "@typescript-eslint/eslint-plugin": "^8.35.1",
         "@typescript-eslint/parser": "^8.35.1",
         "chai": "~5.2.0",
         "eslint": "^9.30.1",
-        "jest": "^30.0.3",
+        "jest": "^30.0.4",
         "mocha": "~11.7.1",
         "picocolors": "^1.1.1",
         "prettier": "^3.6.2",
