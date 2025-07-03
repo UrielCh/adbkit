@@ -1,6 +1,9 @@
 # CHANGELOG
 
-## V5.1.0 (2025-07-01)
+## V5.1.1 (2025-07-03)
+* fix Minicap resource loading issue in nodeJS using npm:import-meta-resolve
+
+## V5.1.0 (2025-07-02)
 * remove some dev depencences from depencences
 * Allow authorization of known public keys in the tcp usb bridge [#540](https://github.com/DeviceFarmer/adbkit/pull/540)
 * Add attach / detach commands [#534](https://github.com/DeviceFarmer/adbkit/pull/534)
