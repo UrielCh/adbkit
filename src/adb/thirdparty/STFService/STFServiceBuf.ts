@@ -1,11 +1,8 @@
 // generarted by genProto.ts
 import { Buffer } from 'node:buffer';
-import * as protobuf from 'protobufjs';
-import { Message, Root } from 'protobufjs';
+import protobufjs, { Message, Root } from 'protobufjs';
 import ThirdUtils from '../ThirdUtils.js';
 import * as STF from './STFServiceModel.js';
-
-const { load } = protobuf;
 
 let singleton: Promise<STFServiceBuf> | null = null;
 export type MyMessage<T extends object = object> = Message<T> & T;
@@ -14,7 +11,7 @@ let root: Root;
 export default class STFServiceBuf {
   private static async internalInit(): Promise<STFServiceBuf> {
     const proto = ThirdUtils.getResourcePath('wireService.proto');
-    const _root = await load(proto);
+    const _root = await protobufjs.load(proto);
     root = _root;
     return new STFServiceBuf(_root);
   }

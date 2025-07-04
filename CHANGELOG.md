@@ -1,5 +1,8 @@
 # CHANGELOG
 
+## V5.1.3 (2025-07-04)
+* fix import issue with protobufjs in nodeJS with nodeJS runtime
+
 ## V5.1.2 (2025-07-03)
 * fix Minicap add a missing url.pathname
 

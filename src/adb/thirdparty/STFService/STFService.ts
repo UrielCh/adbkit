@@ -8,11 +8,9 @@ import PromiseDuplex from 'promise-duplex';
 import ThirdUtils from '../ThirdUtils.js';
 import * as STF from './STFServiceModel.js';
 // import * as STFAg from "./STFAgentModel.js";
-import * as protobuf from 'protobufjs';
+import protobufjs from 'protobufjs';
 import STFServiceBuf from './STFServiceBuf.js';
 import Utils from '../../utils.js';
-
-const { Reader } = protobuf;
 
 interface IEmissions {
   airplaneMode: (data: STF.AirplaneModeEvent) => void
@@ -232,7 +230,7 @@ export default class STFService extends EventEmitter {
         buffer = next;
       }
       while (buffer) {
-        const reader = Reader.create(buffer as unknown as Uint8Array);
+        const reader = protobufjs.Reader.create(buffer as unknown as Uint8Array);
         const envelopLen = reader.uint32();
         const bufLen = envelopLen + reader.pos;
         // need mode data to complet envelop
