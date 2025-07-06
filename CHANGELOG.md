@@ -1,5 +1,8 @@
 # CHANGELOG
 
+## V5.1.4 (2025-07-06)
+* use new prebuilt package
+
 ## V5.1.3 (2025-07-04)
 * fix import issue with protobufjs in nodeJS with nodeJS runtime
 

@@ -1,6 +1,6 @@
 {
     "name": "@u4/adbkit",
-    "version": "5.1.3",
+    "version": "5.1.5",
     "description": "A Typescript client for the Android Debug Bridge.",
     "type": "module",
     "keywords": [
@@ -64,12 +64,11 @@
     "dependencies": {
         "@u4/adbkit-logcat": "2.1.2",
         "@u4/adbkit-monkey": "^1.0.5",
-        "@u4/minicap-prebuilt": "^1.0.0",
+        "@u4/minicap-prebuilt": "^1.1.2",
         "@xmldom/xmldom": "^0.9.8",
         "commander": "14.0.0",
         "debug": "~4.4.1",
         "get-port": "7.1.0",
-        "import-meta-resolve": "^4.1.0",
         "node-forge": "^1.3.1",
         "promise-duplex": "^8.0.0",
         "promise-readable": "^8.0.1",
@@ -108,8 +107,5 @@
     "files": [
         "dist",
         "bin"
-    ],
-    "optionalDependencies": {
-        "@devicefarmer/minicap-prebuilt": "^2.7.3"
-    }
+    ]
 }

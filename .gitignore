@@ -8,4 +8,4 @@ package-lock.json
 *.log
 parcel.txt
 tasks/*encoder*/
-bench/.DS_Store
+**/.DS_Store

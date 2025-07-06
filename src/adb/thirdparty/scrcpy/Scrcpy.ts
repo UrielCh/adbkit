@@ -10,10 +10,11 @@ import { Duplex } from 'node:stream';
 import { type MotionEvent, MotionEventMap, OrientationMap, ControlMessageMap } from './ScrcpyConst.js';
 import { KeyCodes } from '../../keycode.js';
 import { BufWrite } from '../minicap/BufWrite.js';
-import ThirdUtils from '../ThirdUtils.js';
+// import ThirdUtils from '../ThirdUtils.js';
 import Stats from '../../sync/stats.js';
 import { parse_sequence_parameter_set } from './sps.js';
 import { Point, ScrcpyOptions, H264Configuration, VideoStreamFramePacket } from './ScrcpyModels.js';
+import prebuilds from "@u4/minicap-prebuilt";
 
 const debug = Utils.debug('adb:scrcpy');
 
@@ -312,7 +313,9 @@ export default class Scrcpy extends EventEmitter {
       return this;
     const jarDest = '/data/local/tmp/scrcpy-server.jar';
     // Transfer server...
-    const jar = ThirdUtils.getResourcePath(`scrcpy-server-v1.${this.config.version}.jar`);
+    const jar = prebuilds.getScrcpyJar(`1.${this.config.version}`);
+    // ThirdUtils.getResourcePath(`scrcpy-server-v1.${this.config.version}.jar`);
+
     const srcStat: fs.Stats | null = await fs.promises.stat(jar).catch(() => null);
     const dstStat: Stats | null = await this.client.stat(jarDest).catch(() => null);
     if (!srcStat)

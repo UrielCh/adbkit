@@ -8,8 +8,8 @@ import PromiseDuplex from 'promise-duplex';
 import ThirdUtils from "../ThirdUtils.js";
 import Utils from '../../utils.js';
 import Stats from '../../sync/stats.js';
-import { resolve } from 'import-meta-resolve';
-
+// import { resolve } from 'import-meta-resolve';
+import prebuilds from "@u4/minicap-prebuilt";
 /**
  * Application binary interface known CPU
  */
@@ -32,21 +32,21 @@ interface IEmissions {
   disconnect: (cause: string) => void
 }
 // fs.ReadStream | 
-function getResource(path: string): string | null {
-  try {
-    return require.resolve(path);
-  } catch (e) {
-    try {
-      if (e instanceof Error && e.message.includes('require is not defined')) {
-        const url = resolve(path, import.meta.url);
-        return new URL(url).pathname;
-      }
-    } catch (e) {
-      return null;
-    }
-    return null;
-  }
-}
+// function getResource(path: string): string | null {
+//   try {
+//     return require.resolve(path);
+//   } catch (e) {
+//     try {
+//       if (e instanceof Error && e.message.includes('require is not defined')) {
+//         const url = resolve(path, import.meta.url);
+//         return new URL(url).pathname;
+//       }
+//     } catch (e) {
+//       return null;
+//     }
+//     return null;
+//   }
+// }
 
 export default class Minicap extends EventEmitter {
   private config: MinicapOptions;
@@ -148,21 +148,24 @@ export default class Minicap extends EventEmitter {
     const props = await this.client.getProperties();
     const abi = props['ro.product.cpu.abi'] as ABI_CPU;
     const sdkLevel = parseInt(props['ro.build.version.sdk']);
-    const minicapName = (sdkLevel >= 16) ? 'minicap' : 'minicap-nopie';
+    // const minicapName = (sdkLevel >= 16) ? 'minicap' : 'minicap-nopie';
 
     let binFile: string | null = null;
     let soFile: string | null = null;
 
 
-    binFile = getResource(`@devicefarmer/minicap-prebuilt/prebuilt/${abi}/bin/${minicapName}`);
+    binFile = prebuilds.getMinicapBin(abi, sdkLevel);//  getResource(`@devicefarmer/minicap-prebuilt/prebuilt/${abi}/bin/${minicapName}`);
     if (!binFile)
       throw Error(`minicap not found in @devicefarmer/minicap-prebuilt/prebuilt/${abi}/bin/ please install @devicefarmer/minicap-prebuilt to use minicap`);
-
-    if (sdkLevel === 32) {
-      soFile = getResource(`@u4/minicap-prebuilt/prebuilt/${abi}/lib/android-${sdkLevel}/minicap.so`);
-    } else {
-      soFile = getResource(`@devicefarmer/minicap-prebuilt/prebuilt/${abi}/lib/android-${sdkLevel}/minicap.so`);
+    if (!fs.existsSync(binFile)) {
+      throw Error(`minicap binary not found in ${binFile}, please install @devicefarmer/minicap-prebuilt to use minicap`);
     }
+    soFile = prebuilds.getMinicapSO(abi, sdkLevel);
+    // if (sdkLevel === 32) {
+    //   soFile = getResource(`@u4/minicap-prebuilt/prebuilt/${abi}/lib/android-${sdkLevel}/minicap.so`);
+    // } else {
+    //   soFile = getResource(`@devicefarmer/minicap-prebuilt/prebuilt/${abi}/lib/android-${sdkLevel}/minicap.so`);
+    // }
 
     if (!soFile) {
       throw Error(`minicap.so for your device check for @devicefarmer/minicap-prebuilt update that support android-${sdkLevel}, ${soFile} is missing`);
