@@ -1,5 +1,8 @@
 # CHANGELOG
 
+## V5.1.5 (2025-07-06)
+* use new prebuilt package version
+
 ## V5.1.4 (2025-07-06)
 * use new prebuilt package
 
