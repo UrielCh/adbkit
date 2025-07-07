@@ -371,9 +371,9 @@ export default class Scrcpy extends EventEmitter {
     const jar = prebuilds.getScrcpyJar(this.config.version);
 
     const srcStat: fs.Stats | null = await fs.promises.stat(jar).catch(() => null);
-    const dstStat: Stats | null = await this.client.stat(jarDest).catch(() => null);
     if (!srcStat)
       throw Error(`fail to get ressource ${jar}`);
+    const dstStat: Stats | null = await this.client.stat(jarDest).catch(() => null);
     if (!dstStat || srcStat.size !== dstStat.size) {
       try {
         debug(`pushing scrcpy-server.jar to ${this.client.serial}`);

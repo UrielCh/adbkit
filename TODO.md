@@ -1,12 +1,3 @@
-update scrcpy-server from 1.24 to 1.25
-update scrcpy-server from 1.25 to 2.0
-update scrcpy-server from 2.0 to 2.1
-update scrcpy-server from 2.1 to 2.2
-update scrcpy-server from 2.2 to 2.3
-update scrcpy-server from 2.3 to 2.4
-update scrcpy-server from 2.4 to 2.5
-update scrcpy-server from 2.5 to 2.6
-update scrcpy-server from 2.6 to 2.7
 update scrcpy-server from 2.7 to 3.0
 update scrcpy-server from 3.0 to 3.1
 update scrcpy-server from 3.1 to 3.2

@@ -157,18 +157,22 @@ export default class Minicap extends EventEmitter {
     binFile = prebuilds.getMinicapBin(abi, sdkLevel);//  getResource(`@devicefarmer/minicap-prebuilt/prebuilt/${abi}/bin/${minicapName}`);
     if (!binFile)
       throw Error(`minicap not found in @devicefarmer/minicap-prebuilt/prebuilt/${abi}/bin/ please install @devicefarmer/minicap-prebuilt to use minicap`);
-    if (!fs.existsSync(binFile)) {
-      throw Error(`minicap binary not found in ${binFile}, please install @devicefarmer/minicap-prebuilt to use minicap`);
+
+    {
+      const stats: fs.Stats | null = await fs.promises.stat(binFile).catch(() => null);
+      if (!stats)
+        throw Error(`Minicap binary not found in ${binFile} for hour host in @u4/minicap-prebuilt`);  
     }
     soFile = prebuilds.getMinicapSO(abi, sdkLevel);
-    // if (sdkLevel === 32) {
-    //   soFile = getResource(`@u4/minicap-prebuilt/prebuilt/${abi}/lib/android-${sdkLevel}/minicap.so`);
-    // } else {
-    //   soFile = getResource(`@devicefarmer/minicap-prebuilt/prebuilt/${abi}/lib/android-${sdkLevel}/minicap.so`);
-    // }
 
-    if (!soFile) {
-      throw Error(`minicap.so for your device check for @devicefarmer/minicap-prebuilt update that support android-${sdkLevel}, ${soFile} is missing`);
+    //if (!soFile) {
+    //  throw Error(`minicap.so for your device check for @devicefarmer/minicap-prebuilt update that support android-${sdkLevel}, ${soFile} is missing`);
+    //}
+
+    {
+      const stats: fs.Stats | null = await fs.promises.stat(soFile).catch(() => null);
+      if (!stats)
+        throw Error(`minicap.so not found in ${soFile} for hour host in @u4/minicap-prebuilt`);  
     }
 
     // only upload minicap binary in tmp filder if file is missing
