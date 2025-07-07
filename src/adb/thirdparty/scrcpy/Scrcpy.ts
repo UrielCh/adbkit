@@ -16,6 +16,8 @@ import { parse_sequence_parameter_set } from './sps.js';
 import { Point, ScrcpyOptions, H264Configuration, VideoStreamFramePacket } from './ScrcpyModels.js';
 import prebuilds from "@u4/minicap-prebuilt";
 
+const SC_SOCKET_NAME_PREFIX = "scrcpy_";
+
 const debug = Utils.debug('adb:scrcpy');
 
 // const KEYFRAME_PTS = BigInt(1) << BigInt(62);
@@ -23,6 +25,11 @@ const debug = Utils.debug('adb:scrcpy');
 
 const PACKET_FLAG_CONFIG = BigInt(1) << BigInt(63);
 const PACKET_FLAG_KEY_FRAME = BigInt(1) << BigInt(62);
+
+/**
+ * usage reference fron app/src/server.c in scrcpy
+ * https://github.com/Genymobile/scrcpy/blob/master/app/src/server.c
+ */
 
 /**
  * by hand start:
@@ -71,6 +78,7 @@ interface IEmissions {
 export default class Scrcpy extends EventEmitter {
   private config: ScrcpyOptions;
   private videoSocket: PromiseDuplex<Duplex> | undefined;
+  private audioSocket: PromiseDuplex<Duplex> | undefined;
   private controlSocket: PromiseDuplex<Duplex> | undefined;
   /**
    * used to recive Process Error
@@ -103,7 +111,9 @@ export default class Scrcpy extends EventEmitter {
   constructor(private client: DeviceClient, config = {} as Partial<ScrcpyOptions>) {
     super();
     this.config = {
-      version: 24,
+      scid: '0' + Math.random().toString(16).substring(2, 9),
+      noAudio: true, // disable audio TMP
+      version: "2.7",
       // port: 8099,
       maxSize: 600,
       maxFps: 0,
@@ -161,7 +171,7 @@ export default class Scrcpy extends EventEmitter {
     try {
       const errors = [];
       for (; ;) {
-        await Utils.waitforReadable(duplex, 0, 'wait for error');
+        await Utils.waitforReadable(duplex, 0, 'wait for error from ScrcpyServer');
         const data = await duplex.read();
         if (data) {
           const msg = data.toString().trim();
@@ -173,7 +183,9 @@ export default class Scrcpy extends EventEmitter {
             // emit Error but to not want to Quit Yet
           }
         } else {
-          this._setFatalError(errors.join('\n'));
+          if (errors.length > 0)
+            this._setFatalError(errors.join('\n'));
+          // else no error
           break;
         }
       }
@@ -227,6 +239,13 @@ export default class Scrcpy extends EventEmitter {
         throw Error(`Unsupported message type:${type}`);
     }
   }
+  get strVersion(): string {
+    let versionSplit = this.config.version.split(".").map(Number);
+    if (versionSplit.length === 2) {
+      versionSplit = [...versionSplit, 0];
+    }
+    return `${versionSplit[0].toString().padStart(2, '0')}.${versionSplit[1].toString().padStart(2, '0')}.${versionSplit[2].toString().padStart(2, '0')}`;
+  }
 
   private _getStartupLine(jarDest: string): string {
     const args: Array<string | number | boolean> = [];
@@ -239,10 +258,19 @@ export default class Scrcpy extends EventEmitter {
     args.push('app_process');
     args.push('/');
     args.push('com.genymobile.scrcpy.Server');
+    const versionStr = this.strVersion;
 
-    if (this.config.version <= 20) {
-      // Version 11 => 20
-      args.push(`1.${this.config.version}`); // arg 0 Scrcpy server version
+    // first args is the expected version number
+    if (versionStr === "02.02.00") {
+      // V2.2 is the only version that expect a v prefix
+      args.push("v" + this.config.version);
+    } else {
+      args.push(this.config.version);
+    }
+    // args.push(this.config.version); // arg 0 Scrcpy server version
+    //if (this.config.version <= 20) {
+    if (versionStr <= "02.00.00") {
+        // Version 11 => 20
       args.push("info"); // Log level: info, verbose...
       args.push(maxSize); // Max screen width (long side)
       args.push(bitrate); // Bitrate of video
@@ -259,10 +287,26 @@ export default class Scrcpy extends EventEmitter {
       args.push(encoderName || '-'); //     Encoder name
       args.push(powerOffScreenOnClose); // Power off screen after server closed
     } else {
-      args.push(`1.${this.config.version}`); // arg 0 Scrcpy server version
+      if (versionStr >= "02.00.00") {
+        args.push(`scid=${this.config.scid}`);
+        if (this.config.noAudio)
+          args.push(`audio=false`);
+        // if (this.config.noControl)
+        //   args.push(`no_control=${this.config.noControl}`);
+      }
+
+      if (versionStr >= "02.04.00") {
+        args.push(`video_source=display`);
+      }
+
       args.push("log_level=info");
       args.push(`max_size=${maxSize}`);
-      args.push(`bit_rate=${bitrate}`);
+      args.push("clipboard_autosync=false"); // cause crash on some newer phone and we do not use that feature.
+      if (versionStr >= "02.00.00") {
+        args.push(`video_bit_rate=${bitrate}`);
+      } else {
+        args.push(`bit_rate=${bitrate}`);
+      }
       args.push(`max_fps=${maxFps}`);
       args.push(`lock_video_orientation=${lockedVideoOrientation}`);
       args.push(`tunnel_forward=${tunnelForward}`); // Tunnel forward
@@ -281,8 +325,9 @@ export default class Scrcpy extends EventEmitter {
       // args.push(`clipboard_autosync=${clipboardAutosync}`); // default is True
       if (clipboardAutosync !== undefined)
         args.push(`clipboard_autosync=${clipboardAutosync}`); // default is True
-      if (this.config.version >= 22) {
-        const {
+      //if (this.config.version >= 22) {
+      if (versionStr >= "01.22.00") {
+          const {
           downsizeOnError, sendDeviceMeta, sendDummyByte, rawVideoStream
         } = this.config;
         if (downsizeOnError !== undefined)
@@ -294,7 +339,7 @@ export default class Scrcpy extends EventEmitter {
         if (rawVideoStream !== undefined)
           args.push(`raw_video_stream=${rawVideoStream}`);
       }
-      if (this.config.version >= 22) {
+      if (versionStr >= "01.22.00") {
         const { cleanup } = this.config;
         if (cleanup !== undefined)
           args.push(`raw_video_stream=${cleanup}`);
@@ -311,10 +356,19 @@ export default class Scrcpy extends EventEmitter {
   async start(): Promise<this> {
     if (this.closed) // can not start once stop called
       return this;
-    const jarDest = '/data/local/tmp/scrcpy-server.jar';
-    // Transfer server...
-    const jar = prebuilds.getScrcpyJar(`1.${this.config.version}`);
-    // ThirdUtils.getResourcePath(`scrcpy-server-v1.${this.config.version}.jar`);
+
+    let dstFolder = '/data/local/tmp';
+    let dstFolderStat = await this.client.stat(dstFolder).catch((e) => {console.log(e); return null;});
+    if (!dstFolderStat) {
+        dstFolder = '/tmp';
+        dstFolderStat = await this.client.stat(dstFolder).catch(() => null);    
+    }
+    if (!dstFolderStat) {
+        throw Error("can not find a writable tmp dest folder in device");
+    }
+    const jarDest = `${dstFolder}/scrcpy-server-v${this.config.version}.jar`;
+    // Transfer server jar to device...
+    const jar = prebuilds.getScrcpyJar(this.config.version);
 
     const srcStat: fs.Stats | null = await fs.promises.stat(jar).catch(() => null);
     const dstStat: Stats | null = await this.client.stat(jarDest).catch(() => null);
@@ -332,9 +386,15 @@ export default class Scrcpy extends EventEmitter {
     } else {
       debug(`scrcpy-server.jar already present in ${this.client.serial}, keep it`);
     }
-    // Start server
+    ///////
+    // Build the commandline to start the server
     try {
       const cmdLine = this._getStartupLine(jarDest);
+
+      // console.log("starting scrcpy server with cmdLine:");
+      // console.log(cmdLine);
+      // console.log("");
+
       if (this.closed) // can not start once stop called
         return this;
       const duplex = await this.client.shell(cmdLine);
@@ -350,37 +410,67 @@ export default class Scrcpy extends EventEmitter {
       throw e;
     }
 
-    let info = '';
+    let stdoutContent = '';
     for (; ;) {
       if (!await Utils.waitforReadable(this.scrcpyServer, this.config.tunnelDelay, 'scrcpyServer stdout loading')) {
         // const msg = `First line should be '[server] // INFO: Device: Name (Version), reveived:\n\n${info}`
-        const error = `Starting scrcpyServer failed, scrcpy stdout:${info}`;
+        if (!stdoutContent)
+          stdoutContent = "no stdout content";
+        const error = `Starting scrcpyServer failed, scrcpy stdout:${stdoutContent}`;
         this._setFatalError(error);
         this.stop();
         throw Error(error);
       }
       const srvOut = await this.scrcpyServer.read();
-      info += (srvOut) ? srvOut.toString() : '';
-      if (info.includes('[server] INFO: Device: '))
+      stdoutContent += (srvOut) ? srvOut.toString() : '';
+      // the server may crash within the first message
+      const errorIndex = stdoutContent.indexOf("[server] ERROR:");
+      if (errorIndex >= 0) {
+        const error = stdoutContent.substring(errorIndex)
+        this._setFatalError(error);
+        this.stop();
+        throw Error(error);
+      }
+      if (stdoutContent.includes('[server] INFO: Device: '))
         break;
     }
 
     this.throwsErrors(this.scrcpyServer);
+
+    // from V2.0 SC_SOCKET_NAME name can be change
+    const strVersion =  this.strVersion;
+    let SC_SOCKET_NAME = 'scrcpy';
+    if (strVersion >= "02.00.00") {
+      SC_SOCKET_NAME = SC_SOCKET_NAME_PREFIX + this.config.scid;
+      assert(this.config.scid.length == 8, `scid length should be 8`);
+    }
 
     // Wait 1 sec to forward to work
     // await Util.delay(this.config.tunnelDelay);
 
     if (this.closed) // can not start once stop called
       return this;
+
     // Connect videoSocket
     await Utils.delay(100);
-    this.videoSocket = await this.client.openLocal2('localabstract:scrcpy', 'first connection to scrcpy for video');
-    // Connect controlSocket
+    this.videoSocket = await this.client.openLocal2(`localabstract:${SC_SOCKET_NAME}`, 'first connection to scrcpy for video');
+
     if (this.closed) {
       this.stop();
       return this;
     }
-    this.controlSocket = await this.client.openLocal2('localabstract:scrcpy', 'second connection to scrcpy for control');
+
+    if (strVersion >= "02.00.00" && !this.config.noAudio) {
+      // Connect audioSocket
+      this.audioSocket = await this.client.openLocal2(`localabstract:${SC_SOCKET_NAME}`, 'first connection to scrcpy for audio');
+      // Connect controlSocket
+      if (this.closed) {
+        this.stop();
+        return this;
+      }
+    }
+    
+    this.controlSocket = await this.client.openLocal2(`localabstract:${SC_SOCKET_NAME}`, 'second connection to scrcpy for control');
     if (this.closed) {
       this.stop();
       return this;
@@ -406,7 +496,10 @@ export default class Scrcpy extends EventEmitter {
     }
 
     if (this.config.sendFrameMeta) {
-      void this.startStreamWithMeta().catch(() => this.stop());
+      void this.startStreamWithMeta().catch((e) => {
+        this._setFatalError(e);
+        this.stop();
+    });
     } else {
       this.startStreamRaw();
     }
@@ -421,6 +514,11 @@ export default class Scrcpy extends EventEmitter {
     if (this.videoSocket) {
       this.videoSocket.destroy();
       this.videoSocket = undefined;
+      close = true;
+    }
+    if (this.audioSocket) {
+      this.audioSocket.destroy();
+      this.audioSocket = undefined;
       close = true;
     }
     if (this.controlSocket) {
@@ -450,17 +548,32 @@ export default class Scrcpy extends EventEmitter {
    * get resolve once capture stop
    */
   private async startStreamWithMeta(): Promise<void> {
+    const strVersion = this.strVersion;
     assert(this.videoSocket);
     this.videoSocket.stream.pause();
     await Utils.waitforReadable(this.videoSocket, 0, 'videoSocket header');
-    const chunk = this.videoSocket.stream.read(68) as Buffer;
-    const name = chunk.toString('utf8', 0, 64).trim();
-    this.setName(name);
-    const width = chunk.readUint16BE(64);
-    this.setWidth(width);
-    const height = chunk.readUint16BE(66);
-    this.setHeight(height);
-
+    if (strVersion >= "02.00.00") {
+      const chunk = this.videoSocket.stream.read(64) as Buffer;
+      if (!chunk)
+        throw Error('fail to read firstChunk, inclease tunnelDelay for this device.');
+      const name = chunk.toString('utf8', 0, 64).trim();
+      this.setName(name);
+      // const width = chunk.readUint16BE(64);
+      // this.setWidth(width);
+      // const height = chunk.readUint16BE(66);
+      // this.setHeight(height);
+    } else {
+      const chunk = this.videoSocket.stream.read(68) as Buffer;
+      if (!chunk)
+        throw Error('fail to read firstChunk, inclease tunnelDelay for this device.');
+      const name = chunk.toString('utf8', 0, 64).trim();
+      this.setName(name);
+      const width = chunk.readUint16BE(64);
+      this.setWidth(width);
+      const height = chunk.readUint16BE(66);
+      this.setHeight(height);
+    }
+ 
     // let header: Uint8Array | undefined;
 
     let pts = BigInt(0);// Buffer.alloc(0);
@@ -475,12 +588,20 @@ export default class Scrcpy extends EventEmitter {
           // regular end condition
           return;
         }
-        // console.log(frameMeta.toString('hex').replace(/(........)/g, '$1 '))
-        pts = frameMeta.readBigUint64BE();
-        len = frameMeta.readUInt32BE(8);
-        // else {bufferInfo.presentationTimeUs - ptsOrigin}
-        // debug(`\tHeader:PTS =`, pts);
-        // debug(`\tHeader:len =`, len);
+        if (strVersion >= "02.00.00") {
+          const codecId = frameMeta.readUInt32BE(0);
+          // Read width (4 bytes)
+          const width = frameMeta.readUInt32BE(4);
+          // Read height (4 bytes)
+          const height = frameMeta.readUInt32BE(8);
+          this.setWidth(width);
+          this.setHeight(height);
+        } else {
+          pts = frameMeta.readBigUint64BE();
+          len = frameMeta.readUInt32BE(8);
+          // debug(`\tHeader:PTS =`, pts);
+          // debug(`\tHeader:len =`, len);
+        }
       }
 
       const config = !!(pts & PACKET_FLAG_CONFIG);

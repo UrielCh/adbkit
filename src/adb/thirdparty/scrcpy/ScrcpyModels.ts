@@ -4,7 +4,11 @@ export interface Point {
 }
 
 export interface ScrcpyOptions {
-    version: 20 | 24;
+    /**
+     * scrcpy id since V 2.0
+     */
+    scid: string;
+    version: "1.20" | "1.24" | "2.7" | `${number}.${number}` | `${number}.${number}.${number}`;
     /**
      * maxSize         (integer, multiple of 8) 0
      * Max width
@@ -66,6 +70,14 @@ export interface ScrcpyOptions {
      * since scrcpy 1.23
      */
     cleanup?: boolean;
+    /**
+     * since scrcpy 2.0
+     */
+    noAudio?: boolean;
+    /**
+     * since scrcpy 2.0
+     */
+    // noControl?: boolean;
 }
 
 export interface H264Configuration {

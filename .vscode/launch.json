@@ -23,24 +23,20 @@
             }
         },
 
-
-
         {
-            "name": "realTest",
+            "name": "realTest (tsx)",
             "type": "node",
             "request": "launch",
-            "runtimeArgs": [ "--trace-warnings", "--unhandled-rejections", "warn", "--trace-sync-io", "--nolazy", "-r", "ts-node/register"],
-            "args": ["./tasks/realTest.ts", "--transpile-only"],
+            "runtimeExecutable": "${workspaceFolder}/node_modules/.bin/tsx",
+            "args": ["./tasks/realTest.ts"],
             "cwd": "${workspaceFolder}",
             "internalConsoleOptions": "openOnSessionStart",
-            // "skipFiles": ["<node_internals>/**", "node_modules/**"],
-            "skipFiles": ["<node_internals>/**" ],
+            "skipFiles": ["<node_internals>/**"],
             "env": {
-              "TS_NODE_PROJECT": "${workspaceFolder}/tsconfig.json",
               "DEBUG": "adb:minicap, adb:scrcpy",
               "DEBUG_COLORS": "1"
             }
-        },
+        },       
         {
             "name": "Mocha Tests",
             "cwd": "${workspaceFolder}",

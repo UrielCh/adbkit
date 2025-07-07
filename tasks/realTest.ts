@@ -35,7 +35,10 @@ function fmtSize(trData: number): string {
 }
 
 const testScrcpy = async (deviceClient: DeviceClient) => {
-  const scrcpy = deviceClient.scrcpy({});
+  const scrcpy = deviceClient.scrcpy({version: '2.7'});
+  scrcpy.on('error', (e) => {
+    console.error('scrcpy error', e);
+  });
   let nbFrame = 0;
   let nbkeyframe = 0;
   let nbPkg = 0;
