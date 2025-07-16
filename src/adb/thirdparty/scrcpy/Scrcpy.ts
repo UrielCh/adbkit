@@ -7,7 +7,7 @@ import PromiseDuplex from 'promise-duplex';
 import DeviceClient from '../../DeviceClient.js';
 import Utils from '../../utils.js';
 import { Duplex } from 'node:stream';
-import { type MotionEvent, MotionEventMap, OrientationMap, ControlMessageMap } from './ScrcpyConst.js';
+import { type MotionEvent, MotionEventMap, OrientationMap, ControlMessageMap, codexMap } from './ScrcpyConst.js';
 import { KeyCodes } from '../../keycode.js';
 import { BufWrite } from '../minicap/BufWrite.js';
 // import ThirdUtils from '../ThirdUtils.js';
@@ -88,6 +88,7 @@ export default class Scrcpy extends EventEmitter {
   ///////
   // promise holders
   private _name: Promise<string>;
+  private _codec: Promise<string>;
   private _width: Promise<number>;
   private _height: Promise<number>;
   private _onTermination: Promise<string>;
@@ -96,6 +97,7 @@ export default class Scrcpy extends EventEmitter {
   ////////
   // promise resolve calls
 
+  private setCodec!: (name: string) => void;
   private setName!: (name: string) => void;
   private setWidth!: (width: number) => void;
   private setHeight!: (height: number) => void;
@@ -137,9 +139,24 @@ export default class Scrcpy extends EventEmitter {
     this._name = new Promise<string>((resolve) => this.setName = resolve);
     this._width = new Promise<number>((resolve) => this.setWidth = resolve);
     this._height = new Promise<number>((resolve) => this.setHeight = resolve);
+    this._codec = new Promise<string>((resolve) => this.setCodec = resolve);
     this._onTermination = new Promise<string>((resolve) => this.setFatalError = resolve);
     this._firstFrame = new Promise<void>((resolve) => this.setFirstFrame = resolve);
+
+     let versionSplit = this.config.version.split(".").map(Number);
+     if (versionSplit.length === 2) {
+       versionSplit = [...versionSplit, 0];
+     }
+     this.major = versionSplit[0];
+     this.minor = versionSplit[1];
+     this.patch = versionSplit[2];
+     this.strVersion = `${this.major.toString().padStart(2, '0')}.${this.minor.toString().padStart(2, '0')}.${this.patch.toString().padStart(2, '0')}`;
   }
+
+  readonly strVersion: string;
+  readonly major: number;
+  readonly minor: number;
+  readonly patch: number;
 
   public override on = <K extends keyof IEmissions>(event: K, listener: IEmissions[K]): this => super.on(event, listener)
   public override off = <K extends keyof IEmissions>(event: K, listener: IEmissions[K]): this => super.off(event, listener)
@@ -163,14 +180,21 @@ export default class Scrcpy extends EventEmitter {
   get firstFrame(): Promise<void> { return this._firstFrame; }
 
   /**
+   * return the used codex can be "H264", "H265", "AV1", "AAC" or "OPUS"
+   */
+  get codec(): Promise<string> { return this._codec; }
+
+  /**
    * emit scrcpyServer output as Error
    * @param duplex 
    * @returns 
    */
-  async throwsErrors(duplex: PromiseDuplex<Duplex>) {
+  async ListenErrors(duplex: PromiseDuplex<Duplex>) {
     try {
       const errors = [];
       for (; ;) {
+        if (!duplex.readable) // the server is stoped
+          break;
         await Utils.waitforReadable(duplex, 0, 'wait for error from ScrcpyServer');
         const data = await duplex.read();
         if (data) {
@@ -191,6 +215,7 @@ export default class Scrcpy extends EventEmitter {
       }
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
     } catch (e: unknown) {
+      // must never throw
       //this.emit('error', e as Error);
       //this.setError((e as Error).message);
     }
@@ -239,13 +264,6 @@ export default class Scrcpy extends EventEmitter {
         throw Error(`Unsupported message type:${type}`);
     }
   }
-  get strVersion(): string {
-    let versionSplit = this.config.version.split(".").map(Number);
-    if (versionSplit.length === 2) {
-      versionSplit = [...versionSplit, 0];
-    }
-    return `${versionSplit[0].toString().padStart(2, '0')}.${versionSplit[1].toString().padStart(2, '0')}.${versionSplit[2].toString().padStart(2, '0')}`;
-  }
 
   private _getStartupLine(jarDest: string): string {
     const args: Array<string | number | boolean> = [];
@@ -269,7 +287,7 @@ export default class Scrcpy extends EventEmitter {
     }
     // args.push(this.config.version); // arg 0 Scrcpy server version
     //if (this.config.version <= 20) {
-    if (versionStr <= "02.00.00") {
+    if (this.major < 2) {
         // Version 11 => 20
       args.push("info"); // Log level: info, verbose...
       args.push(maxSize); // Max screen width (long side)
@@ -287,7 +305,7 @@ export default class Scrcpy extends EventEmitter {
       args.push(encoderName || '-'); //     Encoder name
       args.push(powerOffScreenOnClose); // Power off screen after server closed
     } else {
-      if (versionStr >= "02.00.00") {
+      if (this.major >= 2) {
         args.push(`scid=${this.config.scid}`);
         if (this.config.noAudio)
           args.push(`audio=false`);
@@ -302,7 +320,7 @@ export default class Scrcpy extends EventEmitter {
       args.push("log_level=info");
       args.push(`max_size=${maxSize}`);
       args.push("clipboard_autosync=false"); // cause crash on some newer phone and we do not use that feature.
-      if (versionStr >= "02.00.00") {
+      if (this.major >= 2) {
         args.push(`video_bit_rate=${bitrate}`);
       } else {
         args.push(`bit_rate=${bitrate}`);
@@ -433,14 +451,14 @@ export default class Scrcpy extends EventEmitter {
       }
       if (stdoutContent.includes('[server] INFO: Device: '))
         break;
+      // console.log('stdoutContent:', stdoutContent);
     }
 
-    this.throwsErrors(this.scrcpyServer);
+    this.ListenErrors(this.scrcpyServer).then(() => {}, () => {});
 
     // from V2.0 SC_SOCKET_NAME name can be change
-    const strVersion =  this.strVersion;
     let SC_SOCKET_NAME = 'scrcpy';
-    if (strVersion >= "02.00.00") {
+    if (this.major >= 2) {
       SC_SOCKET_NAME = SC_SOCKET_NAME_PREFIX + this.config.scid;
       assert(this.config.scid.length == 8, `scid length should be 8`);
     }
@@ -454,13 +472,16 @@ export default class Scrcpy extends EventEmitter {
     // Connect videoSocket
     await Utils.delay(100);
     this.videoSocket = await this.client.openLocal2(`localabstract:${SC_SOCKET_NAME}`, 'first connection to scrcpy for video');
+    this.videoSocket.stream.on('error', (e) => {
+      console.error('videoSocket error', e);
+    });
 
     if (this.closed) {
       this.stop();
       return this;
     }
 
-    if (strVersion >= "02.00.00" && !this.config.noAudio) {
+    if (this.major >= 2 && !this.config.noAudio) {
       // Connect audioSocket
       this.audioSocket = await this.client.openLocal2(`localabstract:${SC_SOCKET_NAME}`, 'first connection to scrcpy for audio');
       // Connect controlSocket
@@ -478,14 +499,14 @@ export default class Scrcpy extends EventEmitter {
     // First chunk is 69 bytes length -> 1 dummy byte, 64 bytes for deviceName, 2 bytes for width & 2 bytes for height
     try {
       await Utils.waitforReadable(this.videoSocket, 0, 'videoSocket 1st 1 bit chunk');
-      const firstChunk = await this.videoSocket.read(1) as Buffer;
+      const firstChunk = await this.videoSocket.read(1) as Uint8Array;
       if (!firstChunk) {
         throw Error('fail to read firstChunk, inclease tunnelDelay for this device.');
       }
 
       // old protocol
-      const control = (firstChunk as unknown as Uint8Array).at(0);
-      if ((firstChunk as unknown as Uint8Array).at(0) !== 0) {
+      const control = firstChunk.at(0);
+      if (firstChunk.at(0) !== 0) {
         if (control)
           throw Error(`Control code should be 0x00, receves: 0x${control.toString(16).padStart(2, '0')}`);
         throw Error(`Control code should be 0x00, receves nothing.`);
@@ -552,7 +573,7 @@ export default class Scrcpy extends EventEmitter {
     assert(this.videoSocket);
     this.videoSocket.stream.pause();
     await Utils.waitforReadable(this.videoSocket, 0, 'videoSocket header');
-    if (strVersion >= "02.00.00") {
+    if (this.major >= 2) {
       const chunk = this.videoSocket.stream.read(64) as Buffer;
       if (!chunk)
         throw Error('fail to read firstChunk, inclease tunnelDelay for this device.');
@@ -574,7 +595,41 @@ export default class Scrcpy extends EventEmitter {
       this.setHeight(height);
     }
  
+    let codec = "H264";
     // let header: Uint8Array | undefined;
+    if (this.major >= 2) {
+          const frameMeta = this.videoSocket.stream.read(12) as Buffer;
+          const codecId = frameMeta.readUInt32BE(0);
+          // Read width (4 bytes)
+          const width = frameMeta.readUInt32BE(4);
+          // Read height (4 bytes)
+          const height = frameMeta.readUInt32BE(8);
+          switch (codecId) {
+            case codexMap.H264:
+              codec = "H264";
+              break;
+            case codexMap.H265:
+              codec = "H265";
+              break;
+            case codexMap.AV1:
+              codec = "AV1";
+              break;
+            case codexMap.OPUS:
+              codec = "OPUS";
+              break;
+            case codexMap.AAC:
+              codec = "AAC";
+              break;
+            case codexMap.RAW:
+              codec = "RAW";
+              break;
+            default:
+              codec = "UNKNOWN";
+          }
+          this.setCodec(codec);
+          this.setWidth(width);
+          this.setHeight(height);
+    }
 
     let pts = BigInt(0);// Buffer.alloc(0);
     for (; ;) {
@@ -588,34 +643,29 @@ export default class Scrcpy extends EventEmitter {
           // regular end condition
           return;
         }
-        if (strVersion >= "02.00.00") {
-          const codecId = frameMeta.readUInt32BE(0);
-          // Read width (4 bytes)
-          const width = frameMeta.readUInt32BE(4);
-          // Read height (4 bytes)
-          const height = frameMeta.readUInt32BE(8);
-          this.setWidth(width);
-          this.setHeight(height);
-        } else {
-          pts = frameMeta.readBigUint64BE();
-          len = frameMeta.readUInt32BE(8);
-          // debug(`\tHeader:PTS =`, pts);
-          // debug(`\tHeader:len =`, len);
-        }
+        pts = frameMeta.readBigUint64BE();
+        len = frameMeta.readUInt32BE(8);
+        // debug(`\tHeader:PTS =`, pts);
+        // debug(`\tHeader:len =`, len);
       }
 
       const config = !!(pts & PACKET_FLAG_CONFIG);
 
-      let streamChunk: Buffer | null = null;
+      let streamChunk: Uint8Array | null = null; // Buffer
       while (streamChunk === null) {
+        if (!this.videoSocket) // the server is stoped
+          break;
+        if (!this.videoSocket.stream.readable) // the server is stoped
+          break;
         await Utils.waitforReadable(this.videoSocket, 0, 'videoSocket streamChunk');
-        streamChunk = this.videoSocket.stream.read(len) as Buffer;
+        streamChunk = this.videoSocket.stream.read(len) as Uint8Array;
         if (streamChunk) {
-          if (config) { // non-media data packet len: 33
+          // const chunk_Uint8Array = streamChunk as unknown as Uint8Array;
+          if (config) { // non-media data packet len: 30 .. 33
             /**
              * is a config package pts have PACKET_FLAG_CONFIG flag
              */
-            const sequenceParameterSet = parse_sequence_parameter_set(streamChunk as unknown as ArrayBuffer);
+            const sequenceParameterSet = parse_sequence_parameter_set(streamChunk, codec);
             const {
               profile_idc: profileIndex,
               constraint_set: constraintSet,
@@ -640,7 +690,7 @@ export default class Scrcpy extends EventEmitter {
             const videoConf: H264Configuration = {
               profileIndex, constraintSet, levelIndex, encodedWidth, encodedHeight,
               cropLeft, cropRight, cropTop, cropBottom, croppedWidth, croppedHeight,
-              data: streamChunk as unknown as Uint8Array,
+              data: streamChunk,
             };
             this.lastConf = videoConf;
             this.emit('config', videoConf);
@@ -652,7 +702,7 @@ export default class Scrcpy extends EventEmitter {
             if (keyframe) {
               pts &= ~PACKET_FLAG_KEY_FRAME;
             }
-            const frame = { keyframe, pts, data: streamChunk as unknown as Uint8Array, config: this.lastConf };
+            const frame = { keyframe, pts, data: streamChunk, config: this.lastConf };
             if (this.setFirstFrame) {
               this.setFirstFrame();
               this.setFirstFrame = undefined;
@@ -707,12 +757,19 @@ export default class Scrcpy extends EventEmitter {
    * @param position 
    * @param screenSize 
    * @param pressure 
+   * 
+   * see parseInjectTouchEvent()
    */
   // usb.data_len == 28
-  async injectTouchEvent(action: MotionEvent, pointerId: bigint, position: Point, screenSize: Point, pressure?: number): Promise<void> {
-    const chunk = new BufWrite(28);
+  async injectTouchEvent(action: MotionEvent, pointerId: bigint, position: Point, screenSize: Point, pressure?: number): Promise<boolean> {
+    let size = 28;
+    if (this.major >= 2) {
+      size += 4;
+    }
+    const chunk = new BufWrite(size);
     chunk.writeUint8(ControlMessageMap.TYPE_INJECT_TOUCH_EVENT);
-    chunk.writeUint8(action);
+    chunk.writeUint8(action); // action readUnsignedByte
+
     if (pressure === undefined) {
       if (action == MotionEventMap.ACTION_UP)
         pressure = 0x0
@@ -722,15 +779,26 @@ export default class Scrcpy extends EventEmitter {
         pressure = 0xffff
     }
     // Writes a long to the underlying output stream as eight bytes, high byte first.
-    chunk.writeBigUint64BE(pointerId);
-    chunk.writeUint32BE(position.x | 0);
-    chunk.writeUint32BE(position.y | 0);
-    chunk.writeUint16BE(screenSize.x | 0);
-    chunk.writeUint16BE(screenSize.y | 0);
-    chunk.writeUint16BE(pressure);
-    chunk.writeUint32BE(MotionEventMap.BUTTON_PRIMARY);
+    chunk.writeBigUint64BE(pointerId); // long pointerId = dis.readLong();
+    //  Position position = parsePosition();
+    chunk.writeUint32BE(position.x | 0); //   int x = dis.readInt();
+    chunk.writeUint32BE(position.y | 0); //   int y = dis.readInt();
+    chunk.writeUint16BE(screenSize.x | 0); // int screenWidth = dis.readUnsignedShort();
+    chunk.writeUint16BE(screenSize.y | 0); // int screenHeight = dis.readUnsignedShort();
+    chunk.writeUint16BE(pressure); //  Binary.u16FixedPointToFloat(dis.readShort()); 
+    chunk.writeUint32BE(MotionEventMap.BUTTON_PRIMARY); // int actionButton = dis.readInt();
+    if (this.major >= 2) {
+      chunk.writeUint32BE(MotionEventMap.BUTTON_PRIMARY); // int buttons = dis.readInt();
+    }
     assert(this.controlSocket);
-    await this.controlSocket.write(chunk.buffer);
+    try {
+      await this.controlSocket.write(chunk.buffer);
+      return true;
+    } catch (e) {
+      debug(`injectTouchEvent failed:`, e);
+      return false;
+      // if the device is not connected anymore, we can not write to the controlSocket
+    }
     // console.log(chunk.buffer.toString('hex'))
   }
 

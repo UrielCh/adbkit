@@ -53,7 +53,30 @@ export const OrientationMap = {
 
 export type Orientation = typeof OrientationMap[keyof typeof OrientationMap];
 
+// for C code
+// export const sc_control_msg_type = {
+//     SC_CONTROL_MSG_TYPE_INJECT_KEYCODE : 0,
+//     SC_CONTROL_MSG_TYPE_INJECT_TEXT : 1,
+//     SC_CONTROL_MSG_TYPE_INJECT_TOUCH_EVENT : 2,
+//     SC_CONTROL_MSG_TYPE_INJECT_SCROLL_EVENT : 3,
+//     SC_CONTROL_MSG_TYPE_BACK_OR_SCREEN_ON : 4,
+//     SC_CONTROL_MSG_TYPE_EXPAND_NOTIFICATION_PANEL : 5,
+//     SC_CONTROL_MSG_TYPE_EXPAND_SETTINGS_PANEL : 6,
+//     SC_CONTROL_MSG_TYPE_COLLAPSE_PANELS : 7,
+//     SC_CONTROL_MSG_TYPE_GET_CLIPBOARD : 8,
+//     SC_CONTROL_MSG_TYPE_SET_CLIPBOARD : 9,
+//     SC_CONTROL_MSG_TYPE_SET_SCREEN_POWER_MODE : 10,
+//     SC_CONTROL_MSG_TYPE_ROTATE_DEVICE : 11,
+//     SC_CONTROL_MSG_TYPE_UHID_CREATE : 12,
+//     SC_CONTROL_MSG_TYPE_UHID_INPUT : 13,
+//     SC_CONTROL_MSG_TYPE_UHID_DESTROY : 14,
+//     SC_CONTROL_MSG_TYPE_OPEN_HARD_KEYBOARD_SETTINGS : 15,
+// } as const;
+
 // Lock screen orientation
+/**
+ * imported from ./server/src/main/java/com/genymobile/scrcpy/control/ControlMessage.java
+ */
 export const ControlMessageMap = {
     TYPE_INJECT_KEYCODE : 0,
     TYPE_INJECT_TEXT : 1,
@@ -67,7 +90,13 @@ export const ControlMessageMap = {
     TYPE_SET_CLIPBOARD : 9,
     TYPE_SET_SCREEN_POWER_MODE : 10,
     TYPE_ROTATE_DEVICE : 11,
+    // NEW
+    TYPE_UHID_CREATE: 12,
+    TYPE_UHID_INPUT: 13,
+    TYPE_UHID_DESTROY: 14,
+    TYPE_OPEN_HARD_KEYBOARD_SETTINGS: 15,
 } as const;
+
 export type ControlMessage = typeof ControlMessageMap[keyof typeof ControlMessageMap];
 
 export const KeyEventMetaMap = {
@@ -79,3 +108,13 @@ export const KeyEventMetaMap = {
     META_META_LEFT_ON :  0x00020000,
 } as const;
 export type KeyEventMeta = typeof KeyEventMetaMap[keyof typeof KeyEventMetaMap];
+
+export const codexMap = {
+   H264 : 0x68323634, // "h264" in ASCII
+   H265 : 0x68323635, // "h265" in ASCII
+   AV1  : 0x00617631, // "av1" in ASCII
+   OPUS : 0x6f707573, // "opus" in ASCII
+   AAC  : 0x00616163, // "aac in ASCII"
+   RAW  : 0x00726177, // "raw" i
+} as const;
+export type CodecId = typeof codexMap[keyof typeof codexMap];
