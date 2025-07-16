@@ -1,16 +1,19 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import fs from 'node:fs';
 import path from 'node:path';
-
-import adb, { DeviceClient, KeyCodesMap, Utils, MotionEventMap, Client, Minicap, Scrcpy, VideoStreamFramePacket } from '../src';
-import { IpRouteEntry, IpRuleEntry } from '../src/adb/command/host-transport';
-import Parser from '../src/adb/parser';
-import { KeyEventMap } from '../src/adb/thirdparty/STFService/STFServiceModel';
-import ThirdUtils from '../src/adb/thirdparty/ThirdUtils';
-import pc from 'picocolors';
-
 import { fileURLToPath } from 'node:url';
 import { dirname } from 'node:path';
+import { assert } from 'node:console';
+
+import pc from 'picocolors';
+
+import adb, { DeviceClient, KeyCodesMap, Utils, MotionEventMap, Client, Minicap, Scrcpy, VideoStreamFramePacket } from '../src/index.js';
+import { IpRouteEntry, IpRuleEntry } from '../src/adb/command/host-transport/index.js';
+import Parser from '../src/adb/parser.js';
+import { KeyEventMap } from '../src/adb/thirdparty/STFService/STFServiceModel.js';
+import ThirdUtils from '../src/adb/thirdparty/ThirdUtils.js';
+
+// import './patchEventEmitter.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -82,7 +85,10 @@ const testScrcpy = async (deviceClient: DeviceClient) => {
   }
 }
 
-
+/**
+ * Works with V2.7
+ * @param deviceClient 
+ */
 const testScrcpyTextInput = async (deviceClient: DeviceClient) => {
   const scrcpy = deviceClient.scrcpy({});
   try {
@@ -113,6 +119,15 @@ const testScrcpyswap = async (deviceClient: DeviceClient) => {
     const pointerId = BigInt('0xFFFFFFFFFFFFFFFF');
     await scrcpy.start();
     console.log(`Started`);
+    scrcpy.on("error", (e) => {
+      console.error('scrcpy error', e);
+    });
+    scrcpy.on("config", (meta) => {
+      console.log('scrcpy config', meta);
+    });
+    scrcpy.on("frame", (data) => {
+      console.log(`scrcpy emit hit first frame isKeyframe: ${data.keyframe}`);
+    });
     await Utils.delay(100);
     const width = await scrcpy.width;
     const height = await scrcpy.height;
@@ -138,11 +153,12 @@ const testScrcpyswap = async (deviceClient: DeviceClient) => {
 }
 
 /** test the 2 ways to capture Error in atrcpy */
+// encoderName had been replaced by list_encoders in V 2.0
 const testScrcpyEncoder = async (deviceClient: DeviceClient) => {
   const scrcpy = deviceClient.scrcpy({ encoderName: '_' });
   try {
     let nbError = 0;
-    scrcpy.on('error', (e) => { nbError++; console.log(e) });
+    scrcpy.on('error', (e) => { nbError++; console.error("scrcpy Error:", e) });
     // scrcpy.on('error', (e) => { nbError++; /* get Error message line per line */ });
     await scrcpy.start();
     const error = await scrcpy.onTermination;
@@ -199,7 +215,7 @@ const stressMinicap = async (deviceClient: DeviceClient) => {
   console.log("closeing", closeing)
 }
 
-const stressScrCpy = async (deviceClient: DeviceClient) => {
+const stressTestScrCpy = async (deviceClient: DeviceClient) => {
   // const scrcpy = deviceClient.scrcpy({port: 8099, maxFps: 1, maxSize: 320});
   const scrcpys: Scrcpy[] = [];
   for (let i = 0; i < 15; i++) {
@@ -211,16 +227,21 @@ const stressScrCpy = async (deviceClient: DeviceClient) => {
       scrcpy.once('frame', (data) => {
         console.log(`${pc.magenta('scrcpy')} emit hit first frame isKeyframe: ${data.keyframe} from #${pass}`);
       })
+      scrcpy.once('error', (data) => {
+        console.log(`${pc.red('scrcpy')} emit hit error: ${data} from #${pass}`);
+      })
+
       await scrcpy.start();
       await scrcpy.firstFrame;
       console.log(`${pc.magenta('scrcpy')} Should had emit hit first frame isKeyframe from #${pass}`);
+      await Utils.delay(500);
     } catch (e) {
-      console.error(`start minicap ${pass} failed ${(e as Error).message}`);
+      console.error(`Start Scrcpy PASS:${pass} failed ${(e as Error).message}`);
     }
   }
   // await Util.delay(1000);
   const closeing = scrcpys.map(m => m.stop());
-  console.log("closeing", closeing)
+  console.log("closing", closeing)
 }
 
 
@@ -431,7 +452,10 @@ const testRouting = async (deviceClient: DeviceClient) => {
   //for (const rule of rules2)
   //  console.log(rule.toStirng());
 }
-
+/**
+ * 
+ * @param deviceClient dump an XML file with the current UI
+ */
 const testUiautomator = async (deviceClient: DeviceClient) => {
   const duplex = await deviceClient.shell('uiautomator dump /dev/tty');
   const result = await new Parser(duplex).readAll();
@@ -448,6 +472,41 @@ const testTracker = async (adbClient: Client) => {
   tracker.end();
 }
 
+async function testBasic(deviceClient: DeviceClient) {
+  const ips = await deviceClient.getIpAddress();
+  assert(ips.length > 0, "No IP address found");
+  // console.log(ips);
+  let pkgs = await deviceClient.listPackages();
+  pkgs = pkgs.filter(p => p.name.endsWith('.chrome'))
+  assert(pkgs.length > 0, "No chrome package found");
+  // if (pkgs.length) {
+  //   console.log(`Pkg: ${pkgs[0].name}`);
+  //   const info = await pkgs[0].getInfo();
+  //   console.log(`versionName: ${info.versionName}`);
+  //   console.log(`dataDir: ${info.dataDir}`);
+  //   console.log(`primaryCpuAbi: ${info.primaryCpuAbi}`);
+  //   console.log(`lastUpdateTime: ${info.lastUpdateTime}`);
+  // }
+  // await deviceClient.clear('com.android.chrome');
+
+  const ret1 = await deviceClient.stat('/');
+  assert((0o40000 & ret1.mode) === 0o40000, 'isDirectory');
+  assert(ret1.isDirectory(), 'isDirectory');
+  assert(ret1.size > 0, 'size');
+  // console.log(ret1);
+  const ret2 = await deviceClient.stat64('/system');
+  assert((0o40000n & ret2.mode) === 0o40000n, 'isDirectory');
+  assert(ret2.isDirectory(), 'isDirectory');
+  assert(ret2.size > 0, 'size');
+
+  // console.log(ret2.ctime);
+  // console.log(ret2.isDirectory());
+
+  const list = await deviceClient.readdir64('/');
+  assert(list.length, 'can list /');
+  // console.log(list.map(a=>a.toString()).join('\n'));
+}
+
 const main = async () => {
   // process.env.DEBUG = '*';
   const adbClient = adb.createClient();
@@ -459,40 +518,26 @@ const main = async () => {
   }
 
   const deviceClient = devices[0].getClient();
-  //const ips = await deviceClient.getIpAddress();
-  //console.log(ips);
-  // let pkgs = await deviceClient.listPackages();
-  // pkgs = pkgs.filter(p => p.name.endsWith('.chrome'))
-  // if (pkgs.length) {
-  //   console.log(`Pkg: ${pkgs[0].name}`);
-  //   const info = await pkgs[0].getInfo();
-  //   console.log(`versionName: ${info.versionName}`);
-  //   console.log(`dataDir: ${info.dataDir}`);
-  //   console.log(`primaryCpuAbi: ${info.primaryCpuAbi}`);
-  //   console.log(`lastUpdateTime: ${info.lastUpdateTime}`);
-  // }
-  // await deviceClient.clear('com.android.chrome');
 
-  // const ret1 = await deviceClient.stat('/');
-  // console.log(ret1);
-  // const ret2 = await deviceClient.stat64('/system');
-  // console.log(ret2.ctime);
-  // console.log(ret2.isDirectory());
+  // await testBasic(deviceClient);
 
-  // const list = await deviceClient.readdir64('/');
-  // console.log(list.map(a=>a.toString()).join('\n'));
   // await deviceClient.extra.usbTethering(true);
   // await deviceClient.extra.airPlainMode(false, 300);
   // await deviceClient.extra.airPlainMode(true);
-  // await testScrcpyEncoder(deviceClient);
-  await testScrcpy(deviceClient);
+
+  // await testScrcpyEncoder(deviceClient); // removed in V2.0
+  // await testScrcpy(deviceClient);
   // await testUiautomator(deviceClient);
   // await testScrcpyTextInput(deviceClient);
   // await testScrcpyswap(deviceClient);
+  //
   // await testMinicap(deviceClient);
   // await stressMinicap(deviceClient);
-  // await stressScrCpy(deviceClient);
-  // await mtestSTFService(deviceClient);
+
+  // process.stdin.resume();
+  await stressTestScrCpy(deviceClient);
+
+  // await testSTFService(deviceClient);
   // await testService(deviceClient);
   // await extractFramesStream(deviceClient, 'OMX.qcom.video.encoder.avc');
   // await extractFramesStream(deviceClient, 'c2.android.avc.encoder');
@@ -504,4 +549,16 @@ const main = async () => {
   console.log('all Done');
 }
 
-main().catch(e => console.error(e));
+process.on('unhandledRejection', (reason, promise) => {
+  debugger;
+  console.error('Unhandled Rejection at:', promise, 'reason:', reason);
+});
+
+process.on('exit', () => console.log('Processus en cours de fermeture'));
+process.on('SIGINT', () => console.log('SIGINT reçu'));
+process.on('SIGTERM', () => console.log('SIGTERM reçu'));
+
+
+main().catch(e => console.error("ERROR", e)).finally(() => {
+  console.log('Processus terminé');
+});
