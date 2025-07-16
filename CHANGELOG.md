@@ -1,5 +1,9 @@
 # CHANGELOG
 
+## V5.1.7 (2025-07-17)
+* stress test scrcpy
+* improve scrcpy-server V2+ support
+
 ## V5.1.6 (2025-07-07)
 * update scrcpy-server from 1.24 to 1.25
 * update scrcpy-server from 1.25 to 2.0
