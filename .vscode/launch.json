@@ -33,6 +33,7 @@
             "internalConsoleOptions": "openOnSessionStart",
             "skipFiles": ["<node_internals>/**"],
             "env": {
+              "DEBUG__ALL": "*",
               "DEBUG": "adb:minicap, adb:scrcpy",
               "DEBUG_COLORS": "1"
             }

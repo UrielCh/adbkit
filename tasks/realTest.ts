@@ -224,17 +224,18 @@ const stressTestScrCpy = async (deviceClient: DeviceClient) => {
     await Utils.delay(100);
     scrcpys.push(scrcpy)
     try {
+      scrcpy.on("error", (e) => {
+        console.error(`scrcpy #${pass} error`, e);
+      });
       scrcpy.once('frame', (data) => {
         console.log(`${pc.magenta('scrcpy')} emit hit first frame isKeyframe: ${data.keyframe} from #${pass}`);
       })
       scrcpy.once('error', (data) => {
         console.log(`${pc.red('scrcpy')} emit hit error: ${data} from #${pass}`);
       })
-
       await scrcpy.start();
       await scrcpy.firstFrame;
       console.log(`${pc.magenta('scrcpy')} Should had emit hit first frame isKeyframe from #${pass}`);
-      await Utils.delay(500);
     } catch (e) {
       console.error(`Start Scrcpy PASS:${pass} failed ${(e as Error).message}`);
     }
@@ -535,7 +536,7 @@ const main = async () => {
   // await stressMinicap(deviceClient);
 
   // process.stdin.resume();
-  await stressTestScrCpy(deviceClient);
+  // await stressTestScrCpy(deviceClient);
 
   // await testSTFService(deviceClient);
   // await testService(deviceClient);
@@ -554,10 +555,9 @@ process.on('unhandledRejection', (reason, promise) => {
   console.error('Unhandled Rejection at:', promise, 'reason:', reason);
 });
 
-process.on('exit', () => console.log('Processus en cours de fermeture'));
+process.on('exit', (code) => console.log('Processus is closing, exit code:', code));
 process.on('SIGINT', () => console.log('SIGINT reçu'));
 process.on('SIGTERM', () => console.log('SIGTERM reçu'));
-
 
 main().catch(e => console.error("ERROR", e)).finally(() => {
   console.log('Processus terminé');

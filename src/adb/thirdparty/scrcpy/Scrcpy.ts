@@ -221,9 +221,14 @@ export default class Scrcpy extends EventEmitter {
     }
   }
 
-  private _setFatalError(msg: string) {
+  private _setFatalError(msg: string | Error) {
+    // console.error(`_setFatalError. Scrcpy fatal error:`, msg);
     if (this.setFatalError) {
-      this.setFatalError(msg);
+      if (msg instanceof Error) {
+         this.setFatalError(msg.message + '\n' + msg.stack);
+      } else {
+        this.setFatalError(msg);
+      }
       this.setFatalError = undefined;
     }
   }
@@ -598,6 +603,7 @@ export default class Scrcpy extends EventEmitter {
     let codec = "H264";
     // let header: Uint8Array | undefined;
     if (this.major >= 2) {
+          await Utils.waitforReadable(this.videoSocket, 0, 'videoSocket Codec header');
           const frameMeta = this.videoSocket.stream.read(12) as Buffer;
           const codecId = frameMeta.readUInt32BE(0);
           // Read width (4 bytes)
@@ -638,6 +644,8 @@ export default class Scrcpy extends EventEmitter {
       await Utils.waitforReadable(this.videoSocket, 0, 'videoSocket packet size');
       let len: number | undefined = undefined;
       if (this.config.sendFrameMeta) {
+        if (!this.videoSocket)
+          break;
         const frameMeta = this.videoSocket.stream.read(12) as Buffer;
         if (!frameMeta) {
           // regular end condition
