@@ -37,7 +37,24 @@
               "DEBUG": "adb:minicap, adb:scrcpy",
               "DEBUG_COLORS": "1"
             }
+        },
+
+        {
+            "name": "clickTest (tsx)",
+            "type": "node",
+            "request": "launch",
+            "runtimeExecutable": "${workspaceFolder}/node_modules/.bin/tsx",
+            "args": ["./tasks/clickTest.ts"],
+            "cwd": "${workspaceFolder}",
+            "internalConsoleOptions": "openOnSessionStart",
+            "skipFiles": ["<node_internals>/**"],
+            "env": {
+              "DEBUG__ALL": "*",
+              "DEBUG": "adb:minicap, adb:scrcpy",
+              "DEBUG_COLORS": "1"
+            }
         },       
+
         {
             "name": "Mocha Tests",
             "cwd": "${workspaceFolder}",
