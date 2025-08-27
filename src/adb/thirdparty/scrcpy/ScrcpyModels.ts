@@ -97,7 +97,7 @@ export interface H264Configuration {
     croppedWidth: number;
     croppedHeight: number;
 
-    data: Uint8Array;
+    data: Uint8Array; // the original data use to p[opulate this structure]
 }
 
 

@@ -47,6 +47,10 @@ const PACKET_FLAG_KEY_FRAME = BigInt(1) << BigInt(62);
  */
 interface IEmissions {
   frame: (data: VideoStreamFramePacket) => void
+  /**
+   * since Scrcpy v2.0 an extra event is emitted with the codec, width and height
+   */
+  codec: (data: {codec: string, width: number, height: number}) => void
   config: (data: H264Configuration) => void
   raw: (data: Buffer) => void
   error: (error: Error) => void
@@ -281,10 +285,8 @@ export default class Scrcpy extends EventEmitter {
     args.push('app_process');
     args.push('/');
     args.push('com.genymobile.scrcpy.Server');
-    const versionStr = this.strVersion;
-
     // first args is the expected version number
-    if (versionStr === "02.02.00") {
+    if (this.strVersion === "02.02.00") {
       // V2.2 is the only version that expect a v prefix
       args.push("v" + this.config.version);
     } else {
@@ -318,7 +320,7 @@ export default class Scrcpy extends EventEmitter {
         //   args.push(`no_control=${this.config.noControl}`);
       }
 
-      if (versionStr >= "02.04.00") {
+      if (this.strVersion >= "02.04.00") {
         args.push(`video_source=display`);
       }
 
@@ -349,7 +351,7 @@ export default class Scrcpy extends EventEmitter {
       if (clipboardAutosync !== undefined)
         args.push(`clipboard_autosync=${clipboardAutosync}`); // default is True
       //if (this.config.version >= 22) {
-      if (versionStr >= "01.22.00") {
+      if (this.strVersion >= "01.22.00") {
           const {
           downsizeOnError, sendDeviceMeta, sendDummyByte, rawVideoStream
         } = this.config;
@@ -362,7 +364,7 @@ export default class Scrcpy extends EventEmitter {
         if (rawVideoStream !== undefined)
           args.push(`raw_video_stream=${rawVideoStream}`);
       }
-      if (versionStr >= "01.22.00") {
+      if (this.strVersion >= "01.22.00") {
         const { cleanup } = this.config;
         if (cleanup !== undefined)
           args.push(`raw_video_stream=${cleanup}`);
@@ -574,7 +576,6 @@ export default class Scrcpy extends EventEmitter {
    * get resolve once capture stop
    */
   private async startStreamWithMeta(): Promise<void> {
-    const strVersion = this.strVersion;
     assert(this.videoSocket);
     this.videoSocket.stream.pause();
     await Utils.waitforReadable(this.videoSocket, 0, 'videoSocket header');
@@ -635,6 +636,8 @@ export default class Scrcpy extends EventEmitter {
           this.setCodec(codec);
           this.setWidth(width);
           this.setHeight(height);
+
+          this.emit("codec", {codec, width, height});
     }
 
     let pts = BigInt(0);// Buffer.alloc(0);
