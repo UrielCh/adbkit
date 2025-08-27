@@ -772,7 +772,15 @@ export default class Scrcpy extends EventEmitter {
    * see parseInjectTouchEvent()
    */
   // usb.data_len == 28
-  async injectTouchEvent(action: MotionEvent, pointerId: bigint, position: Point, screenSize: Point, pressure?: number): Promise<boolean> {
+  async injectTouchEvent(
+    action: MotionEvent,
+    pointerId: bigint,
+    position: Point,
+    screenSize: Point,
+    pressure: number = MotionEventMap.ACTION_UP,
+    actionButton: number = MotionEventMap.BUTTON_PRIMARY,
+    buttons: number = MotionEventMap.BUTTON_PRIMARY
+  ): Promise<boolean> {
     let size = 28;
     if (this.major >= 2) {
       size += 4;
@@ -797,10 +805,15 @@ export default class Scrcpy extends EventEmitter {
     chunk.writeUint16BE(screenSize.x | 0); // int screenWidth = dis.readUnsignedShort();
     chunk.writeUint16BE(screenSize.y | 0); // int screenHeight = dis.readUnsignedShort();
     chunk.writeUint16BE(pressure); //  Binary.u16FixedPointToFloat(dis.readShort()); 
-    chunk.writeUint32BE(MotionEventMap.BUTTON_PRIMARY); // int actionButton = dis.readInt();
+
     if (this.major >= 2) {
-      chunk.writeUint32BE(MotionEventMap.BUTTON_PRIMARY); // int buttons = dis.readInt();
+      chunk.writeUint32BE(actionButton);   // New: specific button for this action
     }
+    chunk.writeUint32BE(buttons);        // Old: just buttons state
+    // chunk.writeUint32BE(MotionEventMap.BUTTON_PRIMARY); // int actionButton = dis.readInt();
+    // if (this.major >= 2) {
+    //   chunk.writeUint32BE(MotionEventMap.BUTTON_PRIMARY); // int buttons = dis.readInt();
+    // }
     assert(this.controlSocket);
     try {
       await this.controlSocket.write(chunk.buffer);
