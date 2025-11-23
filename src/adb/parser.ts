@@ -60,7 +60,7 @@ export default class Parser {
   }
 
   public async readAll(): Promise<Buffer> {
-    let all = Buffer.alloc(0);
+    let all: Buffer = Buffer.alloc(0);
     const stream = this.stream;
 
     let tryRead: () => void;
@@ -262,7 +262,7 @@ export default class Parser {
    * @returns buffer wothout delimiter
    */
   public async readUntil(code: number): Promise<Buffer> {
-    let skipped = Buffer.alloc(0);
+    let skipped: Buffer = Buffer.alloc(0);
     for (; ;) {
       const chunk = await this.readBytes(1);
       if ((chunk as unknown as Uint8Array)[0] === code) {
