@@ -106,7 +106,6 @@ export default class StartActivityCommand extends Command<boolean> {
     let sugared: Extra = {
       key: key,
       type: 'null',
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       value: undefined,
     };
     if (value === null) {
@@ -130,8 +129,7 @@ export default class StartActivityCommand extends Command<boolean> {
           sugared.value = value;
           break;
         case 'object':
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          sugared = value as any as Extra;
+          sugared = value as unknown as Extra;
           sugared.key = key;
       }
     }

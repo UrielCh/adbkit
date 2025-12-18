@@ -32,27 +32,27 @@ export interface ENOENT extends Error {
  * error code from STA2
  */
 export const AdbSyncStatErrorCodeMap = {
-  SUCCESS : 0,
-  EACCES : 13,
-  EEXIST : 17,
-  EFAULT : 14,
-  EFBIG : 27,
-  EINTR : 4,
-  EINVAL : 22,
-  EIO : 5,
-  EISDIR : 21,
-  ELOOP : 40,
-  EMFILE : 24,
-  ENAMETOOLONG : 36,
-  ENFILE : 23,
-  ENOENT : 2,
-  ENOMEM : 12,
-  ENOSPC : 28,
-  ENOTDIR : 20,
-  EOVERFLOW : 75,
-  EPERM : 1,
-  EROFS : 30,
-  ETXTBSY : 26,
+  SUCCESS: 0,
+  EACCES: 13,
+  EEXIST: 17,
+  EFAULT: 14,
+  EFBIG: 27,
+  EINTR: 4,
+  EINVAL: 22,
+  EIO: 5,
+  EISDIR: 21,
+  ELOOP: 40,
+  EMFILE: 24,
+  ENAMETOOLONG: 36,
+  ENFILE: 23,
+  ENOENT: 2,
+  ENOMEM: 12,
+  ENOSPC: 28,
+  ENOTDIR: 20,
+  EOVERFLOW: 75,
+  EPERM: 1,
+  EROFS: 30,
+  ETXTBSY: 26,
 } as const;
 // export type AdbSyncStatErrorCodeNames = keyof typeof AdbSyncStatErrorCodeMap;
 export type AdbSyncStatErrorCode = typeof AdbSyncStatErrorCodeMap[keyof typeof AdbSyncStatErrorCodeMap];
@@ -203,7 +203,7 @@ export default class Sync extends EventEmitter {
    * @param mode Optional. The mode of the file. Defaults to `0644`.
    * @returns A `PushTransfer` instance. See below for details.
    */
-  public async push(contents: string | Readable, path: string, mode?: number, streamName = 'stream'): Promise<PushTransfer> {
+  public push(contents: string | Readable, path: string, mode?: number, streamName = 'stream'): PushTransfer {
     if (typeof contents === 'string') {
       return this.pushFile(contents, path, mode);
     } else {
@@ -218,17 +218,21 @@ export default class Sync extends EventEmitter {
    * @param mode See `sync.push()` for details.
    * @returns See `sync.push()` for details.
    */
-  public async pushFile(file: string, path: string, mode = DEFAULT_CHMOD): Promise<PushTransfer> {
-    // mode || (mode = DEFAULT_CHMOD);
-    try {
-      const stats = await fs.promises.stat(file);
-      if (stats.isDirectory())
-        throw Error(`can not push directory "${file}" only files are supported for now.`);
-    } catch (e) {
-      throw Error(`can not read file "${file}" Err: ${JSON.stringify(e)}`);
-    }
-    const stream = fs.createReadStream(file);
-    return this.pushStream(stream, path, mode, file);
+  public pushFile(file: string, path: string, mode = DEFAULT_CHMOD): PushTransfer {
+    const transfer = new PushTransfer();
+    fs.promises.stat(file)
+      .then((stats) => {
+        if (stats.isDirectory()) {
+          transfer.emit('error', new Error(`can not push directory "${file}" only files are supported for now.`));
+          return;
+        }
+        const stream = fs.createReadStream(file);
+        return this._pushStream(transfer, stream, path, mode, file);
+      })
+      .catch((e) => {
+        transfer.emit('error', new Error(`can not read file "${file}" Err: ${JSON.stringify(e)}`));
+      });
+    return transfer;
   }
 
   /**
@@ -239,10 +243,20 @@ export default class Sync extends EventEmitter {
    * @param mode See `sync.push()` for details.
    * @returns See `sync.push()` for details.
    */
-  public async pushStream(stream: Readable, path: string, mode = DEFAULT_CHMOD, streamName = 'stream'): Promise<PushTransfer> {
+  public pushStream(stream: Readable, path: string, mode = DEFAULT_CHMOD, streamName = 'stream'): PushTransfer {
+    const transfer = new PushTransfer();
+    this._pushStream(transfer, stream, path, mode, streamName);
+    return transfer;
+  }
+
+  private async _pushStream(transfer: PushTransfer, stream: Readable, path: string, mode = DEFAULT_CHMOD, streamName = 'stream'): Promise<void> {
     mode |= Stats.S_IFREG;
-    await this.sendCommandWithArg(Protocol.SEND, `${path},${mode}`);
-    return this._writeData(stream, Math.floor(Date.now() / 1000), streamName);
+    try {
+      await this.sendCommandWithArg(Protocol.SEND, `${path},${mode}`);
+      await this._writeData(transfer, stream, Math.floor(Date.now() / 1000), streamName);
+    } catch (err) {
+      transfer.emit('error', err as Error);
+    }
   }
 
   /**
@@ -274,8 +288,7 @@ export default class Sync extends EventEmitter {
     return Sync.temp(path);
   }
 
-  private async _writeData(stream: Readable, timeStamp: number, streamName: string): Promise<PushTransfer> {
-    const transfer = new PushTransfer();
+  private async _writeData(transfer: PushTransfer, stream: Readable, timeStamp: number, streamName: string): Promise<PushTransfer> {
     stream.once('error', (err) => {
       throw new Error(`Source Error: ${err.message} while transfering ${streamName}`)
     });
@@ -367,7 +380,6 @@ export default class Sync extends EventEmitter {
     return this.connection.write(payload);
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   private enoent(path: string): Promise<any> {
     const err: ENOENT = new Error(`ENOENT, no such file or directory '${path}'`) as ENOENT;
     err.errno = 34;

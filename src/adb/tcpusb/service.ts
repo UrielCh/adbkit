@@ -76,7 +76,7 @@ export default class Service extends EventEmitter {
       // may fail.
       this.socket.write(Packet.assemble(Packet.A_CLSE, localId, this.remoteId));
     } catch (error) {
-      // ignore error
+      this.emit('error', error as Error);
     }
     // Let it go
     this.transport = undefined;
@@ -104,8 +104,8 @@ export default class Service extends EventEmitter {
           throw new Error(`Unexpected packet ${packet.command}`);
       }
       return true;
-    } catch (err) {
-      this.emit('error', err as Error);
+    } catch (error) {
+      this.emit('error', error as Error);
       this.end();
       return false;
     }

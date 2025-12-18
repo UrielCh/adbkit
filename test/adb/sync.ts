@@ -3,6 +3,7 @@ import Stream from 'node:stream';
 import Sinon from 'sinon';
 import { use, expect, assert } from 'chai';
 import simonChai from 'sinon-chai';
+import { fileURLToPath } from 'node:url';
 import Adb, { Client } from '../../src/index.js';
 import Sync, { ENOENT } from '../../src/adb/sync.js';
 import Stats from '../../src/adb/sync/stats.js';
@@ -12,6 +13,8 @@ import PullTransfer from '../../src/adb/sync/pulltransfer.js';
 import MockConnection from '../mock/connection.js';
 import Device from '../../src/models/Device.js';
 use(simonChai);
+
+const __filename = fileURLToPath(import.meta.url);
 
 // This test suite is a bit special in that it requires a connected Android
 // device (or many devices). All will be tested.
@@ -73,7 +76,7 @@ describe('Sync', () => {
             // const stream = new Stream.PassThrough();
             Sinon.stub(sync, 'pushFile');
             // __filename
-            sync.push(import.meta.url, 'foo');
+            sync.push(__filename, 'foo');
             return expect(sync.pushFile).to.have.been.called;
         });
         // now return a promise

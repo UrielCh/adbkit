@@ -176,63 +176,63 @@ export default class Socket extends EventEmitter {
     debug('I:A_AUTH', packet);
     switch (packet.arg0) {
       case AUTH_SIGNATURE:
-        {
-          // Store first signature, ignore the rest
-          if (packet.data) debug(`Received signature '${packet.data.toString('base64')}'`);
-          if (!this.signature) {
-            this.signature = packet.data;
-          }
-          if (this.options.knownPublicKeys && this.options.knownPublicKeys.length > 0 && this.token && this.signature) {
-            const digest = this.token.toString('binary');
-            const sig = this.signature.toString('binary');
-            for (const key of this.options.knownPublicKeys) {
-              // If signature matches one of the known public keys, we can safely accept the connection
-              if (key.verify(digest, sig)) {
-                const deviceId = await this._deviceId()
-                this.authorized = true;
-                debug('O:A_CNXN');
-                return this.write(Packet.assemble(Packet.A_CNXN, Packet.swap32(this.version), this.maxPayload, deviceId));
-              }
-            }
-          }
-
-          debug('O:A_AUTH');
-          const b = this.write(Packet.assemble(Packet.A_AUTH, AUTH_TOKEN, 0, this.token));
-          return b;
+      {
+        // Store first signature, ignore the rest
+        if (packet.data) debug(`Received signature '${packet.data.toString('base64')}'`);
+        if (!this.signature) {
+          this.signature = packet.data;
         }
-      case AUTH_RSAPUBLICKEY:
-        {
-
-          if (!this.signature) {
-            throw new Socket.AuthError('Public key sent before signature');
-          }
-          if (!packet.data || (packet.data as unknown as Uint8Array).length < 2) {
-            throw new Socket.AuthError('Empty RSA public key');
-          }
-          debug(`Received RSA public key '${packet.data.toString('base64')}'`);
-          const key = await Auth.parsePublicKey(this._skipNull(packet.data).toString());
-          if (!this.token)
-            throw Error('missing token in socket:_handleAuthPacket')
+        if (this.options.knownPublicKeys && this.options.knownPublicKeys.length > 0 && this.token && this.signature) {
           const digest = this.token.toString('binary');
           const sig = this.signature.toString('binary');
-          if (!key.verify(digest, sig)) {
-            debug('Signature mismatch');
-            throw new Socket.AuthError('Signature mismatch');
-          }
-          debug('Signature verified');
-          if (this.options.auth) {
-            try {
-              await this.options.auth(key)
-            } catch (e) {
-              debug('Connection rejected by user-defined auth handler', e);
-              throw new Socket.AuthError('Rejected by user-defined handler');
+          for (const key of this.options.knownPublicKeys) {
+            // If signature matches one of the known public keys, we can safely accept the connection
+            if (key.verify(digest, sig)) {
+              const deviceId = await this._deviceId()
+              this.authorized = true;
+              debug('O:A_CNXN');
+              return this.write(Packet.assemble(Packet.A_CNXN, Packet.swap32(this.version), this.maxPayload, deviceId));
             }
           }
-          const id = await this._deviceId();
-          this.authorized = true;
-          debug('O:A_CNXN');
-          return this.write(Packet.assemble(Packet.A_CNXN, Packet.swap32(this.version), this.maxPayload, id));
         }
+
+        debug('O:A_AUTH');
+        const b = this.write(Packet.assemble(Packet.A_AUTH, AUTH_TOKEN, 0, this.token));
+        return b;
+      }
+      case AUTH_RSAPUBLICKEY:
+      {
+
+        if (!this.signature) {
+          throw new Socket.AuthError('Public key sent before signature');
+        }
+        if (!packet.data || (packet.data as unknown as Uint8Array).length < 2) {
+          throw new Socket.AuthError('Empty RSA public key');
+        }
+        debug(`Received RSA public key '${packet.data.toString('base64')}'`);
+        const key = await Auth.parsePublicKey(this._skipNull(packet.data).toString());
+        if (!this.token)
+          throw Error('missing token in socket:_handleAuthPacket')
+        const digest = this.token.toString('binary');
+        const sig = this.signature.toString('binary');
+        if (!key.verify(digest, sig)) {
+          debug('Signature mismatch');
+          throw new Socket.AuthError('Signature mismatch');
+        }
+        debug('Signature verified');
+        if (this.options.auth) {
+          try {
+            await this.options.auth(key)
+          } catch (e) {
+            debug('Connection rejected by user-defined auth handler', e);
+            throw new Socket.AuthError('Rejected by user-defined handler');
+          }
+        }
+        const id = await this._deviceId();
+        this.authorized = true;
+        debug('O:A_CNXN');
+        return this.write(Packet.assemble(Packet.A_CNXN, Packet.swap32(this.version), this.maxPayload, id));
+      }
       default:
         throw new Error(`Unknown authentication method ${packet.arg0}`);
     }

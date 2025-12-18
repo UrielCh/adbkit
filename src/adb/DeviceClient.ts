@@ -233,8 +233,7 @@ export default class DeviceClient {
   }
 
   /**
-   * exec a service call command and return Parcel responce Data as a Buffer
-   *
+   * exec a service call command and return Parcel response
    * @returns a PsEntry array
    */
   public async callServiceRaw(serviceName: hostCmd.KnownServices | string, code: number | string, ...args: Array<ServiceCallArg>): Promise<ParcelReader> {
@@ -298,7 +297,7 @@ export default class DeviceClient {
       try {
         if (await this.forward(`tcp:${preferedPort}`, remote))
           return preferedPort;
-      } catch (_e) {
+      } catch {
         // need a new port
       }
     const freePort = await getPort();
@@ -727,7 +726,7 @@ export default class DeviceClient {
    */
   public async install(apk: string | ReadStream): Promise<boolean> {
     const temp = Sync.temp(typeof apk === 'string' ? apk : '_stream.apk');
-    const transfer = await this.push(apk, temp);
+    const transfer = this.push(apk, temp);
     await transfer.waitForEnd();
     const value = await this.installRemote(temp);
     return value
@@ -1000,10 +999,19 @@ export default class DeviceClient {
    * };
    * ```
    */
-  public async push(contents: string | ReadStream, path: string, mode?: number): Promise<PushTransfer> {
-    const sync = await this.syncService();
-    const transfert = await sync.push(contents, path, mode);
-    transfert.waitForEnd().finally(() => sync.end())
+  public push(contents: string | ReadStream, path: string, mode?: number): PushTransfer {
+    const transfert = new PushTransfer();
+    this.syncService().then((sync) => {
+      const subTransfer = sync.push(contents, path, mode);
+      subTransfer.on('progress', (stats) => transfert.emit('progress', stats));
+      subTransfer.on('error', (err) => transfert.emit('error', err));
+      subTransfer.on('end', () => {
+        transfert.end();
+        sync.end();
+      });
+    }).catch((err) => {
+      transfert.emit('error', err);
+    });
     return transfert;
   }
 

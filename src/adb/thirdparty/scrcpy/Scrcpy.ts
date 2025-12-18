@@ -147,14 +147,14 @@ export default class Scrcpy extends EventEmitter {
     this._onTermination = new Promise<string>((resolve) => this.setFatalError = resolve);
     this._firstFrame = new Promise<void>((resolve) => this.setFirstFrame = resolve);
 
-     let versionSplit = this.config.version.split(".").map(Number);
-     if (versionSplit.length === 2) {
-       versionSplit = [...versionSplit, 0];
-     }
-     this.major = versionSplit[0];
-     this.minor = versionSplit[1];
-     this.patch = versionSplit[2];
-     this.strVersion = `${this.major.toString().padStart(2, '0')}.${this.minor.toString().padStart(2, '0')}.${this.patch.toString().padStart(2, '0')}`;
+    let versionSplit = this.config.version.split(".").map(Number);
+    if (versionSplit.length === 2) {
+      versionSplit = [...versionSplit, 0];
+    }
+    this.major = versionSplit[0];
+    this.minor = versionSplit[1];
+    this.patch = versionSplit[2];
+    this.strVersion = `${this.major.toString().padStart(2, '0')}.${this.minor.toString().padStart(2, '0')}.${this.patch.toString().padStart(2, '0')}`;
   }
 
   readonly strVersion: string;
@@ -229,7 +229,7 @@ export default class Scrcpy extends EventEmitter {
     // console.error(`_setFatalError. Scrcpy fatal error:`, msg);
     if (this.setFatalError) {
       if (msg instanceof Error) {
-         this.setFatalError(msg.message + '\n' + msg.stack);
+        this.setFatalError(msg.message + '\n' + msg.stack);
       } else {
         this.setFatalError(msg);
       }
@@ -295,7 +295,7 @@ export default class Scrcpy extends EventEmitter {
     // args.push(this.config.version); // arg 0 Scrcpy server version
     //if (this.config.version <= 20) {
     if (this.major < 2) {
-        // Version 11 => 20
+      // Version 11 => 20
       args.push("info"); // Log level: info, verbose...
       args.push(maxSize); // Max screen width (long side)
       args.push(bitrate); // Bitrate of video
@@ -352,7 +352,7 @@ export default class Scrcpy extends EventEmitter {
         args.push(`clipboard_autosync=${clipboardAutosync}`); // default is True
       //if (this.config.version >= 22) {
       if (this.strVersion >= "01.22.00") {
-          const {
+        const {
           downsizeOnError, sendDeviceMeta, sendDummyByte, rawVideoStream
         } = this.config;
         if (downsizeOnError !== undefined)
@@ -385,11 +385,11 @@ export default class Scrcpy extends EventEmitter {
     let dstFolder = '/data/local/tmp';
     let dstFolderStat = await this.client.stat(dstFolder).catch((e) => {console.log(e); return null;});
     if (!dstFolderStat) {
-        dstFolder = '/tmp';
-        dstFolderStat = await this.client.stat(dstFolder).catch(() => null);    
+      dstFolder = '/tmp';
+      dstFolderStat = await this.client.stat(dstFolder).catch(() => null);    
     }
     if (!dstFolderStat) {
-        throw Error("can not find a writable tmp dest folder in device");
+      throw Error("can not find a writable tmp dest folder in device");
     }
     const jarDest = `${dstFolder}/scrcpy-server-v${this.config.version}.jar`;
     // Transfer server jar to device...
@@ -527,7 +527,7 @@ export default class Scrcpy extends EventEmitter {
       void this.startStreamWithMeta().catch((e) => {
         this._setFatalError(e);
         this.stop();
-    });
+      });
     } else {
       this.startStreamRaw();
     }
@@ -604,40 +604,40 @@ export default class Scrcpy extends EventEmitter {
     let codec = "H264";
     // let header: Uint8Array | undefined;
     if (this.major >= 2) {
-          await Utils.waitforReadable(this.videoSocket, 0, 'videoSocket Codec header');
-          const frameMeta = this.videoSocket.stream.read(12) as Buffer;
-          const codecId = frameMeta.readUInt32BE(0);
-          // Read width (4 bytes)
-          const width = frameMeta.readUInt32BE(4);
-          // Read height (4 bytes)
-          const height = frameMeta.readUInt32BE(8);
-          switch (codecId) {
-            case codexMap.H264:
-              codec = "H264";
-              break;
-            case codexMap.H265:
-              codec = "H265";
-              break;
-            case codexMap.AV1:
-              codec = "AV1";
-              break;
-            case codexMap.OPUS:
-              codec = "OPUS";
-              break;
-            case codexMap.AAC:
-              codec = "AAC";
-              break;
-            case codexMap.RAW:
-              codec = "RAW";
-              break;
-            default:
-              codec = "UNKNOWN";
-          }
-          this.setCodec(codec);
-          this.setWidth(width);
-          this.setHeight(height);
+      await Utils.waitforReadable(this.videoSocket, 0, 'videoSocket Codec header');
+      const frameMeta = this.videoSocket.stream.read(12) as Buffer;
+      const codecId = frameMeta.readUInt32BE(0);
+      // Read width (4 bytes)
+      const width = frameMeta.readUInt32BE(4);
+      // Read height (4 bytes)
+      const height = frameMeta.readUInt32BE(8);
+      switch (codecId) {
+        case codexMap.H264:
+          codec = "H264";
+          break;
+        case codexMap.H265:
+          codec = "H265";
+          break;
+        case codexMap.AV1:
+          codec = "AV1";
+          break;
+        case codexMap.OPUS:
+          codec = "OPUS";
+          break;
+        case codexMap.AAC:
+          codec = "AAC";
+          break;
+        case codexMap.RAW:
+          codec = "RAW";
+          break;
+        default:
+          codec = "UNKNOWN";
+      }
+      this.setCodec(codec);
+      this.setWidth(width);
+      this.setHeight(height);
 
-          this.emit("codec", {codec, width, height});
+      this.emit("codec", {codec, width, height});
     }
 
     let pts = BigInt(0);// Buffer.alloc(0);

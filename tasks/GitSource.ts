@@ -5,15 +5,40 @@ import path from 'node:path';
 import fs from 'node:fs';
 import { ChildProcess } from 'node:child_process';
 
-function execPromise(command: string, options: { encoding: BufferEncoding } & ExecOptions): Promise<{ stdout: string, stderr: string, exitCode: number }> {
-  return new Promise((resolve, reject) => {
-    const cp: ChildProcess = exec(command, options, (error: ExecException | null, stdout: string, stderr: string) => {
-      if (error)
-        return reject(error);
-      resolve({ stdout, stderr, exitCode: cp.exitCode || 0 });
-    })
-  })
+interface ExecResult {
+  stdout: string;
+  stderr: string;
+  exitCode: number;
 }
+
+/**
+ * Exécute une commande shell
+ * @param command La commande à lancer
+ * @param options Options incluant l'encodage
+ */
+function execPromise(
+  command: string,
+  options: { encoding: BufferEncoding } & ExecOptions
+): Promise<ExecResult> {
+
+  return new Promise((resolve, reject) => {
+    const cp: ChildProcess = exec(
+      command,
+      options,
+      (error: ExecException | null, stdout: string | Buffer, stderr: string | Buffer) => {
+        if (error) {
+          return reject(error);
+        }
+        resolve({
+          stdout: stdout.toString(),
+          stderr: stderr.toString(),
+          exitCode: cp.exitCode ?? 0
+        });
+      }
+    );
+  });
+}
+
 
 export default class GitSource {
   workDir: string;
@@ -49,7 +74,7 @@ export default class GitSource {
     console.log(`listing git branches`);
     const log = await execPromise(`git branch -r --list --no-color`, { encoding: 'utf8', cwd: this.gitDir });
     let branches = log.stdout.split(/[\r\n ]+/g);
-    branches = branches.filter(a=>a.startsWith('origin/')).map(a=> a.replace('origin/', ''));
+    branches = branches.filter(a => a.startsWith('origin/')).map(a => a.replace('origin/', ''));
     return branches;
   }
 
@@ -57,7 +82,7 @@ export default class GitSource {
     console.log(`listing git tag`);
     const log = await execPromise(`git tag`, { encoding: 'utf8', cwd: this.gitDir });
     let tags = log.stdout.split(/[\r\n ]+/g);
-    tags = tags.filter(a=>a.match(/android-(\d+\.){1,2}\d+_r\d+/))
+    tags = tags.filter(a => a.match(/android-(\d+\.){1,2}\d+_r\d+/))
     // .map(a=> a.replace('origin/', ''));
     return tags;
   }

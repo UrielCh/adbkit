@@ -68,7 +68,7 @@ export default class Utils {
    * @param timeout do not wait more than timeout
    * @returns is the true is duplex is readable
    */
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+   
   public static async waitforReadable(duplex?: Duplex | PromiseDuplex<Duplex> | Readable | PromiseReadable<Readable>, timeout = 0, _debugCtxt = ''): Promise<boolean> {
     // let t0 = Date.now();
     /**

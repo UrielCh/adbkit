@@ -18,7 +18,7 @@ interface TapOptions {
   stepY?: number;
 }
 
-const MODES = ["NONE", "CENTER", "MIX", "ALL", ] as const;
+const MODES = ["NONE", "CENTER", "MIX", "ALL",] as const;
 let MODE: (typeof MODES)[number] = "NONE";
 let currentModeIndex = 0;
 MODE = MODES[currentModeIndex];
@@ -79,7 +79,7 @@ async function* getCenterTaps(width: number, height: number, options: TapOptions
     shuffle(selctionsCenter);
     shuffle(selctionsAll);
     shuffle(selctionsMix);
-    
+
     while (true) {
       // console.log("Mode: ", MODE);
       await Utils.delay(100);
@@ -116,7 +116,7 @@ async function* getCenterTaps(width: number, height: number, options: TapOptions
   }
 }
 
-async function* getGridPercent(count: number) {
+async function* _getGridPercent(count: number) {
   const XGap = 0.02;
   const YGap = 0.35;
   const deltaX = 0.07;
@@ -136,8 +136,6 @@ async function* getGridPercent(count: number) {
     // await Utils.delay(100);
   }
 }
-
-
 
 async function* getCenterTapsForDevice(deviceClient: DeviceClient, options: TapOptions = {}) {
   const { asPercent = false } = options;
@@ -160,7 +158,7 @@ async function* getCenterTapsForDevice(deviceClient: DeviceClient, options: TapO
   }
 }
 
-const testClickExec = async (deviceClient: DeviceClient) => {
+const _testClickExec = async (deviceClient: DeviceClient) => {
   try {
     for await (const pos of getCenterTapsForDevice(deviceClient)) {
       await deviceClient.execOut(`input tap ${pos.x} ${pos.y}`, "utf8");
@@ -180,9 +178,9 @@ const testClickShell = async (deviceClient: DeviceClient, coordinateGenerator: A
       if (result2.done) break;
 
       const pos1 = result1.value;
-      const pos2 = result2.value;
+      const _pos2 = result2.value;
 
-      // const duplex = await deviceClient.shell(`input multitap 2 ${pos1.x} ${pos1.y} ${pos2.x} ${pos2.y}`);
+      // const duplex = await deviceClient.shell(`input multitap 2 ${pos1.x} ${pos1.y} ${_pos2.x} ${_pos2.y}`);
       const duplex = await deviceClient.shell(`input tap ${pos1.x} ${pos1.y}`);
       await new Parser(duplex).readAll();
     }
@@ -257,7 +255,7 @@ const setupKeyboardInterface = () => {
   console.log('Use ARROW KEYS (←/→) or SPACE to change mode');
   console.log('Press ESC or Ctrl+C to continue');
   console.log(`Current mode: ${MODE}`);
-  
+
   readline.emitKeypressEvents(process.stdin);
   if (process.stdin.isTTY) {
     process.stdin.setRawMode(true);
@@ -271,7 +269,7 @@ const setupKeyboardInterface = () => {
         console.log('\nContinuing with execution...\n');
         return;
       }
-      
+
       if (key.name === 'left' || key.name === 'right' || key.name === 'space') {
         if (key.name === 'left') {
           currentModeIndex = (currentModeIndex - 1 + MODES.length) % MODES.length;
@@ -295,7 +293,7 @@ const setupKeyboardInterface = () => {
   };
 
   process.stdin.on('keypress', keyListener);
-  
+
   return new Promise<void>((resolve) => {
     const originalListener = process.stdin.listeners('keypress').find(l => l === keyListener);
     if (originalListener) {

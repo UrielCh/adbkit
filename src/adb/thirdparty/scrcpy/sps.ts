@@ -1,25 +1,25 @@
 // imported from https://github.com/yume-chan/ya-webadb
 
 export interface ScrcpyHeader {
-    profile_idc: number,
-    constraint_set: number,
-    constraint_set0_flag: boolean,
-    constraint_set1_flag: boolean,
-    constraint_set2_flag: boolean,
-    constraint_set3_flag: boolean,
-    constraint_set4_flag: boolean,
-    constraint_set5_flag: boolean,
-    level_idc: number,
-    seq_parameter_set_id: number,
-    pic_width_in_mbs_minus1: number,
-    pic_height_in_map_units_minus1: number,
-    frame_mbs_only_flag: number,
-    frame_cropping_flag: boolean,
-    frame_crop_left_offset: number,
-    frame_crop_right_offset: number,
-    frame_crop_top_offset: number,
-    frame_crop_bottom_offset: number,
-  }
+  profile_idc: number,
+  constraint_set: number,
+  constraint_set0_flag: boolean,
+  constraint_set1_flag: boolean,
+  constraint_set2_flag: boolean,
+  constraint_set3_flag: boolean,
+  constraint_set4_flag: boolean,
+  constraint_set5_flag: boolean,
+  level_idc: number,
+  seq_parameter_set_id: number,
+  pic_width_in_mbs_minus1: number,
+  pic_height_in_map_units_minus1: number,
+  frame_mbs_only_flag: number,
+  frame_cropping_flag: boolean,
+  frame_crop_left_offset: number,
+  frame_crop_right_offset: number,
+  frame_crop_top_offset: number,
+  frame_crop_bottom_offset: number,
+}
 
 class BitReader {
   private buffer: Uint8Array;
@@ -41,7 +41,6 @@ class BitReader {
   }
 
   public next(): number {
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     const value = (this.buffer[this.bytePosition]! >> (7 - this.bitPosition)) & 1;
     this.bitPosition += 1;
     if (this.bitPosition === 8) {
@@ -159,7 +158,8 @@ function* iterateNalu(buffer: Uint8Array): Generator<Uint8Array> {
 }
 
 // 7.3.2.1.1 Sequence parameter set data syntax
-export function parse_sequence_parameter_set(buffer: ArrayBuffer | Uint8Array, codec: string): ScrcpyHeader {
+export function parse_sequence_parameter_set(buffer: ArrayBuffer | Uint8Array): ScrcpyHeader {
+
   for (const nalu of iterateNalu(new Uint8Array(buffer))) {
     const reader = new BitReader(nalu);
     if (reader.next() !== 0) {
@@ -197,10 +197,10 @@ export function parse_sequence_parameter_set(buffer: ArrayBuffer | Uint8Array, c
     const seq_parameter_set_id = reader.decodeExponentialGolombNumber();
 
     if (profile_idc === 100 || profile_idc === 110 ||
-            profile_idc === 122 || profile_idc === 244 || profile_idc === 44 ||
-            profile_idc === 83 || profile_idc === 86 || profile_idc === 118 ||
-            profile_idc === 128 || profile_idc === 138 || profile_idc === 139 ||
-            profile_idc === 134) {
+      profile_idc === 122 || profile_idc === 244 || profile_idc === 44 ||
+      profile_idc === 83 || profile_idc === 86 || profile_idc === 118 ||
+      profile_idc === 128 || profile_idc === 138 || profile_idc === 139 ||
+      profile_idc === 134) {
       const chroma_format_idc = reader.decodeExponentialGolombNumber();
       if (chroma_format_idc === 3) {
         // separate_colour_plane_flag
