@@ -71,7 +71,6 @@ program
     reader.on('packet', (packet) => console.log(packet.toString()));
   });
 
-
 program
   .command('capture dest [serials...]')
   .description('capture screen of one or many device as png.')
@@ -86,6 +85,42 @@ program
       const stream = await device.screencap();
       const capture = await Utils.readAll(stream);
       fs.writeFileSync(dest, capture);
+    }
+  });
+
+program
+  .command('dump <dest> [serials...]')
+  .option('-v, --verbose', 'execute verbosely')
+  .description('call uiautomator dump on the device and get the XML back')
+  .action(async (dest: string, serials: string[], options: { verbose?: boolean }) => {
+    const devices = await getClientDevice(serials);
+    for (const device of devices) {
+      if (options.verbose) console.log(`[${device.serial}] Generating dump...`);
+      const output = await device.execOut('uiautomator dump', 'utf8');
+      if (options.verbose) console.log(`[${device.serial}] ${output.trim()}`);
+
+      let remotePath = '/sdcard/window_dump.xml';
+      const match = output.match(/dumped to: \s*(\S+)/);
+      if (match && match[1]) {
+        remotePath = match[1];
+      }
+
+      let localPath = dest;
+      if (devices.length > 1) {
+        const ext = path.extname(localPath);
+        const name = path.basename(localPath, ext);
+        const dir = path.dirname(localPath);
+        localPath = path.join(dir, `${name}-${device.serial}${ext}`);
+      }
+
+      if (options.verbose) console.log(`[${device.serial}] Pulling ${remotePath} to ${localPath}...`);
+
+      const transfer = await device.pull(remotePath);
+      const content = await Utils.readAll(transfer);
+      const formatted = Utils.formatXml(content.toString('utf8'));
+      fs.writeFileSync(localPath, formatted);
+
+      if (options.verbose) console.log(`[${device.serial}] Done.`);
     }
   });
 

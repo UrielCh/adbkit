@@ -68,7 +68,7 @@ export default class Utils {
    * @param timeout do not wait more than timeout
    * @returns is the true is duplex is readable
    */
-   
+
   public static async waitforReadable(duplex?: Duplex | PromiseDuplex<Duplex> | Readable | PromiseReadable<Readable>, timeout = 0, _debugCtxt = ''): Promise<boolean> {
     // let t0 = Date.now();
     /**
@@ -166,5 +166,33 @@ export default class Utils {
     const debug = Debug(name);
     debug.log = console.log.bind(console);
     return debug;
+  }
+
+  public static formatXml(xml: string) {
+    let formatted = '';
+    const reg = /(>)(<)(\/*)/g;
+    xml = xml.replace(reg, '$1\r\n$2$3');
+    let pad = 0;
+    xml.split('\r\n').forEach((node) => {
+      let indent = 0;
+      if (node.match(/.+<\/\w[^>]*>$/)) {
+        indent = 0;
+      } else if (node.match(/^<\/\w/)) {
+        if (pad != 0) {
+          pad -= 1;
+        }
+      } else if (node.match(/^<\w[^>]*[^/]>.*$/)) {
+        indent = 1;
+      } else {
+        indent = 0;
+      }
+      let padding = '';
+      for (let i = 0; i < pad; i++) {
+        padding += '  ';
+      }
+      formatted += padding + node + '\r\n';
+      pad += indent;
+    });
+    return formatted;
   }
 }

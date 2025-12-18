@@ -184,7 +184,7 @@ export default class DeviceClient {
   /**
    * Retrieves the list of running Process
    *
-   * @param flags TODO
+   * @param flags Flags to pass to the `ps` command (e.g., '-A', '-ef')
    * @returns a PsEntry array
    */
   public async getPs(...flags: string[]): Promise<Array<Partial<hostCmd.PsEntry>>> {

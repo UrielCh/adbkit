@@ -50,7 +50,7 @@ interface IEmissions {
   /**
    * since Scrcpy v2.0 an extra event is emitted with the codec, width and height
    */
-  codec: (data: {codec: string, width: number, height: number}) => void
+  codec: (data: { codec: string, width: number, height: number }) => void
   config: (data: H264Configuration) => void
   raw: (data: Buffer) => void
   error: (error: Error) => void
@@ -119,7 +119,7 @@ export default class Scrcpy extends EventEmitter {
     this.config = {
       scid: '0' + Math.random().toString(16).substring(2, 9),
       noAudio: true, // disable audio TMP
-      version: "2.7",
+      version: "3.3.1",
       // port: 8099,
       maxSize: 600,
       maxFps: 0,
@@ -206,8 +206,8 @@ export default class Scrcpy extends EventEmitter {
           errors.push(msg);
           try {
             this.emit('error', Error(msg));
-          // eslint-disable-next-line @typescript-eslint/no-unused-vars
-          } catch (e: unknown) {
+            // eslint-disable-next-line @typescript-eslint/no-unused-vars
+          } catch {
             // emit Error but to not want to Quit Yet
           }
         } else {
@@ -367,7 +367,7 @@ export default class Scrcpy extends EventEmitter {
       if (this.strVersion >= "01.22.00") {
         const { cleanup } = this.config;
         if (cleanup !== undefined)
-          args.push(`raw_video_stream=${cleanup}`);
+          args.push(`cleanup=${cleanup}`);
       }
       // check Server.java
     }
@@ -383,10 +383,10 @@ export default class Scrcpy extends EventEmitter {
       return this;
 
     let dstFolder = '/data/local/tmp';
-    let dstFolderStat = await this.client.stat(dstFolder).catch((e) => {console.log(e); return null;});
+    let dstFolderStat = await this.client.stat(dstFolder).catch((e) => { console.log(e); return null; });
     if (!dstFolderStat) {
       dstFolder = '/tmp';
-      dstFolderStat = await this.client.stat(dstFolder).catch(() => null);    
+      dstFolderStat = await this.client.stat(dstFolder).catch(() => null);
     }
     if (!dstFolderStat) {
       throw Error("can not find a writable tmp dest folder in device");
@@ -461,7 +461,7 @@ export default class Scrcpy extends EventEmitter {
       // console.log('stdoutContent:', stdoutContent);
     }
 
-    this.ListenErrors(this.scrcpyServer).then(() => {}, () => {});
+    this.ListenErrors(this.scrcpyServer).then(() => { }, () => { });
 
     // from V2.0 SC_SOCKET_NAME name can be change
     let SC_SOCKET_NAME = 'scrcpy';
@@ -497,7 +497,7 @@ export default class Scrcpy extends EventEmitter {
         return this;
       }
     }
-    
+
     this.controlSocket = await this.client.openLocal2(`localabstract:${SC_SOCKET_NAME}`, 'second connection to scrcpy for control');
     if (this.closed) {
       this.stop();
@@ -600,7 +600,7 @@ export default class Scrcpy extends EventEmitter {
       const height = chunk.readUint16BE(66);
       this.setHeight(height);
     }
- 
+
     let codec = "H264";
     // let header: Uint8Array | undefined;
     if (this.major >= 2) {
@@ -637,7 +637,7 @@ export default class Scrcpy extends EventEmitter {
       this.setWidth(width);
       this.setHeight(height);
 
-      this.emit("codec", {codec, width, height});
+      this.emit("codec", { codec, width, height });
     }
 
     let pts = BigInt(0);// Buffer.alloc(0);

@@ -27,9 +27,9 @@ export default class RgbTransform extends Stream.Transform {
 
   override _transform(chunk: Buffer, encoding: string, done: TransformCallback): void {
     if ((this._buffer as unknown as Uint8Array).length) {
-      this._buffer = Utils.concatBuffer([this._buffer, chunk]);
+      this._buffer = Utils.concatBuffer([this._buffer, chunk]) as unknown as Buffer<ArrayBuffer>;
     } else {
-      this._buffer = chunk;
+      this._buffer = chunk as unknown as Buffer<ArrayBuffer>;
     }
     let sourceCursor = 0;
     let targetCursor = 0;

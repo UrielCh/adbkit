@@ -158,7 +158,7 @@ function* iterateNalu(buffer: Uint8Array): Generator<Uint8Array> {
 }
 
 // 7.3.2.1.1 Sequence parameter set data syntax
-export function parse_sequence_parameter_set(buffer: ArrayBuffer | Uint8Array): ScrcpyHeader {
+export function parse_sequence_parameter_set(buffer: ArrayBuffer | Uint8Array, _codec?: string): ScrcpyHeader {
 
   for (const nalu of iterateNalu(new Uint8Array(buffer))) {
     const reader = new BitReader(nalu);

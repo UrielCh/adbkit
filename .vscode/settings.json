@@ -5,5 +5,20 @@
         "lib/**/*.map": true
     },
     "eslint.format.enable": true,
-    "deno.enable": false
+    "deno.enable": false,
+    "[typescript]": {
+        "editor.defaultFormatter": "vscode.typescript-language-features",
+        "editor.tabSize": 2,
+        "editor.insertSpaces": true
+    },
+    "[javascript]": {
+        "editor.defaultFormatter": "vscode.typescript-language-features",
+        "editor.tabSize": 2,
+        "editor.insertSpaces": true
+    },
+    "editor.formatOnSave": false,
+    "editor.detectIndentation": false,
+    "editor.codeActionsOnSave": {
+        "source.fixAll.eslint": "explicit"
+    }
 }

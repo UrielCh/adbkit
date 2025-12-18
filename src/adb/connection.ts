@@ -199,6 +199,6 @@ export default class Connection extends EventEmitter {
     if (!this.options.bin)
       throw new Error('No bin specified');
     debug(`CLI: ${this.options.bin} ${args.join(' ')}`);
-    return promisify(execFile)(this.options.bin, args, options);
+    return promisify(execFile)(this.options.bin, args, options) as Promise<{ stdout: string; stderr: string; }>;
   }
 }

@@ -19,6 +19,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
 // const logRunning = require('why-is-node-running');
+const scrcpyVersion = '2.7';
 
 function print(list: Array<IpRouteEntry | IpRuleEntry>) {
   for (const route of list) console.log(route.toString());
@@ -37,7 +38,7 @@ function fmtSize(trData: number): string {
 }
 
 const testScrcpy = async (deviceClient: DeviceClient) => {
-  const scrcpy = deviceClient.scrcpy({ version: '2.7' });
+  const scrcpy = deviceClient.scrcpy({ version: scrcpyVersion });
   scrcpy.on('error', (e) => {
     console.error('scrcpy error', e);
   });
@@ -89,7 +90,7 @@ const testScrcpy = async (deviceClient: DeviceClient) => {
  * @param deviceClient 
  */
 const testScrcpyTextInput = async (deviceClient: DeviceClient) => {
-  const scrcpy = deviceClient.scrcpy({});
+  const scrcpy = deviceClient.scrcpy({ version: scrcpyVersion });
   try {
     await scrcpy.start();
     console.log(`Started`);
@@ -111,9 +112,9 @@ const testScrcpyTextInput = async (deviceClient: DeviceClient) => {
   }
 }
 
-const testScrcpyswap = async (deviceClient: DeviceClient) => {
+const testScrcpySwap = async (deviceClient: DeviceClient) => {
   // const scrcpy = deviceClient.scrcpy({port: 8099, maxFps: 1, maxSize: 320});
-  const scrcpy = deviceClient.scrcpy({ maxFps: 1 });
+  const scrcpy = deviceClient.scrcpy({ version: scrcpyVersion, maxFps: 1 });
   try {
     const pointerId = BigInt('0xFFFFFFFFFFFFFFFF');
     await scrcpy.start();
@@ -154,7 +155,7 @@ const testScrcpyswap = async (deviceClient: DeviceClient) => {
 /** test the 2 ways to capture Error in atrcpy */
 // encoderName had been replaced by list_encoders in V 2.0
 const testScrcpyEncoder = async (deviceClient: DeviceClient) => {
-  const scrcpy = deviceClient.scrcpy({ encoderName: '_' });
+  const scrcpy = deviceClient.scrcpy({ version: scrcpyVersion, encoderName: '_' });
   try {
     let nbError = 0;
     scrcpy.on('error', (e) => { nbError++; console.error("scrcpy Error:", e) });
@@ -219,7 +220,7 @@ const stressTestScrCpy = async (deviceClient: DeviceClient) => {
   const scrcpys: Scrcpy[] = [];
   for (let i = 0; i < 15; i++) {
     const pass = i;
-    const scrcpy = deviceClient.scrcpy({});
+    const scrcpy = deviceClient.scrcpy({version: scrcpyVersion});
     await Utils.delay(100);
     scrcpys.push(scrcpy)
     try {
@@ -450,7 +451,7 @@ const testRouting = async (deviceClient: DeviceClient) => {
   //const transport = await deviceClient.transport();
   //const rules2 = await new IpRuleCommand(transport, {sudo: true}).execute('list');
   //for (const rule of rules2)
-  //  console.log(rule.toStirng());
+  //  console.log(rule.toString());
 }
 /**
  * 
@@ -529,7 +530,7 @@ const main = async () => {
   // await testScrcpy(deviceClient);
   // await testUiautomator(deviceClient);
   // await testScrcpyTextInput(deviceClient);
-  // await testScrcpyswap(deviceClient);
+  // await testScrcpySwap(deviceClient);
   //
   // await testMinicap(deviceClient);
   // await stressMinicap(deviceClient);
