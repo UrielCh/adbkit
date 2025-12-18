@@ -79,6 +79,7 @@ async function* getCenterTaps(width: number, height: number, options: TapOptions
     shuffle(selctionsCenter);
     shuffle(selctionsAll);
     shuffle(selctionsMix);
+    
     while (true) {
       // console.log("Mode: ", MODE);
       await Utils.delay(100);
@@ -91,6 +92,7 @@ async function* getCenterTaps(width: number, height: number, options: TapOptions
           }
         }
       } else if (MODE === "MIX") {
+        await Utils.delay(300);
         for (const selection of selctionsMix) {
           await Utils.delay(1);
           yield selection;
@@ -99,6 +101,7 @@ async function* getCenterTaps(width: number, height: number, options: TapOptions
           }
         }
       } else if (MODE === "ALL") {
+        await Utils.delay(400);
         for (const selection of selctionsAll) {
           await Utils.delay(1);
           yield selection;
@@ -107,7 +110,7 @@ async function* getCenterTaps(width: number, height: number, options: TapOptions
           }
         }
       } else {
-        await Utils.delay(100);
+        await Utils.delay(200);
       }
     }
   }
