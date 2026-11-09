@@ -6,8 +6,9 @@ import assert from 'node:assert';
 import PromiseDuplex from 'promise-duplex';
 import DeviceClient from '../../DeviceClient.js';
 import Utils from '../../utils.js';
+import path from 'node:path';
 import { Duplex } from 'node:stream';
-import { type MotionEvent, MotionEventMap, OrientationMap, ControlMessageMap, codexMap } from './ScrcpyConst.js';
+import { type MotionEvent, MotionEventMap, OrientationMap, ControlMessageMap, codexMap, type SurfaceControl, SurfaceControlMap } from './ScrcpyConst.js';
 import { KeyCodes } from '../../keycode.js';
 import { BufWrite } from '../minicap/BufWrite.js';
 // import ThirdUtils from '../ThirdUtils.js';
@@ -15,6 +16,7 @@ import Stats from '../../sync/stats.js';
 import { parse_sequence_parameter_set } from './sps.js';
 import { Point, ScrcpyOptions, H264Configuration, VideoStreamFramePacket } from './ScrcpyModels.js';
 import prebuilds from "@u4/minicap-prebuilt";
+import { downloadScrcpyServer, getDefaultScrcpyJarPath } from './ScrcpyDownload.js';
 
 const SC_SOCKET_NAME_PREFIX = "scrcpy_";
 
@@ -80,6 +82,7 @@ interface IEmissions {
  * Need USB Debug checked in developper option for MIUI
  */
 export default class Scrcpy extends EventEmitter {
+  static downloadServer = downloadScrcpyServer;
   private config: ScrcpyOptions;
   private videoSocket: PromiseDuplex<Duplex> | undefined;
   private audioSocket: PromiseDuplex<Duplex> | undefined;
@@ -119,7 +122,8 @@ export default class Scrcpy extends EventEmitter {
     this.config = {
       scid: '0' + Math.random().toString(16).substring(2, 9),
       noAudio: true, // disable audio TMP
-      version: "2.7",
+      version: "3.0",
+      autoDownload: true,
       // port: 8099,
       maxSize: 600,
       maxFps: 0,
@@ -272,12 +276,17 @@ export default class Scrcpy extends EventEmitter {
     }
   }
 
+  public getStartupLine(jarDest = '/data/local/tmp/scrcpy-server.jar'): string {
+    return this._getStartupLine(jarDest);
+  }
+
   private _getStartupLine(jarDest: string): string {
     const args: Array<string | number | boolean> = [];
     const {
       maxSize, bitrate, maxFps, lockedVideoOrientation, tunnelForward, crop,
       sendFrameMeta, control, displayId, showTouches, stayAwake, codecOptions,
-      encoderName, powerOffScreenOnClose, clipboardAutosync
+      encoderName, powerOffScreenOnClose, clipboardAutosync,
+      captureOrientation, angle, newDisplay, vdSystemDecorations, screenOffTimeout
     } = this.config;
     args.push(`CLASSPATH=${jarDest}`);
     args.push('app_process');
@@ -331,7 +340,40 @@ export default class Scrcpy extends EventEmitter {
         args.push(`bit_rate=${bitrate}`);
       }
       args.push(`max_fps=${maxFps}`);
-      args.push(`lock_video_orientation=${lockedVideoOrientation}`);
+
+      if (this.major >= 3) {
+        // In scrcpy 3.0+, lock_video_orientation was replaced by capture_orientation and angle
+        if (captureOrientation) {
+          args.push(`capture_orientation=${captureOrientation}`);
+        } else if (lockedVideoOrientation !== OrientationMap.LOCK_VIDEO_ORIENTATION_UNLOCKED) {
+          if (lockedVideoOrientation === OrientationMap.LOCK_VIDEO_ORIENTATION_INITIAL) {
+            args.push(`capture_orientation=@`);
+          } else if (lockedVideoOrientation === OrientationMap.LOCK_SCREEN_ORIENTATION_0) {
+            args.push(`capture_orientation=@0`);
+          } else if (lockedVideoOrientation === OrientationMap.LOCK_SCREEN_ORIENTATION_1) {
+            args.push(`capture_orientation=@90`);
+          } else if (lockedVideoOrientation === OrientationMap.LOCK_SCREEN_ORIENTATION_2) {
+            args.push(`capture_orientation=@180`);
+          } else if (lockedVideoOrientation === OrientationMap.LOCK_SCREEN_ORIENTATION_3) {
+            args.push(`capture_orientation=@270`);
+          }
+        }
+        if (angle !== undefined) {
+          args.push(`angle=${angle}`);
+        }
+        if (newDisplay) {
+          args.push(`new_display=${newDisplay}`);
+        }
+        if (vdSystemDecorations !== undefined) {
+          args.push(`vd_system_decorations=${vdSystemDecorations}`);
+        }
+        if (screenOffTimeout !== undefined) {
+          args.push(`screen_off_timeout=${screenOffTimeout}`);
+        }
+      } else {
+        args.push(`lock_video_orientation=${lockedVideoOrientation}`);
+      }
+
       args.push(`tunnel_forward=${tunnelForward}`); // Tunnel forward
       if (crop && crop !== '-')
         args.push(`crop=${crop}`); //    Crop screen
@@ -341,9 +383,9 @@ export default class Scrcpy extends EventEmitter {
       args.push(`show_touches=${showTouches}`); // Show touches
       args.push(`stay_awake=${stayAwake}`); //  if self.stay_awake else "false",  Stay awake
       if (codecOptions && codecOptions !== '-')
-        args.push(`codec_options=${codecOptions}`); //     Codec (video encoding) options
+        args.push(this.major >= 2 ? `video_codec_options=${codecOptions}` : `codec_options=${codecOptions}`); //     Codec (video encoding) options
       if (encoderName && encoderName !== '-')
-        args.push(`encoder_name=${encoderName}`); //     Encoder name
+        args.push(this.major >= 2 ? `video_encoder=${encoderName}` : `encoder_name=${encoderName}`); //     Encoder name
       args.push(`power_off_on_close=${powerOffScreenOnClose}`); // Power off screen after server closed
       // args.push(`clipboard_autosync=${clipboardAutosync}`); // default is True
       if (clipboardAutosync !== undefined)
@@ -365,7 +407,7 @@ export default class Scrcpy extends EventEmitter {
       if (this.strVersion >= "01.22.00") {
         const { cleanup } = this.config;
         if (cleanup !== undefined)
-          args.push(`raw_video_stream=${cleanup}`);
+          args.push(`cleanup=${cleanup}`);
       }
       // check Server.java
     }
@@ -403,11 +445,51 @@ export default class Scrcpy extends EventEmitter {
     }
     const jarDest = `${dstFolder}/scrcpy-server-v${this.config.version}.jar`;
     // Transfer server jar to device...
-    const jar = prebuilds.getScrcpyJar(this.config.version);
-
-    const srcStat: fs.Stats | null = await fs.promises.stat(jar).catch(() => null);
-    if (!srcStat)
-      throw Error(`fail to get ressource ${jar}`);
+    let jar = this.config.jarPath;
+    let srcStat: fs.Stats | null = null;
+    if (jar) {
+      srcStat = await fs.promises.stat(jar).catch(() => null);
+    }
+    if (!srcStat) {
+      try {
+        const prebuildJar = prebuilds.getScrcpyJar(this.config.version);
+        srcStat = await fs.promises.stat(prebuildJar).catch(() => null);
+        if (srcStat) {
+          jar = prebuildJar;
+        }
+      } catch {
+        // ignore
+      }
+    }
+    if (!srcStat) {
+      const candidates = [
+        getDefaultScrcpyJarPath(this.config.version),
+        path.resolve(process.cwd(), 'prebuilt', 'scrcpy', `scrcpy-server-v${this.config.version}.jar`),
+        path.resolve(process.cwd(), 'vendor', 'scrcpy', `scrcpy-server-v${this.config.version}.jar`),
+      ];
+      for (const candidate of candidates) {
+        srcStat = await fs.promises.stat(candidate).catch(() => null);
+        if (srcStat) {
+          jar = candidate;
+          break;
+        }
+      }
+    }
+    if (!srcStat && this.config.autoDownload !== false) {
+      debug(`scrcpy-server-v${this.config.version}.jar not found locally, downloading...`);
+      try {
+        const downloadedPath = await downloadScrcpyServer(this.config.version);
+        srcStat = await fs.promises.stat(downloadedPath).catch(() => null);
+        if (srcStat) {
+          jar = downloadedPath;
+        }
+      } catch (dlErr) {
+        debug(`Failed to auto-download scrcpy-server v${this.config.version}:`, dlErr);
+      }
+    }
+    if (!srcStat || !jar) {
+      throw Error(`fail to get ressource scrcpy-server-v${this.config.version}.jar. Try running: npm run download:scrcpy ${this.config.version}`);
+    }
     const dstStat: Stats | null = await this.client.stat(jarDest).catch(() => null);
     if (!dstStat || srcStat.size !== dstStat.size) {
       try {
@@ -895,10 +977,38 @@ export default class Scrcpy extends EventEmitter {
     await this.controlSocket.write(chunk.buffer);
   }
 
-  // TYPE_SET_SCREEN_POWER_MODE
-  async setScreenPowerMode(): Promise<void> {
+  // TYPE_SET_SCREEN_POWER_MODE / TYPE_SET_DISPLAY_POWER
+  async setScreenPowerMode(mode: SurfaceControl | boolean = SurfaceControlMap.POWER_MODE_NORMAL): Promise<void> {
+    const chunk = Buffer.allocUnsafe(2);
+    chunk.writeUInt8(ControlMessageMap.TYPE_SET_SCREEN_POWER_MODE, 0);
+    if (this.major >= 3) {
+      // In scrcpy 3.0, it is boolean on/off
+      const on = typeof mode === 'boolean' ? mode : mode === SurfaceControlMap.POWER_MODE_NORMAL;
+      chunk.writeUInt8(on ? 1 : 0, 1);
+    } else {
+      // In scrcpy 2.x and earlier, it is SurfaceControl power mode byte
+      const rawMode = typeof mode === 'boolean'
+        ? (mode ? SurfaceControlMap.POWER_MODE_NORMAL : SurfaceControlMap.POWER_MODE_OFF)
+        : mode;
+      chunk.writeUInt8(rawMode, 1);
+    }
+    assert(this.controlSocket);
+    await this.controlSocket.write(chunk);
+  }
+
+  // TYPE_START_APP (since scrcpy 3.0)
+  async startApp(packageName: string): Promise<void> {
+    const chunk = new BufWrite(5);
+    chunk.writeUint8(ControlMessageMap.TYPE_START_APP);
+    chunk.writeString(packageName);
+    assert(this.controlSocket);
+    await this.controlSocket.write(chunk.buffer);
+  }
+
+  // TYPE_RESET_VIDEO (since scrcpy 3.0)
+  async resetVideo(): Promise<void> {
     const chunk = Buffer.allocUnsafe(1);
-    chunk.writeUInt8(ControlMessageMap.TYPE_SET_SCREEN_POWER_MODE);
+    chunk.writeUInt8(ControlMessageMap.TYPE_RESET_VIDEO);
     assert(this.controlSocket);
     await this.controlSocket.write(chunk);
   }

@@ -8,7 +8,7 @@ export interface ScrcpyOptions {
      * scrcpy id since V 2.0
      */
     scid: string;
-    version: "1.20" | "1.24" | "2.7" | `${number}.${number}` | `${number}.${number}.${number}`;
+    version: "1.20" | "1.24" | "2.7" | "3.0" | `${number}.${number}` | `${number}.${number}.${number}`;
     /**
      * maxSize         (integer, multiple of 8) 0
      * Max width
@@ -78,6 +78,38 @@ export interface ScrcpyOptions {
      * since scrcpy 2.0
      */
     // noControl?: boolean;
+    /**
+     * captureOrientation since scrcpy 3.0
+     * e.g. "0", "90", "180", "270", "flip0", "@", "@0", "@90", etc.
+     */
+    captureOrientation?: string;
+    /**
+     * angle since scrcpy 3.0
+     * Custom rotation angle in degrees
+     */
+    angle?: number;
+    /**
+     * newDisplay since scrcpy 3.0
+     * Create and mirror a new virtual display, e.g. "1920x1080" or "1920x1080/420"
+     */
+    newDisplay?: string;
+    /**
+     * vdSystemDecorations since scrcpy 3.0
+     * Toggle system decorations on virtual display (defaults to true on server)
+     */
+    vdSystemDecorations?: boolean;
+    /**
+     * screenOffTimeout in seconds since scrcpy 3.0
+     */
+    screenOffTimeout?: number;
+    /**
+     * Custom path to scrcpy-server jar file
+     */
+    jarPath?: string;
+    /**
+     * Whether to automatically download scrcpy-server binary if missing (default: true)
+     */
+    autoDownload?: boolean;
 }
 
 export interface H264Configuration {

@@ -4,8 +4,7 @@ import { Duplex } from 'node:stream';
 import Protocol from './protocol.js';
 import { AdbFailError, AdbPrematureEOFError, AdbUnexpectedDataError } from './errors.js';
 import { AdbError } from './errors.js';
-import { BufferEncoding } from './utils.js';
-import { Utils } from '../index.js';
+import Utils, { BufferEncoding } from './utils.js';
 
 /**
  * helper to read in Duplex stream

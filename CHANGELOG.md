@@ -1,5 +1,9 @@
 # CHANGELOG
 
+* update scrcpy-server from 2.7 to 3.0
+* add downloadScrcpyServer utility and download:scrcpy task to download server binaries from GitHub releases
+* preserve backwards compatibility for scrcpy 1.x and 2.x
+
 ## V5.1.7 (2025-07-17)
 * stress test scrcpy
 * improve scrcpy-server V2+ support
