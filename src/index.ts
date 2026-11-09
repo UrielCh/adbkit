@@ -66,8 +66,9 @@ export { default as ServiceCallCommand, ParcelReader } from './adb/command/host-
 export { default as Utils } from './adb/utils.js';
 
 export { default as Scrcpy } from './adb/thirdparty/scrcpy/Scrcpy.js';
-export { MotionEventMap, DeviceMessageTypeMap, SurfaceControlMap, OrientationMap, KeyEventMetaMap } from './adb/thirdparty/scrcpy/ScrcpyConst.js';
-export type { MotionEvent, DeviceMessageType, SurfaceControl, Orientation, KeyEventMeta } from './adb/thirdparty/scrcpy/ScrcpyConst.js';
+export { downloadScrcpyServer, parseScrcpyVersion, getDefaultScrcpyJarPath, type ScrcpyDownloadOptions } from './adb/thirdparty/scrcpy/ScrcpyDownload.js';
+export { MotionEventMap, DeviceMessageTypeMap, SurfaceControlMap, OrientationMap, KeyEventMetaMap, ControlMessageMap, CaptureOrientationMap } from './adb/thirdparty/scrcpy/ScrcpyConst.js';
+export type { MotionEvent, DeviceMessageType, SurfaceControl, Orientation, KeyEventMeta, ControlMessage, CaptureOrientation } from './adb/thirdparty/scrcpy/ScrcpyConst.js';
 
 export type { MinicapOptions } from './adb/thirdparty/minicap/Minicap.js';
 export { default as Minicap } from './adb/thirdparty/minicap/Minicap.js';

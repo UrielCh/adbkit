@@ -53,6 +53,27 @@ export const OrientationMap = {
 
 export type Orientation = typeof OrientationMap[keyof typeof OrientationMap];
 
+export const CaptureOrientationMap = {
+    UNLOCKED_0: "0",
+    UNLOCKED_90: "90",
+    UNLOCKED_180: "180",
+    UNLOCKED_270: "270",
+    UNLOCKED_FLIP0: "flip0",
+    UNLOCKED_FLIP90: "flip90",
+    UNLOCKED_FLIP180: "flip180",
+    UNLOCKED_FLIP270: "flip270",
+    LOCKED_INITIAL: "@",
+    LOCKED_0: "@0",
+    LOCKED_90: "@90",
+    LOCKED_180: "@180",
+    LOCKED_270: "@270",
+    LOCKED_FLIP0: "@flip0",
+    LOCKED_FLIP90: "@flip90",
+    LOCKED_FLIP180: "@flip180",
+    LOCKED_FLIP270: "@flip270",
+} as const;
+export type CaptureOrientation = typeof CaptureOrientationMap[keyof typeof CaptureOrientationMap] | string;
+
 // for C code
 // export const sc_control_msg_type = {
 //     SC_CONTROL_MSG_TYPE_INJECT_KEYCODE : 0,
@@ -89,12 +110,23 @@ export const ControlMessageMap = {
     TYPE_GET_CLIPBOARD : 8,
     TYPE_SET_CLIPBOARD : 9,
     TYPE_SET_SCREEN_POWER_MODE : 10,
+    TYPE_SET_DISPLAY_POWER : 10,
     TYPE_ROTATE_DEVICE : 11,
     // NEW
     TYPE_UHID_CREATE: 12,
     TYPE_UHID_INPUT: 13,
     TYPE_UHID_DESTROY: 14,
     TYPE_OPEN_HARD_KEYBOARD_SETTINGS: 15,
+    // since scrcpy 3.0
+    TYPE_START_APP: 16,
+    TYPE_RESET_VIDEO: 17,
+    // since scrcpy 4.0
+    TYPE_CAMERA_SET_TORCH: 18,
+    TYPE_CAMERA_ZOOM_IN: 19,
+    TYPE_CAMERA_ZOOM_OUT: 20,
+    TYPE_RESIZE_DISPLAY: 21,
+    // since scrcpy 4.1
+    TYPE_SCAN_FILE: 22,
 } as const;
 
 export type ControlMessage = typeof ControlMessageMap[keyof typeof ControlMessageMap];
@@ -113,6 +145,8 @@ export const codexMap = {
    H264 : 0x68323634, // "h264" in ASCII
    H265 : 0x68323635, // "h265" in ASCII
    AV1  : 0x00617631, // "av1" in ASCII
+   VP8  : 0x00767038, // "vp8" in ASCII
+   VP9  : 0x00767039, // "vp9" in ASCII
    OPUS : 0x6f707573, // "opus" in ASCII
    AAC  : 0x00616163, // "aac in ASCII"
    RAW  : 0x00726177, // "raw" i

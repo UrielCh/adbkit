@@ -1,5 +1,16 @@
 # CHANGELOG
 
+* update scrcpy-server from 5.0 to 5.0.1
+* update scrcpy-server from 4.1 to 5.0
+* update scrcpy-server from 4.0 to 4.1 (VP8/VP9 codecs, scanFile control message, ignoreVideoEncoderConstraints)
+* update scrcpy-server from 3.3.4 to 4.0 (flex_display, keep_active, min_size_alignment, camera torch/zoom, resize_display)
+* update scrcpy-server from 3.2 to 3.3.4 (including 3.3, 3.3.1)
+* update scrcpy-server from 3.1 to 3.2
+* update scrcpy-server from 3.0 to 3.1
+* update scrcpy-server from 2.7 to 3.0
+* add downloadScrcpyServer utility and download:scrcpy task to download server binaries from GitHub releases
+* preserve backwards compatibility for scrcpy 1.x and 2.x
+
 ## V5.1.7 (2025-07-17)
 * stress test scrcpy
 * improve scrcpy-server V2+ support
