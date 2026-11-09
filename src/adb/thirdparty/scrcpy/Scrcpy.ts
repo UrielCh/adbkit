@@ -122,7 +122,7 @@ export default class Scrcpy extends EventEmitter {
     this.config = {
       scid: '0' + Math.random().toString(16).substring(2, 9),
       noAudio: true, // disable audio TMP
-      version: "3.0",
+      version: "5.0.1",
       autoDownload: true,
       // port: 8099,
       maxSize: 600,

@@ -349,7 +349,7 @@ const setupKeyboardInterface = () => {
 
 const main = async () => {
   // process.env.DEBUG = '*';
-  const adbClient = adb.createClient({ useYaWebAdb: false });
+  const adbClient = adb.createClient({ useYaWebAdb: true });
   const devices = await adbClient.listDevices();
   if (!devices.length) {
     console.error("Need at least one connected android device");
