@@ -2,6 +2,7 @@ import EventEmitter from 'node:events';
 import { Buffer } from 'node:buffer';
 import fs from 'node:fs';
 import assert from 'node:assert';
+import { execFile } from 'node:child_process';
 
 import PromiseDuplex from 'promise-duplex';
 import DeviceClient from '../../DeviceClient.js';
@@ -14,7 +15,7 @@ import { BufWrite } from '../minicap/BufWrite.js';
 // import ThirdUtils from '../ThirdUtils.js';
 import Stats from '../../sync/stats.js';
 import { parse_sequence_parameter_set } from './sps.js';
-import { Point, ScrcpyOptions, H264Configuration, VideoStreamFramePacket } from './ScrcpyModels.js';
+import { Point, ScrcpyOptions, H264Configuration, VideoStreamFramePacket, VideoRecordOptions, VideoRecordResult } from './ScrcpyModels.js';
 import prebuilds from "@u4/minicap-prebuilt";
 import { downloadScrcpyServer, getDefaultScrcpyJarPath } from './ScrcpyDownload.js';
 
@@ -111,6 +112,9 @@ export default class Scrcpy extends EventEmitter {
   private setFatalError?: (error: string) => void;
   private setFirstFrame?: (() => void) | null;
 
+  private currentWidth = 0;
+  private currentHeight = 0;
+
   private lastConf?: H264Configuration;
   /**
    * closed had been call stop all new activity
@@ -145,8 +149,8 @@ export default class Scrcpy extends EventEmitter {
       ...config
     };
     this._name = new Promise<string>((resolve) => this.setName = resolve);
-    this._width = new Promise<number>((resolve) => this.setWidth = resolve);
-    this._height = new Promise<number>((resolve) => this.setHeight = resolve);
+    this._width = new Promise<number>((resolve) => this.setWidth = (w) => { this.currentWidth = w; resolve(w); });
+    this._height = new Promise<number>((resolve) => this.setHeight = (h) => { this.currentHeight = h; resolve(h); });
     this._codec = new Promise<string>((resolve) => this.setCodec = resolve);
     this._onTermination = new Promise<string>((resolve) => this.setFatalError = resolve);
     this._firstFrame = new Promise<void>((resolve) => this.setFirstFrame = resolve);
@@ -889,9 +893,9 @@ export default class Scrcpy extends EventEmitter {
               // For non-H264 codecs (e.g. H265, AV1) or unparsed SPS, store data as config
               videoConf = {
                 profileIndex: 0, constraintSet: 0, levelIndex: 0,
-                encodedWidth: 0, encodedHeight: 0,
+                encodedWidth: this.currentWidth, encodedHeight: this.currentHeight,
                 cropLeft: 0, cropRight: 0, cropTop: 0, cropBottom: 0,
-                croppedWidth: 0, croppedHeight: 0,
+                croppedWidth: this.currentWidth, croppedHeight: this.currentHeight,
                 data: streamChunk,
               };
             }
@@ -1163,5 +1167,196 @@ export default class Scrcpy extends EventEmitter {
     chunk.writeString(path);
     assert(this.controlSocket);
     await this.controlSocket.write(chunk.buffer);
+  }
+
+  /**
+   * Record screen video directly to a file using Scrcpy.
+   * If the destination path ends in .mp4 (or remuxMp4 is true), it writes the raw stream
+   * and then automatically remuxes it into a browser-friendly MP4 container (via ffmpeg).
+   *
+   * @param destPath Destination file path (.mp4, .h264, .h265, etc.)
+   * @param options Recording options (durationMs, maxFrames, remuxMp4, signal, onProgress)
+   */
+  async recordToFile(destPath: string, options: VideoRecordOptions = {}): Promise<VideoRecordResult> {
+    const isMp4 = destPath.toLowerCase().endsWith('.mp4');
+    const shouldRemux = options.remuxMp4 ?? isMp4;
+    const resolvedPath = path.resolve(destPath);
+    const destDir = path.dirname(resolvedPath);
+    if (!fs.existsSync(destDir)) {
+      await fs.promises.mkdir(destDir, { recursive: true });
+    }
+
+    let defaultExt = 'h264';
+    if (this.config.videoCodec) {
+      const vc = this.config.videoCodec.toLowerCase();
+      if (vc.includes('265') || vc.includes('hevc')) defaultExt = 'h265';
+      else if (vc.includes('av1')) defaultExt = 'av1';
+    }
+
+    const rawPath = shouldRemux && isMp4
+      ? resolvedPath.replace(/\.mp4$/i, `.${defaultExt}`)
+      : resolvedPath;
+
+    const fileStream = fs.createWriteStream(rawPath);
+
+    let frameCount = 0;
+    let keyframeCount = 0;
+    let totalBytes = 0;
+    const startTime = Date.now();
+
+    let stopTimer: NodeJS.Timeout | undefined;
+    let abortListener: (() => void) | undefined;
+
+    const stopRecording = () => {
+      try {
+        this.stop();
+      } catch {
+        // ignore
+      }
+    };
+
+    if (options.durationMs && options.durationMs > 0) {
+      stopTimer = setTimeout(stopRecording, options.durationMs);
+    }
+
+    if (options.signal) {
+      abortListener = () => stopRecording();
+      if (options.signal.aborted) {
+        stopRecording();
+      } else {
+        options.signal.addEventListener('abort', abortListener, { once: true });
+      }
+    }
+
+    const onConfig = (conf: H264Configuration) => {
+      if (conf && conf.data && conf.data.length > 0) {
+        fileStream.write(Buffer.from(conf.data));
+        totalBytes += conf.data.length;
+      }
+    };
+
+    const onFrame = (packet: VideoStreamFramePacket) => {
+      if (packet && packet.data && packet.data.length > 0) {
+        frameCount++;
+        if (packet.keyframe) keyframeCount++;
+        totalBytes += packet.data.length;
+        fileStream.write(Buffer.from(packet.data));
+
+        if (options.onProgress) {
+          options.onProgress({
+            frames: frameCount,
+            keyframes: keyframeCount,
+            bytes: totalBytes,
+            elapsedMs: Date.now() - startTime,
+          });
+        }
+
+        if (options.maxFrames && frameCount >= options.maxFrames) {
+          stopRecording();
+        }
+      }
+    };
+
+    this.on('config', onConfig);
+    this.on('frame', onFrame);
+
+    try {
+      await this.start();
+      await this.onTermination;
+    } finally {
+      if (stopTimer) clearTimeout(stopTimer);
+      if (options.signal && abortListener) {
+        options.signal.removeEventListener('abort', abortListener);
+      }
+      this.off('config', onConfig);
+      this.off('frame', onFrame);
+      await new Promise<void>((resolve) => fileStream.end(resolve));
+    }
+
+    const durationMs = Date.now() - startTime;
+    let detectedCodec = 'H264';
+    try {
+      detectedCodec = await Promise.race([
+        this.codec,
+        Utils.delay(50).then(() => (this.config.videoCodec ? this.config.videoCodec.toUpperCase() : 'H264')),
+      ]);
+    } catch {
+      // ignore
+    }
+
+    let finalWidth = 0;
+    let finalHeight = 0;
+    try {
+      finalWidth = await Promise.race([this.width, Utils.delay(50).then(() => this.currentWidth)]);
+      finalHeight = await Promise.race([this.height, Utils.delay(50).then(() => this.currentHeight)]);
+    } catch {
+      // ignore
+    }
+
+    let finalFilePath = rawPath;
+
+    // Remux to MP4 container if requested
+    if (shouldRemux) {
+      const mp4Target = isMp4 ? resolvedPath : resolvedPath.replace(/\.[^.]+$/, '.mp4');
+      const fps = options.framerate || this.config.maxFps || 30;
+      try {
+        await new Promise<void>((resolve, reject) => {
+          execFile(
+            'ffmpeg',
+            ['-y', '-r', fps.toString(), '-i', rawPath, '-c', 'copy', '-movflags', '+faststart', mp4Target],
+            (err) => {
+              if (err) reject(err);
+              else resolve();
+            }
+          );
+        });
+        finalFilePath = mp4Target;
+        // If the original requested destPath was .mp4, remove the intermediate raw file
+        if (isMp4 && rawPath !== mp4Target && fs.existsSync(mp4Target)) {
+          try {
+            await fs.promises.unlink(rawPath);
+          } catch {
+            // ignore
+          }
+        }
+      } catch (remuxErr) {
+        debug('Remuxing to MP4 failed, keeping raw stream file:', remuxErr);
+      }
+    }
+
+    return {
+      filePath: finalFilePath,
+      rawFilePath: finalFilePath !== rawPath ? rawPath : undefined,
+      frames: frameCount,
+      keyframes: keyframeCount,
+      bytes: totalBytes,
+      codec: detectedCodec,
+      width: finalWidth,
+      height: finalHeight,
+      durationMs,
+    };
+  }
+
+  /**
+   * List available video encoders reported by the device for scrcpy.
+   *
+   * @param deviceClient DeviceClient instance
+   * @param scrcpyVersion Scrcpy server version (default: '3.0')
+   */
+  static async listEncoders(deviceClient: DeviceClient, scrcpyVersion = '3.0'): Promise<string[]> {
+    const scrcpy = new Scrcpy(deviceClient, {
+      version: scrcpyVersion as any,
+      encoderName: '_', // intentionally invalid to trigger encoder listing
+    });
+    // Suppress error events
+    scrcpy.on('error', () => {});
+    try {
+      await scrcpy.start();
+    } catch {
+      // Expected
+    }
+    const terminationOutput = await scrcpy.onTermination.catch(() => '');
+    const encoders = [...terminationOutput.matchAll(/encoder '([^']+)'/g)].map((m) => m[1]);
+    return Array.from(new Set(encoders));
   }
 }

@@ -42,7 +42,7 @@ import DeviceWithPath from '../models/DeviceWithPath.js';
 import Client from './client.js';
 import Utils, { BufferEncoding } from './utils.js';
 import Scrcpy from './thirdparty/scrcpy/Scrcpy.js';
-import type { ScrcpyOptions } from './thirdparty/scrcpy/ScrcpyModels.js';
+import type { ScrcpyOptions, VideoRecordOptions, VideoRecordResult } from './thirdparty/scrcpy/ScrcpyModels.js';
 import { RebootType } from './command/host-transport/reboot.js';
 import Minicap, { MinicapOptions } from './thirdparty/minicap/Minicap.js';
 import STFService, { STFServiceOptions } from './thirdparty/STFService/STFService.js';
@@ -1081,6 +1081,31 @@ export default class DeviceClient {
   public scrcpy(options?: Partial<ScrcpyOptions>): Scrcpy {
     const scrcpy = new Scrcpy(this, options);
     return scrcpy;
+  }
+
+  /**
+   * Record screen video directly using Scrcpy.
+   *
+   * @param filePath Destination file path (.mp4, .h264, .h265, etc.)
+   * @param scrcpyOptions Scrcpy server configuration (videoCodec, maxFps, maxSize, etc.)
+   * @param recordOptions Recording control (durationMs, maxFrames, remuxMp4, signal, onProgress)
+   */
+  public async recordScreen(
+    filePath: string,
+    scrcpyOptions?: Partial<ScrcpyOptions>,
+    recordOptions?: VideoRecordOptions
+  ): Promise<VideoRecordResult> {
+    const scrcpy = this.scrcpy(scrcpyOptions);
+    return scrcpy.recordToFile(filePath, recordOptions);
+  }
+
+  /**
+   * List available video encoders on this device for scrcpy.
+   *
+   * @param scrcpyVersion Scrcpy server version (default: '3.0')
+   */
+  public async listVideoEncoders(scrcpyVersion = '3.0'): Promise<string[]> {
+    return Scrcpy.listEncoders(this, scrcpyVersion);
   }
 
   /**

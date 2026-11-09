@@ -78,7 +78,16 @@ export { default as STFService } from './adb/thirdparty/STFService/STFService.js
 export { type MyMessage } from './adb/thirdparty/STFService/STFServiceBuf.js';
 export { default as STFServiceBuf } from './adb/thirdparty/STFService/STFServiceBuf.js';
 
-export type { Point, ScrcpyOptions, VideoStreamFramePacket, H264Configuration } from './adb/thirdparty/scrcpy/ScrcpyModels.js';
+export type {
+  Point,
+  ScrcpyOptions,
+  VideoStreamFramePacket,
+  H264Configuration,
+  VideoRecordOptions,
+  VideoRecordResult,
+  VideoRecordProgress,
+  VideoEncoderInfo,
+} from './adb/thirdparty/scrcpy/ScrcpyModels.js';
 
 export { default as DevicePackage, } from './adb/DevicePackage.js';
 export type { PackageInfo } from './adb/DevicePackage.js';

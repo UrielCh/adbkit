@@ -188,3 +188,82 @@ export interface VideoStreamFramePacket {
     data: Uint8Array;
     config?: H264Configuration;
 }
+
+export interface VideoRecordProgress {
+    frames: number;
+    keyframes: number;
+    bytes: number;
+    elapsedMs: number;
+}
+
+export interface VideoRecordOptions {
+    /**
+     * Maximum recording duration in milliseconds.
+     */
+    durationMs?: number;
+    /**
+     * Maximum number of frames to record before stopping.
+     */
+    maxFrames?: number;
+    /**
+     * AbortSignal to stop recording programmatically.
+     */
+    signal?: AbortSignal;
+    /**
+     * Whether to automatically remux into an MP4 container if ffmpeg is available.
+     * Default: true if destination path ends with .mp4.
+     */
+    remuxMp4?: boolean;
+    /**
+     * Assumed framerate for MP4 remuxing (default: scrcpy maxFps or 30).
+     */
+    framerate?: number;
+    /**
+     * Periodic progress callback (called on captured frames).
+     */
+    onProgress?: (progress: VideoRecordProgress) => void;
+}
+
+export interface VideoRecordResult {
+    /**
+     * Final output video file path.
+     */
+    filePath: string;
+    /**
+     * Raw elementary stream path before remuxing (if remuxing took place).
+     */
+    rawFilePath?: string;
+    /**
+     * Total number of captured frames.
+     */
+    frames: number;
+    /**
+     * Number of keyframes captured.
+     */
+    keyframes: number;
+    /**
+     * Total stream bytes captured.
+     */
+    bytes: number;
+    /**
+     * Video codec name (e.g. 'H264', 'H265', 'AV1').
+     */
+    codec: string;
+    /**
+     * Video width in pixels.
+     */
+    width: number;
+    /**
+     * Video height in pixels.
+     */
+    height: number;
+    /**
+     * Recording duration in milliseconds.
+     */
+    durationMs: number;
+}
+
+export interface VideoEncoderInfo {
+    codec: string;
+    name: string;
+}
