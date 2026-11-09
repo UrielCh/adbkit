@@ -30,7 +30,7 @@ export default class UninstallCommand extends Command<boolean> {
       if (opts.versionCode) cmd += ` --versionCode ${opts.versionCode}`;
     }
     cmd += ` ${pkg}`
-    this.sendCommand(cmd);
+    await this.sendCommand(cmd);
     await this.readOKAY();
     try {
       const match = await this.parser.searchLine(/^(Success|Failure.*|.*Unknown package:.*)$/);
@@ -46,7 +46,7 @@ export default class UninstallCommand extends Command<boolean> {
         return true;
       }
     } finally {
-      this.parser.readAll();
+      await this.parser.readAll();
     }
   }
 }

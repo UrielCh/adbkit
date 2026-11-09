@@ -959,7 +959,10 @@ export default class DeviceClient {
   public async pull(path: string): Promise<PullTransfer> {
     const sync = await this.syncService();
     const pullTransfer = await sync.pull(path);
-    pullTransfer.waitForEnd().finally(() => sync.end())
+    void pullTransfer
+      .waitForEnd()
+      .catch(() => {})
+      .finally(() => sync.end());
     return pullTransfer;
   }
 
@@ -1003,7 +1006,10 @@ export default class DeviceClient {
   public async push(contents: string | ReadStream, path: string, mode?: number): Promise<PushTransfer> {
     const sync = await this.syncService();
     const transfert = await sync.push(contents, path, mode);
-    transfert.waitForEnd().finally(() => sync.end())
+    void transfert
+      .waitForEnd()
+      .catch(() => {})
+      .finally(() => sync.end());
     return transfert;
   }
 

@@ -26,7 +26,6 @@ export default abstract class Command<T> {
   }
 
   // FIXME(intentional any): not "any" will break it all
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/explicit-module-boundary-types
   public abstract execute(...args: any[]): Promise<T>;
 
   /**

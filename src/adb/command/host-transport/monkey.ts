@@ -17,7 +17,7 @@ export default class MonkeyCommand extends Command<Duplex> {
     // are some hardcoded logs, though. Anyway, this should enable most things.
     // Check https://github.com/android/platform_frameworks_base/blob/master/
     // core/java/android/os/Environment.java for the variables.
-    this.sendCommand(`shell:EXTERNAL_STORAGE=/data/local/tmp monkey --port ${port} -v`);
+    await this.sendCommand(`shell:EXTERNAL_STORAGE=/data/local/tmp monkey --port ${port} -v`);
     await this.readOKAY();
     // The monkey command is a bit weird in that it doesn't look like
     // it starts in daemon mode, but it actually does. So even though

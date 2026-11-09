@@ -1,5 +1,6 @@
 import { Buffer } from 'node:buffer';
 import { Stream } from 'node:stream';
+import { finished } from 'node:stream/promises';
 import { BufferEncoding } from '../utils.js';
 
 /**
@@ -51,20 +52,7 @@ export default class PullTransfer extends Stream.PassThrough {
    */
   public waitForEnd(): Promise<void> {
     if (!this.waitForEndPromise) {
-      if (this.closed) {
-        this.waitForEndPromise = Promise.resolve();
-      } else {
-        this.waitForEndPromise = new Promise<void>((resolve, reject) => {
-          const unReg = () => {
-            this.off('end', onEnd);
-            this.off('error', onError);
-          }
-          const onError = (e: Error) => { unReg(); reject(e); };
-          const onEnd = () => (unReg(), resolve());
-          this.on('end', onEnd);
-          this.on('error', onError);
-        })
-      }
+      this.waitForEndPromise = finished(this);
     }
     return this.waitForEndPromise;
   }

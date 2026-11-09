@@ -18,7 +18,7 @@ export interface AdbServiceInfo {
 
 export default class ServiceListCommand extends Command<AdbServiceInfo[]> {
   async execute(): Promise<AdbServiceInfo[]> {
-    this.sendCommand('exec:service list 2>/dev/null');
+    await this.sendCommand('exec:service list 2>/dev/null');
     await this.readOKAY();
     const data = await this.parser.readAll()
     return this._parse(data.toString());
@@ -27,13 +27,13 @@ export default class ServiceListCommand extends Command<AdbServiceInfo[]> {
   private _parse(value: string): AdbServiceInfo[] {
     const packages: AdbServiceInfo[] = [];
     const RE_PACKAGE = /^(\d+)\s+([^:]+): \[(.*)\]\r?$/gm;
-    for (;;) {
+    for (; ;) {
       const match = RE_PACKAGE.exec(value);
       if (match) {
         const id = Number(match[1]);
         const name = match[2];
         const pkg = match[3];
-        packages.push({id, name, pkg});
+        packages.push({ id, name, pkg });
       } else {
         break;
       }

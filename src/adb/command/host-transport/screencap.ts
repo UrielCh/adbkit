@@ -5,7 +5,7 @@ import { Duplex } from 'node:stream';
 
 export default class ScreencapCommand extends Command<Duplex> {
   async execute(): Promise<Duplex> {
-    this.sendCommand('shell:echo && screencap -p 2>/dev/null');
+    await this.sendCommand('shell:echo && screencap -p 2>/dev/null');
     await this.readOKAY();
     let transform = new LineTransform();
     try {

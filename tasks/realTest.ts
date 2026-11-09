@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -18,7 +17,6 @@ import ThirdUtils from '../src/adb/thirdparty/ThirdUtils.js';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-// eslint-disable-next-line @typescript-eslint/no-var-requires
 // const logRunning = require('why-is-node-running');
 
 function print(list: Array<IpRouteEntry | IpRuleEntry>) {
@@ -38,7 +36,7 @@ function fmtSize(trData: number): string {
 }
 
 const testScrcpy = async (deviceClient: DeviceClient) => {
-  const scrcpy = deviceClient.scrcpy({version: '2.7'});
+  const scrcpy = deviceClient.scrcpy({ version: '2.7' });
   scrcpy.on('error', (e) => {
     console.error('scrcpy error', e);
   });

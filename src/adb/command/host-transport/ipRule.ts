@@ -18,7 +18,7 @@ import Command from '../../command.js';
  */
 export default class IpRuleCommand extends Command<Array<IpRuleEntry>> {
   async execute(...args: string[]): Promise<Array<IpRuleEntry>> {
-    this.sendCommand(['shell:ip', 'rule', ...args].join(' '));
+    await this.sendCommand(['shell:ip', 'rule', ...args].join(' '));
     await this.readOKAY();
     const data = await this.parser.readAll()
     return this.parseIpRule(data.toString());

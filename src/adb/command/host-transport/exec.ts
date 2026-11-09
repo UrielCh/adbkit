@@ -7,7 +7,7 @@ export default class ExecCommand extends Command<Duplex> {
     if (Array.isArray(command)) {
       command = command.map(this.escape).join(' ');
     }
-    this.sendCommand(`exec:${command}`);
+    await this.sendCommand(`exec:${command}`);
     await this.readOKAY();
     return this.parser.raw();
   }

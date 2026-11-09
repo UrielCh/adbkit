@@ -42,7 +42,7 @@ import Command from '../../command.js';
  */
 export default class InstallCommand extends Command<boolean> {
   async execute(apk: string): Promise<boolean> {
-    this.sendCommand(`shell:pm install -r ${this.escapeCompat(apk)}`);
+    await this.sendCommand(`shell:pm install -r ${this.escapeCompat(apk)}`);
     await this.readOKAY();
     try {
       const match = await this.parser.searchLine(/^(Success|Failure \[(.*?)\])$/);
@@ -51,13 +51,13 @@ export default class InstallCommand extends Command<boolean> {
       } else {
         const code = match[2];
         const err = new Error(`${apk} could not be installed [${code}]`);
-        (err as Error & {code: string}).code = code;
+        (err as Error & { code: string }).code = code;
         throw err;
       }
     } finally {
       // Consume all remaining content to "naturally" close the
       // connection.
-      this.parser.readAll();
+      await this.parser.readAll();
     }
   }
 }

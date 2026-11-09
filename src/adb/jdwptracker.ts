@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import EventEmitter from 'node:events';
 import { AdbPrematureEOFError } from './errors.js';
 import Command from './command.js';
@@ -20,7 +19,7 @@ interface JdwpTrackerChangeSet {
 /**
  * enforce EventEmitter typing
  */
- interface IEmissions {
+interface IEmissions {
   /**
    * Emitted when the underlying connection ends.
    */

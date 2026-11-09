@@ -9,7 +9,7 @@ export default class IpRouteCommand extends Command<Array<IpRouteEntry>> {
   }
 
   async execute(...args: string[]): Promise<Array<IpRouteEntry>> {
-    super.sendCommand(['shell:ip', 'route', ...args].join(' ')); //  2>/dev/null
+    await this.sendCommand(['shell:ip', 'route', ...args].join(' ')); //  2>/dev/null
     await this.readOKAY();
     const data = await this.parser.readAll()
     return this.parseIpRoute(data.toString());

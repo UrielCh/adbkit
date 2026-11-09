@@ -5,7 +5,7 @@ const RE_KEYVAL = /^\[([\s\S]*?)\]: \[([\s\S]*?)\]\r?$/gm;
 
 export default class GetPropertiesCommand extends Command<Properties> {
   async execute(): Promise<Properties> {
-    this.sendCommand('shell:getprop');
+    await this.sendCommand('shell:getprop');
     await this.readOKAY();
     const data = await this.parser.readAll()
     return this._parseProperties(data.toString());

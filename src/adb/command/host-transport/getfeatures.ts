@@ -5,7 +5,7 @@ const RE_FEATURE = /^feature:(.*?)(?:=(.*?))?\r?$/gm;
 
 export default class GetFeaturesCommand extends Command<Features> {
   async execute(): Promise<Features> {
-    this.sendCommand('shell:pm list features 2>/dev/null');
+    await this.sendCommand('shell:pm list features 2>/dev/null');
     await this.readOKAY();
     const data = await this.parser.readAll();
     return this._parseFeatures(data.toString());

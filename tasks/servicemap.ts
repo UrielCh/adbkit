@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
 import https from 'node:https';
 import GitSource from './GitSource'
 
@@ -125,4 +124,4 @@ async function main() {
   // }
 }
 
-main();
+main().then(() => console.log('done')).catch(console.log);

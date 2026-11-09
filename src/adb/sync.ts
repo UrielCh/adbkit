@@ -32,27 +32,27 @@ export interface ENOENT extends Error {
  * error code from STA2
  */
 export const AdbSyncStatErrorCodeMap = {
-  SUCCESS : 0,
-  EACCES : 13,
-  EEXIST : 17,
-  EFAULT : 14,
-  EFBIG : 27,
-  EINTR : 4,
-  EINVAL : 22,
-  EIO : 5,
-  EISDIR : 21,
-  ELOOP : 40,
-  EMFILE : 24,
-  ENAMETOOLONG : 36,
-  ENFILE : 23,
-  ENOENT : 2,
-  ENOMEM : 12,
-  ENOSPC : 28,
-  ENOTDIR : 20,
-  EOVERFLOW : 75,
-  EPERM : 1,
-  EROFS : 30,
-  ETXTBSY : 26,
+  SUCCESS: 0,
+  EACCES: 13,
+  EEXIST: 17,
+  EFAULT: 14,
+  EFBIG: 27,
+  EINTR: 4,
+  EINVAL: 22,
+  EIO: 5,
+  EISDIR: 21,
+  ELOOP: 40,
+  EMFILE: 24,
+  ENAMETOOLONG: 36,
+  ENFILE: 23,
+  ENOENT: 2,
+  ENOMEM: 12,
+  ENOSPC: 28,
+  ENOTDIR: 20,
+  EOVERFLOW: 75,
+  EPERM: 1,
+  EROFS: 30,
+  ETXTBSY: 26,
 } as const;
 // export type AdbSyncStatErrorCodeNames = keyof typeof AdbSyncStatErrorCodeMap;
 export type AdbSyncStatErrorCode = typeof AdbSyncStatErrorCodeMap[keyof typeof AdbSyncStatErrorCodeMap];
@@ -291,7 +291,6 @@ export default class Sync extends EventEmitter {
       if (!readable)
         break;
       let chunk: ReturnType<Readable['read']>;
-      // eslint-disable-next-line no-cond-assign
       while (chunk = (stream.read(DATA_MAX_LENGTH) || stream.read())) {
         await this.sendCommandWithLength(Protocol.DATA, chunk.length);
         transfer.push(chunk.length);
@@ -367,8 +366,7 @@ export default class Sync extends EventEmitter {
     return this.connection.write(payload);
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  private enoent(path: string): Promise<any> {
+  private enoent(path: string): Promise<never> {
     const err: ENOENT = new Error(`ENOENT, no such file or directory '${path}'`) as ENOENT;
     err.errno = 34;
     err.code = 'ENOENT';

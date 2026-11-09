@@ -10,7 +10,7 @@ export default class LogcatCommand extends Command<LineTransform> {
     if (options.clear) {
       cmd = `logcat -c 2>/dev/null && ${cmd}`;
     }
-    this.sendCommand(`shell:echo && ${cmd}`);
+    await this.sendCommand(`shell:echo && ${cmd}`);
     await this.readOKAY();
     return this.parser.raw().pipe(
       new LineTransform({

@@ -105,7 +105,7 @@ export default class ServiceCallCommand extends Command<ParcelReader> {
           cmd += ` ${arg.value}`;
         }
       }
-    this.sendCommand(`${cmd} 2>/dev/null`);
+    await this.sendCommand(`${cmd} 2>/dev/null`);
     await this.readOKAY();
     const data = await this.parser.readAll();
     const buf = this._parse(data.toString());
