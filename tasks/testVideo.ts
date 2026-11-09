@@ -239,6 +239,15 @@ async function main() {
   console.log(`Target device: ${pc.green(device.id)}`);
   const deviceClient = device.getClient();
 
+  try {
+    const encoders = await deviceClient.listVideoEncoders();
+    if (encoders.length > 0) {
+      console.log(`Detected device video encoders: ${encoders.map((e) => `${pc.yellow(e.name)} (${pc.cyan(e.codec)})`).join(', ')}`);
+    }
+  } catch {
+    // ignore
+  }
+
   // Create recordings output directory
   const outputDir = path.join(__dirname, 'recordings');
   if (!fs.existsSync(outputDir)) {

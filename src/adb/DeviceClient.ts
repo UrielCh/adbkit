@@ -42,7 +42,7 @@ import DeviceWithPath from '../models/DeviceWithPath.js';
 import Client from './client.js';
 import Utils, { BufferEncoding } from './utils.js';
 import Scrcpy from './thirdparty/scrcpy/Scrcpy.js';
-import type { ScrcpyOptions, VideoRecordOptions, VideoRecordResult } from './thirdparty/scrcpy/ScrcpyModels.js';
+import type { ScrcpyOptions, VideoRecordOptions, VideoRecordResult, VideoEncoderInfo } from './thirdparty/scrcpy/ScrcpyModels.js';
 import { RebootType } from './command/host-transport/reboot.js';
 import Minicap, { MinicapOptions } from './thirdparty/minicap/Minicap.js';
 import STFService, { STFServiceOptions } from './thirdparty/STFService/STFService.js';
@@ -1100,12 +1100,40 @@ export default class DeviceClient {
   }
 
   /**
-   * List available video encoders on this device for scrcpy.
-   *
-   * @param scrcpyVersion Scrcpy server version (default: '3.0')
+   * List available video encoders on this device.
+   * Parses Android's media_codecs configurations or queries scrcpy.
    */
-  public async listVideoEncoders(scrcpyVersion = '3.0'): Promise<string[]> {
-    return Scrcpy.listEncoders(this, scrcpyVersion);
+  public async listVideoEncoders(): Promise<VideoEncoderInfo[]> {
+    try {
+      const output = await this.execOut(
+        'cat /vendor/etc/media_codecs*.xml /system/etc/media_codecs*.xml /etc/media_codecs*.xml 2>/dev/null',
+        'utf8'
+      );
+      const encoders: VideoEncoderInfo[] = [];
+      const seen = new Set<string>();
+      const regex = /<MediaCodec\s+name="([^"]+)"\s+type="(video\/[^"]+)"/gi;
+      let match: RegExpExecArray | null;
+      while ((match = regex.exec(output)) !== null) {
+        const name = match[1];
+        const mime = match[2].toLowerCase();
+        if (!seen.has(name) && !name.endsWith('.secure')) {
+          seen.add(name);
+          let codec = 'unknown';
+          if (mime.includes('avc')) codec = 'h264';
+          else if (mime.includes('hevc')) codec = 'h265';
+          else if (mime.includes('av01') || mime.includes('av1')) codec = 'av1';
+          else if (mime.includes('vp8')) codec = 'vp8';
+          else if (mime.includes('vp9')) codec = 'vp9';
+          encoders.push({ name, codec });
+        }
+      }
+      if (encoders.length > 0) {
+        return encoders;
+      }
+    } catch {
+      // ignore
+    }
+    return [];
   }
 
   /**
