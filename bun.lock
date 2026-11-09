@@ -44,6 +44,12 @@
         "typescript": "5.9.3",
         "why-is-node-running": "^3.2.3",
       },
+      "optionalDependencies": {
+        "@yume-chan/adb": "^2.6.4",
+        "@yume-chan/adb-credential-nodejs": "^3.0.0-beta.5",
+        "@yume-chan/adb-daemon-webusb": "^3.0.0-beta.5",
+        "usb": "^3.3.0",
+      },
     },
   },
   "packages": {
@@ -265,6 +271,26 @@
 
     "@keyv/serialize": ["@keyv/serialize@1.1.1", "", {}, "sha512-dXn3FZhPv0US+7dtJsIi2R+c7qWYiReoEh5zUntWCf4oSpMNib8FDhSoed6m3QyZdx5hK7iLFkYk3rNxwt8vTA=="],
 
+    "@node-usb/usb-darwin-arm64": ["@node-usb/usb-darwin-arm64@3.3.0", "", { "os": "darwin", "cpu": "arm64" }, "sha512-7P3UZX3J0pbqWs8cBC2VEJAWpVfxeJTBAPAC3tTAwdUjmurbG0wEIz5W6nokKgyrlfejyNGhBl9ZT6ELgcC80Q=="],
+
+    "@node-usb/usb-darwin-x64": ["@node-usb/usb-darwin-x64@3.3.0", "", { "os": "darwin", "cpu": "x64" }, "sha512-ZcCLlNVbz04fjUAy+2QLs2fLFAOp3NFvfinXKs6/S2reMQZOR0fFndWU1oUXOOiiEYwG7zHjbi5VWl/KcuWOtA=="],
+
+    "@node-usb/usb-linux-arm-gnueabihf": ["@node-usb/usb-linux-arm-gnueabihf@3.3.0", "", { "os": "linux", "cpu": "arm" }, "sha512-Y3HCcC69Zoq3XwzX0Fx5uRm6DOy0JENAEmTjki7k725ZEWWysC+fWCQgSwuNUpmw6OOtrjjQG6+pQKIe4lSh4w=="],
+
+    "@node-usb/usb-linux-arm64-gnu": ["@node-usb/usb-linux-arm64-gnu@3.3.0", "", { "os": "linux", "cpu": "arm64" }, "sha512-LnzoSGKq606zYius2AeRiBPmYidFEUDZz0ULx5rTw3iPsNHVxnxfpHg8uwsrYvugJ4A2rSkvs3JlXPEO8wKBqg=="],
+
+    "@node-usb/usb-linux-arm64-musl": ["@node-usb/usb-linux-arm64-musl@3.3.0", "", { "os": "linux", "cpu": "arm64" }, "sha512-wblptWtIz7KXPyRGyFE9TSyHSMHx96Sctl/6xAdkcX18s2rkMiCxV3lUPBmVYjrw7QSaIdMjpTFYe16Mrs2NHw=="],
+
+    "@node-usb/usb-linux-x64-gnu": ["@node-usb/usb-linux-x64-gnu@3.3.0", "", { "os": "linux", "cpu": "x64" }, "sha512-RV4FkXoJen6prQ93RbhqZ9tjzn/F0h8EoNVJbB3OhYxrZtqssD2ILqw6SPiRtwbmNYv315hT5bEZSRoX/7VOLw=="],
+
+    "@node-usb/usb-linux-x64-musl": ["@node-usb/usb-linux-x64-musl@3.3.0", "", { "os": "linux", "cpu": "x64" }, "sha512-/SPx4t64yj0KY0lEHt3yBB17mV7hMQxesppHrCAC1tSc/V28lIteM37Z4MD9Y7FPP1powNXsBnl7P/iX4rphOw=="],
+
+    "@node-usb/usb-win32-arm64-msvc": ["@node-usb/usb-win32-arm64-msvc@3.3.0", "", { "os": "win32", "cpu": "arm64" }, "sha512-XeDz9H8vBrn769dGNFzzNhENKi6u73PYW9y5LbhnU6TqJctR3f/UxDJ3jLH0VMOkmoM1s3Tfo1YUZkNl8a/upg=="],
+
+    "@node-usb/usb-win32-ia32-msvc": ["@node-usb/usb-win32-ia32-msvc@3.3.0", "", { "os": "win32", "cpu": "ia32" }, "sha512-QJnWjuG/BBVVuixbgb8DVK07Sj1nOqXx8daYRDa5YpjScjUvnzNvB4woFD7KCfrVArzrJLWolXk0o6Na7YyLBQ=="],
+
+    "@node-usb/usb-win32-x64-msvc": ["@node-usb/usb-win32-x64-msvc@3.3.0", "", { "os": "win32", "cpu": "x64" }, "sha512-ka4MF8cKoxj4/g5iz2xvr1mFwZWdWrQq1T3x/UqNurjfszcja0JB2acO2XErHsUeB4zqGi94p0jLbART5S448g=="],
+
     "@parcel/watcher": ["@parcel/watcher@2.6.0", "", { "dependencies": { "detect-libc": "^2.0.3", "is-glob": "^4.0.3", "node-addon-api": "^7.0.0", "picomatch": "^4.0.4" }, "optionalDependencies": { "@parcel/watcher-android-arm64": "2.6.0", "@parcel/watcher-darwin-arm64": "2.6.0", "@parcel/watcher-darwin-x64": "2.6.0", "@parcel/watcher-freebsd-x64": "2.6.0", "@parcel/watcher-linux-arm-glibc": "2.6.0", "@parcel/watcher-linux-arm-musl": "2.6.0", "@parcel/watcher-linux-arm64-glibc": "2.6.0", "@parcel/watcher-linux-arm64-musl": "2.6.0", "@parcel/watcher-linux-x64-glibc": "2.6.0", "@parcel/watcher-linux-x64-musl": "2.6.0", "@parcel/watcher-win32-arm64": "2.6.0", "@parcel/watcher-win32-x64": "2.6.0" } }, "sha512-7FNeNl8NCE7aINx7WXiKQrPYZWC/hvrTsmk6zmxbI7LTXE7hVek/n8AfVgpe2y82zl3w0HvCHN0bVKMBoJcC0w=="],
 
     "@parcel/watcher-android-arm64": ["@parcel/watcher-android-arm64@2.6.0", "", { "os": "android", "cpu": "arm64" }, "sha512-trgpLSCKRC/huFjXX/Smh+0sWe4+YtKfktIToiMl59ghz7z+qkH6kMvNnUbLyRs9N11t8l4svSCs1+5B3rOAhA=="],
@@ -357,6 +383,8 @@
 
     "@types/unist": ["@types/unist@3.0.3", "", {}, "sha512-ko/gIFJRv177XgZsZcBwnqJN5x/Gien8qNOn0D5bQU/zAzVf9Zt3BlcUiLqhV9y4ARk0GbT3tnUiPNgnTXzc/Q=="],
 
+    "@types/w3c-web-usb": ["@types/w3c-web-usb@1.0.14", "", {}, "sha512-Qu3Nn6JFuF4+sHKYl+IcX9vYiI40ogleXzFFSxoE1W94rG98o/kXs8uJ0QSfFzuwBCZWlGfUGpPkgwuuX4PchA=="],
+
     "@types/yargs": ["@types/yargs@17.0.33", "", { "dependencies": { "@types/yargs-parser": "21.0.3" } }, "sha512-WpxBCKWPLr4xSsHgz511rFJAM+wS28w2zEO1QDNY5zM/S8ok70NNfztH0xwhqKyaK0OHCbN98LDAZuy1ctxDkA=="],
 
     "@types/yargs-parser": ["@types/yargs-parser@21.0.3", "", {}, "sha512-I4q9QU9MQv4oEOz4tAHJtNz1cwuLxn2F3xcc2iV5WdqLPpUnj30aUuxt1mAxYTG+oe8CZMV/+6rU4S4gRDzqtQ=="],
@@ -432,6 +460,24 @@
     "@unrs/resolver-binding-win32-x64-msvc": ["@unrs/resolver-binding-win32-x64-msvc@1.13.0", "", { "os": "win32", "cpu": "x64" }, "sha512-DpLMlAqlrk4zBVK3DiDjwKD0oq7pZNy+8BiIBRuByqb6dm5jsdoLMhIiyh/xR7+WejaW/1Ui+XgbgMNa4+zWJg=="],
 
     "@xmldom/xmldom": ["@xmldom/xmldom@0.9.12", "", {}, "sha512-5AXjrcMClTryPe9LgZrygpB1lj7s0S9E0+W+AHaVKAVyHanafK86iPSvG5xHVSp/jC+VH1UXu0TAEmY279xH7A=="],
+
+    "@yume-chan/adb": ["@yume-chan/adb@2.6.4", "", { "dependencies": { "@yume-chan/async": "^4.1.3", "@yume-chan/event": "^2.0.0", "@yume-chan/no-data-view": "^2.0.0", "@yume-chan/stream-extra": "^2.6.1", "@yume-chan/struct": "^2.3.2" } }, "sha512-aaN21ZOLjWW1nC09C21f0yQkCqxkuMWMqheryGEbmGLPhuzIyOhTurJK8cXh5ZnQ+ptdKBexqvoG6zYoul9XPA=="],
+
+    "@yume-chan/adb-credential-nodejs": ["@yume-chan/adb-credential-nodejs@3.0.0-beta.5", "", { "dependencies": { "@yume-chan/adb": "3.0.0-beta.5", "@yume-chan/adb-credential-web": "3.0.0-beta.5" } }, "sha512-b62E9S0gPvzsfOg26VE8b8xOS45tLKa82/+5oSOxtDDRroIrOVdhBCVyX21kW06e7+7n+je74D+ElQVWv+tuxw=="],
+
+    "@yume-chan/adb-credential-web": ["@yume-chan/adb-credential-web@3.0.0-beta.5", "", { "dependencies": { "@yume-chan/adb": "3.0.0-beta.5", "@yume-chan/async": "^4.2.2", "@yume-chan/stream-extra": "3.0.0-beta.5", "@yume-chan/struct": "3.0.0-beta.5" } }, "sha512-hijVo+Zh/Co/Jxxx7b4phV9HxjJt9mkmgrt/b+xbpdPYPaCfgQtMtzU0ty4Wbd02HImGRyELBzDs3+Eiwjg3vw=="],
+
+    "@yume-chan/adb-daemon-webusb": ["@yume-chan/adb-daemon-webusb@3.0.0-beta.5", "", { "dependencies": { "@types/w3c-web-usb": "^1.0.14", "@yume-chan/adb": "3.0.0-beta.5", "@yume-chan/event": "3.0.0-beta.5", "@yume-chan/stream-extra": "3.0.0-beta.5", "@yume-chan/struct": "3.0.0-beta.5" } }, "sha512-pNCbE8wrvjHnm2bZSYZXxltFqNlu7NP0n4ZIcASq49pErHA7UB90/ANKS++6JdUcRITmHc5NeJdpISOiuh0uVg=="],
+
+    "@yume-chan/async": ["@yume-chan/async@4.2.2", "", {}, "sha512-sF4nd/GZKgLVhACPHW2KY6JBiFXVVLZtCy+P42XTM5LPBy57+hj4+jumdEUr46f+MUOQhe8eyiuB1P6QOew/xQ=="],
+
+    "@yume-chan/event": ["@yume-chan/event@2.0.0", "", { "dependencies": { "@yume-chan/async": "^4.0.2" } }, "sha512-z56MDOcX1QlgLUCuA6th3r10negVb7A3gzY//TwSC9ZOvzuRlrAqXcxZf1T3hHfNMk/NFO9RIgQgegXYSfaqLw=="],
+
+    "@yume-chan/no-data-view": ["@yume-chan/no-data-view@2.0.0", "", {}, "sha512-0GRJrrt6wtZlbiE92jocHOnaAvjQ+Y7xwwhwOPqLkwf90Kj1JIHJ5Zh4wJVQSQIkzfRSOpM+jeEQdC2K15snlA=="],
+
+    "@yume-chan/stream-extra": ["@yume-chan/stream-extra@2.6.1", "", { "dependencies": { "@yume-chan/async": "^4.1.3", "@yume-chan/struct": "^2.3.2" } }, "sha512-GQ+Q0SQf9p6Fl7ZK0UO5vHVGBJgkTJm/WXKurUMpjHQV4VUpjZ2hrQ744aCfT7WwSol7Bz/uEiXWmk240Hr/hg=="],
+
+    "@yume-chan/struct": ["@yume-chan/struct@2.3.2", "", { "dependencies": { "@yume-chan/async": "^4.1.3", "@yume-chan/no-data-view": "^2.0.0" } }, "sha512-afoCnSKV+5HRK7e4innVd9YTYDyNWdjA1CVQa1j8rWYnmr7HGZfdkHMQr+AESLk6GxWFMzOIPQIG6nYOTGMFIw=="],
 
     "acorn": ["acorn@8.19.0", "", { "bin": { "acorn": "bin/acorn" } }, "sha512-oJlA3XiRm7Cyk6qFD2Jn8ak9B7jSy0qy00ADO3+8dpT0LSjFihQYv4C02LFCSYJV3Q37xYwwRy5m+IpIiUzqWw=="],
 
@@ -907,6 +953,8 @@
 
     "uri-js": ["uri-js@4.4.1", "", { "dependencies": { "punycode": "2.3.0" } }, "sha512-7rKUyy33Q1yc98pQ1DAmLtwX109F7TIfWlW1Ydo8Wl1ii1SeHieeh0HHfPeL2fMXK6z0s8ecKs9frCuLJvndBg=="],
 
+    "usb": ["usb@3.3.0", "", { "dependencies": { "@types/w3c-web-usb": "^1.0.14" }, "optionalDependencies": { "@node-usb/usb-darwin-arm64": "3.3.0", "@node-usb/usb-darwin-x64": "3.3.0", "@node-usb/usb-linux-arm-gnueabihf": "3.3.0", "@node-usb/usb-linux-arm64-gnu": "3.3.0", "@node-usb/usb-linux-arm64-musl": "3.3.0", "@node-usb/usb-linux-x64-gnu": "3.3.0", "@node-usb/usb-linux-x64-musl": "3.3.0", "@node-usb/usb-win32-arm64-msvc": "3.3.0", "@node-usb/usb-win32-ia32-msvc": "3.3.0", "@node-usb/usb-win32-x64-msvc": "3.3.0" } }, "sha512-zqqdLff364w/kKnUjG00V9bMmhBqucWgtw7rhsS+hJhSyy7Pq99r/mqRO1LU2OPaUQQZ0Pga/bAJ1A+gpu2Qww=="],
+
     "v8-to-istanbul": ["v8-to-istanbul@9.3.0", "", { "dependencies": { "@jridgewell/trace-mapping": "0.3.28", "@types/istanbul-lib-coverage": "2.0.6", "convert-source-map": "2.0.0" } }, "sha512-kiGUalWN+rgBJ/1OHZsBtU4rXZOfj/7rKQxULKlIzwzQSvMJUUNgPwJEEh7gU6xEVxC0ahoOBvN2YI8GH6FNgA=="],
 
     "which": ["which@2.0.2", "", { "dependencies": { "isexe": "2.0.0" }, "bin": { "node-which": "./bin/node-which" } }, "sha512-BLI3Tl1TW3Pvl70l3yq3Y64i+awpwXqsGBYWkkqMtnbXgrMD+yj7rhW0kuEDxzJaYXGjEW5ogapKNMEKNMjibA=="],
@@ -986,6 +1034,22 @@
     "@types/node-forge/@types/node": ["@types/node@24.3.0", "", { "dependencies": { "undici-types": "7.10.0" } }, "sha512-aPTXCrfwnDLj4VvXrm+UUCQjNEvJgNA8s5F1cvwQU+3KNltTOkBm1j30uNLyqqPNe7gE3KFzImYoZEfLhp4Yow=="],
 
     "@typescript-eslint/utils/@eslint-community/eslint-utils": ["@eslint-community/eslint-utils@4.10.1", "", { "dependencies": { "eslint-visitor-keys": "^3.4.3" }, "peerDependencies": { "eslint": "^6.0.0 || ^7.0.0 || >=8.0.0" } }, "sha512-cuadcxVFE8sDK6iWJbs8Sn0av2Nrh2QSGQhVlBW9AaAHqHwjWsZHT8LJ4hFGPh7ASBV2deFdM7H/DPjulmh8rg=="],
+
+    "@yume-chan/adb-credential-nodejs/@yume-chan/adb": ["@yume-chan/adb@3.0.0-beta.5", "", { "dependencies": { "@yume-chan/async": "^4.2.2", "@yume-chan/event": "3.0.0-beta.5", "@yume-chan/no-data-view": "3.0.0-beta.5", "@yume-chan/stream-extra": "3.0.0-beta.5", "@yume-chan/struct": "3.0.0-beta.5" } }, "sha512-Uv1BuqSO+O1sDGewEd5uH2/3wmOM44RXK4Fz7l/aExTY993n9POw5CaY8crKxYFGFrB74oCHDQCgMKalGjTgVQ=="],
+
+    "@yume-chan/adb-credential-web/@yume-chan/adb": ["@yume-chan/adb@3.0.0-beta.5", "", { "dependencies": { "@yume-chan/async": "^4.2.2", "@yume-chan/event": "3.0.0-beta.5", "@yume-chan/no-data-view": "3.0.0-beta.5", "@yume-chan/stream-extra": "3.0.0-beta.5", "@yume-chan/struct": "3.0.0-beta.5" } }, "sha512-Uv1BuqSO+O1sDGewEd5uH2/3wmOM44RXK4Fz7l/aExTY993n9POw5CaY8crKxYFGFrB74oCHDQCgMKalGjTgVQ=="],
+
+    "@yume-chan/adb-credential-web/@yume-chan/stream-extra": ["@yume-chan/stream-extra@3.0.0-beta.5", "", { "dependencies": { "@yume-chan/async": "^4.2.2", "@yume-chan/struct": "3.0.0-beta.5" } }, "sha512-Ruf6yYLICPX+aNvqCFTOcKLteHreuRxKTbMe6kejFiimbXRwLHq9uQQkUji6A/MtlfSioAhNvpFsUWNzxLMnaA=="],
+
+    "@yume-chan/adb-credential-web/@yume-chan/struct": ["@yume-chan/struct@3.0.0-beta.5", "", { "dependencies": { "@yume-chan/async": "^4.2.2", "@yume-chan/no-data-view": "3.0.0-beta.5" } }, "sha512-ICN3isMo/T2x57R2UzQGBLpPVFx0UOlDqyaMvYWPTRwAte1PKsAyxS3VmgoJvMWGyxjRVvtk4VaQNYWdlSK4/g=="],
+
+    "@yume-chan/adb-daemon-webusb/@yume-chan/adb": ["@yume-chan/adb@3.0.0-beta.5", "", { "dependencies": { "@yume-chan/async": "^4.2.2", "@yume-chan/event": "3.0.0-beta.5", "@yume-chan/no-data-view": "3.0.0-beta.5", "@yume-chan/stream-extra": "3.0.0-beta.5", "@yume-chan/struct": "3.0.0-beta.5" } }, "sha512-Uv1BuqSO+O1sDGewEd5uH2/3wmOM44RXK4Fz7l/aExTY993n9POw5CaY8crKxYFGFrB74oCHDQCgMKalGjTgVQ=="],
+
+    "@yume-chan/adb-daemon-webusb/@yume-chan/event": ["@yume-chan/event@3.0.0-beta.5", "", { "dependencies": { "@yume-chan/async": "^4.2.2" } }, "sha512-Tnb7G5MzvXLkoXqt5ngiea2azKd7GOU28TS4DDSEikjf50w90LU6hNilEttHUctLEA8663CHG+I/dD0CzVIukg=="],
+
+    "@yume-chan/adb-daemon-webusb/@yume-chan/stream-extra": ["@yume-chan/stream-extra@3.0.0-beta.5", "", { "dependencies": { "@yume-chan/async": "^4.2.2", "@yume-chan/struct": "3.0.0-beta.5" } }, "sha512-Ruf6yYLICPX+aNvqCFTOcKLteHreuRxKTbMe6kejFiimbXRwLHq9uQQkUji6A/MtlfSioAhNvpFsUWNzxLMnaA=="],
+
+    "@yume-chan/adb-daemon-webusb/@yume-chan/struct": ["@yume-chan/struct@3.0.0-beta.5", "", { "dependencies": { "@yume-chan/async": "^4.2.2", "@yume-chan/no-data-view": "3.0.0-beta.5" } }, "sha512-ICN3isMo/T2x57R2UzQGBLpPVFx0UOlDqyaMvYWPTRwAte1PKsAyxS3VmgoJvMWGyxjRVvtk4VaQNYWdlSK4/g=="],
 
     "acorn-jsx/acorn": ["acorn@8.15.0", "", { "bin": { "acorn": "bin/acorn" } }, "sha512-NZyJarBfL7nWwIq+FDL6Zp/yHEhePMNnnJ0y3qfieCrmNvYct8uvtiV41UvlSe6apAfk0fY1FbWx+NwfmpvtTg=="],
 
@@ -1124,6 +1188,24 @@
     "@types/node-forge/@types/node/undici-types": ["undici-types@7.10.0", "", {}, "sha512-t5Fy/nfn+14LuOc2KNYg75vZqClpAiqscVvMygNnlsHBFpSXdJaYtXMcdNLpl/Qvc3P2cB3s6lOV51nqsFq4ag=="],
 
     "@typescript-eslint/utils/@eslint-community/eslint-utils/eslint-visitor-keys": ["eslint-visitor-keys@3.4.3", "", {}, "sha512-wpc+LXeiyiisxPlEkUzU6svyS1frIO3Mgxj1fdy7Pm8Ygzguax2N3Fa/D/ag1WqbOprdI+uY6wMUl8/a2G+iag=="],
+
+    "@yume-chan/adb-credential-nodejs/@yume-chan/adb/@yume-chan/event": ["@yume-chan/event@3.0.0-beta.5", "", { "dependencies": { "@yume-chan/async": "^4.2.2" } }, "sha512-Tnb7G5MzvXLkoXqt5ngiea2azKd7GOU28TS4DDSEikjf50w90LU6hNilEttHUctLEA8663CHG+I/dD0CzVIukg=="],
+
+    "@yume-chan/adb-credential-nodejs/@yume-chan/adb/@yume-chan/no-data-view": ["@yume-chan/no-data-view@3.0.0-beta.5", "", {}, "sha512-d3m1BhYrZL586dvbSlnV1Ri0mdf3sIpkonuKOUQcw9A9/jgANZsgbRf5urj9EgqpLl1ofIK7ueN22R3FBL3OcQ=="],
+
+    "@yume-chan/adb-credential-nodejs/@yume-chan/adb/@yume-chan/stream-extra": ["@yume-chan/stream-extra@3.0.0-beta.5", "", { "dependencies": { "@yume-chan/async": "^4.2.2", "@yume-chan/struct": "3.0.0-beta.5" } }, "sha512-Ruf6yYLICPX+aNvqCFTOcKLteHreuRxKTbMe6kejFiimbXRwLHq9uQQkUji6A/MtlfSioAhNvpFsUWNzxLMnaA=="],
+
+    "@yume-chan/adb-credential-nodejs/@yume-chan/adb/@yume-chan/struct": ["@yume-chan/struct@3.0.0-beta.5", "", { "dependencies": { "@yume-chan/async": "^4.2.2", "@yume-chan/no-data-view": "3.0.0-beta.5" } }, "sha512-ICN3isMo/T2x57R2UzQGBLpPVFx0UOlDqyaMvYWPTRwAte1PKsAyxS3VmgoJvMWGyxjRVvtk4VaQNYWdlSK4/g=="],
+
+    "@yume-chan/adb-credential-web/@yume-chan/adb/@yume-chan/event": ["@yume-chan/event@3.0.0-beta.5", "", { "dependencies": { "@yume-chan/async": "^4.2.2" } }, "sha512-Tnb7G5MzvXLkoXqt5ngiea2azKd7GOU28TS4DDSEikjf50w90LU6hNilEttHUctLEA8663CHG+I/dD0CzVIukg=="],
+
+    "@yume-chan/adb-credential-web/@yume-chan/adb/@yume-chan/no-data-view": ["@yume-chan/no-data-view@3.0.0-beta.5", "", {}, "sha512-d3m1BhYrZL586dvbSlnV1Ri0mdf3sIpkonuKOUQcw9A9/jgANZsgbRf5urj9EgqpLl1ofIK7ueN22R3FBL3OcQ=="],
+
+    "@yume-chan/adb-credential-web/@yume-chan/struct/@yume-chan/no-data-view": ["@yume-chan/no-data-view@3.0.0-beta.5", "", {}, "sha512-d3m1BhYrZL586dvbSlnV1Ri0mdf3sIpkonuKOUQcw9A9/jgANZsgbRf5urj9EgqpLl1ofIK7ueN22R3FBL3OcQ=="],
+
+    "@yume-chan/adb-daemon-webusb/@yume-chan/adb/@yume-chan/no-data-view": ["@yume-chan/no-data-view@3.0.0-beta.5", "", {}, "sha512-d3m1BhYrZL586dvbSlnV1Ri0mdf3sIpkonuKOUQcw9A9/jgANZsgbRf5urj9EgqpLl1ofIK7ueN22R3FBL3OcQ=="],
+
+    "@yume-chan/adb-daemon-webusb/@yume-chan/struct/@yume-chan/no-data-view": ["@yume-chan/no-data-view@3.0.0-beta.5", "", {}, "sha512-d3m1BhYrZL586dvbSlnV1Ri0mdf3sIpkonuKOUQcw9A9/jgANZsgbRf5urj9EgqpLl1ofIK7ueN22R3FBL3OcQ=="],
 
     "expect/jest-mock/@jest/types": ["@jest/types@30.0.1", "", { "dependencies": { "@jest/pattern": "30.0.1", "@jest/schemas": "30.0.1", "@types/istanbul-lib-coverage": "2.0.6", "@types/istanbul-reports": "3.0.4", "@types/node": "24.3.0", "@types/yargs": "17.0.33", "chalk": "4.1.2" } }, "sha512-HGwoYRVF0QSKJu1ZQX0o5ZrUrrhj0aOOFA8hXrumD7SIzjouevhawbTjmXdwOmURdGluU9DM/XvGm3NyFoiQjw=="],
 

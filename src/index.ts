@@ -32,6 +32,8 @@ export { AdbUnexpectedDataError, AdbPrematureEOFError, AdbFailError, AdbError } 
 export { default as Client } from './adb/client.js';
 export { default as DeviceClient } from './adb/DeviceClient.js';
 export { default as Connection } from './adb/connection.js';
+export { isYaWebAdbAvailable, loadYaWebAdb, setYaWebAdbLoader, YaWebAdbManager, YaWebAdbSocket } from './adb/yawebadb.js';
+export type { YaWebAdbModules, ManagedDeviceInfo } from './adb/yawebadb.js';
 export { default as TcpUsbServer } from './adb/tcpusb/server.js';
 export { default as Tracker } from './adb/tracker.js';
 export { default as DeviceClientExtra } from './adb/DeviceClientExtra.js';

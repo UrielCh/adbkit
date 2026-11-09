@@ -49,9 +49,9 @@ export default class Client extends EventEmitter {
     return this.options.bin
   }
 
-  constructor({ host = '127.0.0.1', port = 5037, bin = 'adb' }: ClientOptions = { port: 5037 }) {
+  constructor({ host = '127.0.0.1', port = 5037, bin = 'adb', useYaWebAdb }: ClientOptions = { port: 5037 }) {
     super();
-    this.options = { host, port, bin };
+    this.options = { host, port, bin, useYaWebAdb };
   }
 
   public override on = <K extends keyof IEmissions>(event: K, listener: IEmissions[K]): this => super.on(event, listener)

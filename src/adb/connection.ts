@@ -10,6 +10,7 @@ import dump from './dump.js';
 import { ClientOptions } from '../models/ClientOptions.js';
 import Client from '../adb/client.js';
 import Utils from './utils.js';
+import { isYaWebAdbAvailable, YaWebAdbSocket } from './yawebadb.js';
 
 const debug = Utils.debug('adb:connection');
 
@@ -48,7 +49,12 @@ export default class Connection extends EventEmitter {
   }
 
   public async connect(): Promise<Connection> {
-    this.socket = connect(this.options);
+    if (this.options.useYaWebAdb !== false && (await isYaWebAdbAvailable())) {
+      debug('Using ya-webadb backend instead of native adb');
+      this.socket = new YaWebAdbSocket(this.options) as unknown as Socket;
+    } else {
+      this.socket = connect(this.options);
+    }
     this.socket.setNoDelay(true);
     this.parser = new Parser(this.socket);
     this.socket.on('connect', () => this.emit('connect'));
