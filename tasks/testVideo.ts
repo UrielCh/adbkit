@@ -174,18 +174,15 @@ async function recordWithEncoding(
   deviceClient: DeviceClient,
   encoding: EncodingConfig,
   outputDir: string,
-  durationSec = 5,
+  durationSec = 4,
   scrcpyVersion = '3.0'
 ): Promise<string | null> {
   const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-  const rawFileName = `record_${encoding.id}_${timestamp}.${encoding.fileExt}`;
-  const rawFilePath = path.join(outputDir, rawFileName);
+  const targetMp4Path = path.join(outputDir, `record_${encoding.id}_${timestamp}.mp4`);
 
   console.log(pc.cyan(`\n=== Recording with [${encoding.id}] (${encoding.description}) ===`));
-  console.log(`   Output file: ${pc.yellow(rawFilePath)}`);
-  console.log(`   Target duration: ${durationSec}s`);
-
-  const fileStream = fs.createWriteStream(rawFilePath);
+  console.log(`   Target MP4: ${pc.yellow(targetMp4Path)}`);
+  console.log(`   Duration: ${durationSec}s`);
 
   const scrcpyOptions: Record<string, any> = {
     version: scrcpyVersion,
@@ -201,123 +198,29 @@ async function recordWithEncoding(
     scrcpyOptions.encoderName = encoding.encoderName;
   }
 
-  const scrcpy = deviceClient.scrcpy(scrcpyOptions);
-
-  let frameCount = 0;
-  let keyframeCount = 0;
-  let totalBytes = 0;
-  let configWritten = false;
-  let hasFailed = false;
-  let stopTimer: NodeJS.Timeout | null = null;
-
-  scrcpy.on('error', (err) => {
-    // Collect error lines
-    console.error(pc.red(`   [scrcpy error] ${err.message}`));
-  });
-
-  scrcpy.on('codec', (info) => {
-    console.log(pc.green(`   Detected stream codec: ${info.codec} (${info.width}x${info.height})`));
-  });
-
-  scrcpy.on('config', (conf: H264Configuration) => {
-    if (conf && conf.data && conf.data.length > 0) {
-      fileStream.write(Buffer.from(conf.data));
-      totalBytes += conf.data.length;
-      configWritten = true;
-      console.log(`   Wrote codec configuration header (${conf.data.length} bytes)`);
-    }
-  });
-
-  scrcpy.on('frame', (packet: VideoStreamFramePacket) => {
-    if (packet && packet.data && packet.data.length > 0) {
-      frameCount++;
-      if (packet.keyframe) {
-        keyframeCount++;
-      }
-      totalBytes += packet.data.length;
-      fileStream.write(Buffer.from(packet.data));
-
-      if (frameCount % 30 === 0) {
-        process.stdout.write(
-          `\r   Captured ${frameCount} frames (${keyframeCount} keyframes, ${fmtSize(totalBytes)})...`
-        );
-      }
-    }
-  });
-
   try {
-    await scrcpy.start();
-
-    // Wait for the first frame to ensure recording started
-    await Promise.race([
-      scrcpy.firstFrame,
-      Utils.delay(5000).then(() => {
-        throw new Error('Timeout waiting for first frame');
-      }),
-    ]);
-
-    console.log(pc.green('   Streaming started! Recording...'));
-
-    await new Promise<void>((resolve) => {
-      stopTimer = setTimeout(() => {
-        console.log(`\n   Reached ${durationSec}s limit, stopping recorder...`);
-        scrcpy.stop();
-        resolve();
-      }, durationSec * 1000);
-
-      scrcpy.onTermination.then(() => {
-        if (stopTimer) clearTimeout(stopTimer);
-        resolve();
-      });
+    const result = await deviceClient.recordScreen(targetMp4Path, scrcpyOptions, {
+      durationMs: durationSec * 1000,
+      remuxMp4: true,
+      onProgress: (prog) => {
+        if (prog.frames % 30 === 0) {
+          process.stdout.write(
+            `\r   Progress: ${prog.frames} frames (${prog.keyframes} keyframes, ${fmtSize(prog.bytes)})...`
+          );
+        }
+      },
     });
 
-    await scrcpy.onTermination;
-  } catch (err) {
-    hasFailed = true;
-    console.error(pc.red(`   Recording failed for ${encoding.id}: ${(err as Error).message}`));
-    try {
-      scrcpy.stop();
-    } catch {
-      // ignore
-    }
-  } finally {
-    if (stopTimer) clearTimeout(stopTimer);
-    await new Promise<void>((resolve) => fileStream.end(resolve));
-  }
-
-  if (hasFailed || frameCount === 0) {
-    console.warn(pc.yellow(`   Cleaning up empty/failed recording: ${rawFilePath}`));
-    try {
-      fs.unlinkSync(rawFilePath);
-    } catch {
-      // ignore
-    }
-    return null;
-  }
-
-  console.log(
-    pc.green(
-      `   Recording finished! Captured ${frameCount} frames (${keyframeCount} keyframes, total ${fmtSize(
-        totalBytes
-      )}) into ${rawFileName}`
-    )
-  );
-
-  // Attempt to mux into mp4 container using ffmpeg if available
-  const mp4FilePath = rawFilePath.replace(/\.[^.]+$/, '.mp4');
-  try {
-    console.log(`   Muxing to MP4 container via ffmpeg...`);
-    // -y: overwrite
-    // -framerate 30: assumed frame rate
-    // -c copy: stream copy without re-encoding
-    await execFileAsync('ffmpeg', ['-y', '-r', '30', '-i', rawFilePath, '-c', 'copy', mp4FilePath]);
-    console.log(pc.green(`   MP4 video created: ${pc.bold(mp4FilePath)}`));
-    return mp4FilePath;
-  } catch (ffmpegErr) {
     console.log(
-      pc.yellow(`   Could not remux to MP4 (ffmpeg copy failed or ffmpeg not found). Raw video file retained: ${rawFilePath}`)
+      pc.green(
+        `\n   Recording succeeded! ${result.frames} frames, ${fmtSize(result.bytes)} (${result.codec} ${result.width}x${result.height})`
+      )
     );
-    return rawFilePath;
+    console.log(`   Output file: ${pc.bold(pc.green(result.filePath))}`);
+    return result.filePath;
+  } catch (err) {
+    console.error(pc.red(`   Recording failed for ${encoding.id}: ${(err as Error).message}`));
+    return null;
   }
 }
 
