@@ -238,7 +238,7 @@ const testClickScrcpy = async (deviceClient: DeviceClient, coordinateGenerator: 
   try {
     while (!scrcpy) {
       try {
-        scrcpy = deviceClient.scrcpy({ version: "3.0" });
+        scrcpy = deviceClient.scrcpy({ version: "3.2" });
         await Utils.delay(2);
         await scrcpy.start();
         await scrcpy.width;
@@ -349,7 +349,7 @@ const setupKeyboardInterface = () => {
 
 const main = async () => {
   // process.env.DEBUG = '*';
-  const adbClient = adb.createClient({ useYaWebAdb: true });
+  const adbClient = adb.createClient({ useYaWebAdb: false });
   const devices = await adbClient.listDevices();
   if (!devices.length) {
     console.error("Need at least one connected android device");

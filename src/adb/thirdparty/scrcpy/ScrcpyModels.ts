@@ -8,7 +8,7 @@ export interface ScrcpyOptions {
      * scrcpy id since V 2.0
      */
     scid: string;
-    version: "1.20" | "1.24" | "2.7" | "3.0" | `${number}.${number}` | `${number}.${number}.${number}`;
+    version: "1.20" | "1.24" | "2.7" | "3.0" | "3.1" | "3.2" | `${number}.${number}` | `${number}.${number}.${number}`;
     /**
      * maxSize         (integer, multiple of 8) 0
      * Max width
@@ -98,6 +98,22 @@ export interface ScrcpyOptions {
      * Toggle system decorations on virtual display (defaults to true on server)
      */
     vdSystemDecorations?: boolean;
+    /**
+     * vdDestroyContent since scrcpy 3.1
+     * Whether to destroy virtual display content on close (defaults to true on server).
+     * Set false to move apps to main display on close (--no-vd-destroy-content).
+     */
+    vdDestroyContent?: boolean;
+    /**
+     * displayImePolicy since scrcpy 3.2
+     * Policy for displaying IME (soft keyboard) on secondary/virtual displays: "local", "fallback", or "hide"
+     */
+    displayImePolicy?: 'local' | 'fallback' | 'hide' | string;
+    /**
+     * audioSource since scrcpy 2.0 / 3.2
+     * e.g. 'output', 'playback', 'mic', 'mic-unprocessed', 'mic-camcorder', etc.
+     */
+    audioSource?: 'output' | 'playback' | 'mic' | 'mic-unprocessed' | 'mic-camcorder' | 'mic-voice-recognition' | 'mic-voice-communication' | 'voice-call' | 'voice-call-uplink' | 'voice-call-downlink' | 'voice-performance' | string;
     /**
      * screenOffTimeout in seconds since scrcpy 3.0
      */

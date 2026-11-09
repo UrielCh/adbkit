@@ -286,7 +286,8 @@ export default class Scrcpy extends EventEmitter {
       maxSize, bitrate, maxFps, lockedVideoOrientation, tunnelForward, crop,
       sendFrameMeta, control, displayId, showTouches, stayAwake, codecOptions,
       encoderName, powerOffScreenOnClose, clipboardAutosync,
-      captureOrientation, angle, newDisplay, vdSystemDecorations, screenOffTimeout
+      captureOrientation, angle, newDisplay, vdSystemDecorations, vdDestroyContent,
+      displayImePolicy, audioSource, screenOffTimeout
     } = this.config;
     args.push(`CLASSPATH=${jarDest}`);
     args.push('app_process');
@@ -321,8 +322,11 @@ export default class Scrcpy extends EventEmitter {
     } else {
       if (this.major >= 2) {
         args.push(`scid=${this.config.scid}`);
-        if (this.config.noAudio)
+        if (this.config.noAudio) {
           args.push(`audio=false`);
+        } else if (audioSource) {
+          args.push(`audio_source=${audioSource}`);
+        }
         // if (this.config.noControl)
         //   args.push(`no_control=${this.config.noControl}`);
       }
@@ -366,6 +370,12 @@ export default class Scrcpy extends EventEmitter {
         }
         if (vdSystemDecorations !== undefined) {
           args.push(`vd_system_decorations=${vdSystemDecorations}`);
+        }
+        if (this.strVersion >= "03.01.00" && vdDestroyContent !== undefined) {
+          args.push(`vd_destroy_content=${vdDestroyContent}`);
+        }
+        if (this.strVersion >= "03.02.00" && displayImePolicy) {
+          args.push(`display_ime_policy=${displayImePolicy}`);
         }
         if (screenOffTimeout !== undefined) {
           args.push(`screen_off_timeout=${screenOffTimeout}`);
