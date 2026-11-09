@@ -1,15 +1,15 @@
 # CHANGELOG
 
-* update scrcpy-server from 5.0 to 5.0.1
-* update scrcpy-server from 4.1 to 5.0
-* update scrcpy-server from 4.0 to 4.1 (VP8/VP9 codecs, scanFile control message, ignoreVideoEncoderConstraints)
-* update scrcpy-server from 3.3.4 to 4.0 (flex_display, keep_active, min_size_alignment, camera torch/zoom, resize_display)
-* update scrcpy-server from 3.2 to 3.3.4 (including 3.3, 3.3.1)
-* update scrcpy-server from 3.1 to 3.2
-* update scrcpy-server from 3.0 to 3.1
-* update scrcpy-server from 2.7 to 3.0
+## V5.2.0 (2026-11-09)
+* update scrcpy-server support up to v5.0.1 (including v3.0, v3.1, v3.2, v3.3, v3.3.4, v4.0, v4.1, v5.0, v5.0.1)
+* add VP8/VP9 codecs, scanFile control message, and ignoreVideoEncoderConstraints support
+* add flex_display, keep_active, min_size_alignment, camera torch/zoom, and resize_display support
 * add downloadScrcpyServer utility and download:scrcpy task to download server binaries from GitHub releases
 * preserve backwards compatibility for scrcpy 1.x and 2.x
+* integrate ya-webadb in-process backend support
+* improve transport lifecycle management and stream async/await handling
+* enable strict TypeScript linting rules and fix floating promises
+* live click rate monitoring and click test metrics improvement
 
 ## V5.1.7 (2025-07-17)
 * stress test scrcpy

@@ -92,7 +92,7 @@ describe('Scrcpy 3.0 Support & Backwards Compatibility', () => {
       expect(p).to.include('scrcpy-server-v3.0.jar');
     });
 
-    it('should download scrcpy-server v5.0.1 binary from release URL', async function () {
+    it('should download scrcpy-server v5.0.1 binary from release URL', async function (this: Mocha.Context) {
       this.timeout(20000);
       const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'scrcpy-test-501-'));
       try {
@@ -109,7 +109,7 @@ describe('Scrcpy 3.0 Support & Backwards Compatibility', () => {
       }
     });
 
-    it('should download scrcpy-server v5.0 binary from release URL', async function () {
+    it('should download scrcpy-server v5.0 binary from release URL', async function (this: Mocha.Context) {
       this.timeout(20000);
       const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'scrcpy-test-50-'));
       try {
@@ -126,7 +126,7 @@ describe('Scrcpy 3.0 Support & Backwards Compatibility', () => {
       }
     });
 
-    it('should download scrcpy-server v4.1 binary from release URL', async function () {
+    it('should download scrcpy-server v4.1 binary from release URL', async function (this: Mocha.Context) {
       this.timeout(20000);
       const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'scrcpy-test-41-'));
       try {
@@ -143,7 +143,7 @@ describe('Scrcpy 3.0 Support & Backwards Compatibility', () => {
       }
     });
 
-    it('should download scrcpy-server v4.0 binary from release URL', async function () {
+    it('should download scrcpy-server v4.0 binary from release URL', async function (this: Mocha.Context) {
       this.timeout(20000);
       const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'scrcpy-test-40-'));
       try {
@@ -160,7 +160,7 @@ describe('Scrcpy 3.0 Support & Backwards Compatibility', () => {
       }
     });
 
-    it('should download scrcpy-server v3.3.4 binary from release URL', async function () {
+    it('should download scrcpy-server v3.3.4 binary from release URL', async function (this: Mocha.Context) {
       this.timeout(20000);
       const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'scrcpy-test-334-'));
       try {
@@ -177,7 +177,7 @@ describe('Scrcpy 3.0 Support & Backwards Compatibility', () => {
       }
     });
 
-    it('should download scrcpy-server v3.3 binary from release URL', async function () {
+    it('should download scrcpy-server v3.3 binary from release URL', async function (this: Mocha.Context) {
       this.timeout(20000);
       const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'scrcpy-test-33-'));
       try {
@@ -194,7 +194,7 @@ describe('Scrcpy 3.0 Support & Backwards Compatibility', () => {
       }
     });
 
-    it('should download scrcpy-server v3.2 binary from release URL', async function () {
+    it('should download scrcpy-server v3.2 binary from release URL', async function (this: Mocha.Context) {
       this.timeout(20000);
       const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'scrcpy-test-32-'));
       try {
@@ -211,7 +211,7 @@ describe('Scrcpy 3.0 Support & Backwards Compatibility', () => {
       }
     });
 
-    it('should download scrcpy-server v3.1 binary from release URL', async function () {
+    it('should download scrcpy-server v3.1 binary from release URL', async function (this: Mocha.Context) {
       this.timeout(20000);
       const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'scrcpy-test-31-'));
       try {
@@ -228,7 +228,7 @@ describe('Scrcpy 3.0 Support & Backwards Compatibility', () => {
       }
     });
 
-    it('should download scrcpy-server v3.0 binary from release URL', async function () {
+    it('should download scrcpy-server v3.0 binary from release URL', async function (this: Mocha.Context) {
       this.timeout(20000);
       const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'scrcpy-test-'));
       try {
@@ -247,14 +247,24 @@ describe('Scrcpy 3.0 Support & Backwards Compatibility', () => {
   });
 
   describe('Scrcpy startup command generation', () => {
-    it('should generate v3.0 startup line by default', () => {
+    it('should generate v5.0.1 startup line by default', () => {
       const scrcpy = new Scrcpy(dummyClient);
+      const line = scrcpy.getStartupLine('/data/local/tmp/scrcpy-server-v5.0.1.jar');
+
+      expect(line).to.include('com.genymobile.scrcpy.Server 5.0.1');
+      expect(line).to.include('video_source=display');
+      expect(line).to.include('scid=');
+      // In scrcpy 3.0+, lock_video_orientation is removed
+      expect(line).to.not.include('lock_video_orientation');
+    });
+
+    it('should generate v3.0 startup line when version is 3.0', () => {
+      const scrcpy = new Scrcpy(dummyClient, { version: '3.0' });
       const line = scrcpy.getStartupLine('/data/local/tmp/scrcpy-server-v3.0.jar');
 
       expect(line).to.include('com.genymobile.scrcpy.Server 3.0');
       expect(line).to.include('video_source=display');
       expect(line).to.include('scid=');
-      // In scrcpy 3.0, lock_video_orientation is removed
       expect(line).to.not.include('lock_video_orientation');
     });
 
