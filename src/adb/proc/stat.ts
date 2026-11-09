@@ -29,6 +29,7 @@ export default class ProcStat extends EventEmitter {
   public stats: ProcStats;
   private readonly _ignore: {[key: string]: string};
   private readonly _timer: ReturnType<typeof setInterval>;
+  private _updating = false;
 
   constructor(private sync?: Sync) {
     super();
@@ -36,9 +37,9 @@ export default class ProcStat extends EventEmitter {
     this.stats = this._emptyStats();
     this._ignore = {};
     this._timer = setInterval(() => {
-      return this.update();
+      void this.update().catch(() => {});
     }, this.interval);
-    this.update();
+    void this.update().catch(() => {});
   }
 
   public override on = <K extends keyof IEmissions>(event: K, listener: IEmissions[K]): this => super.on(event, listener)
@@ -55,16 +56,22 @@ export default class ProcStat extends EventEmitter {
   }
 
   public async update(): Promise<ProcStats> {
-    if (!this.sync) {
-      throw Error('Closed');
+    if (this._updating) {
+      return this.stats;
     }
+    this._updating = true;
     try {
+      if (!this.sync) {
+        throw Error('Closed');
+      }
       const transfert = await this.sync.pull('/proc/stat');
       const out = await new Parser(transfert).readAll();
       return this._parse(out.toString());
     } catch (err) {
       this._error(err as Error);
-      return await Promise.reject(err);
+      throw err;
+    } finally {
+      this._updating = false;
     }
   }
 

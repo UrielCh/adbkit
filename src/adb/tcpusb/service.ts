@@ -95,7 +95,7 @@ export default class Service extends EventEmitter {
           this._handleOkayPacket(packet);
           break;
         case Packet.A_WRTE:
-          this._handleWritePacket(packet);
+          await this._handleWritePacket(packet);
           break;
         case Packet.A_CLSE:
           this._handleClosePacket(packet);
@@ -122,7 +122,7 @@ export default class Service extends EventEmitter {
     if (!packet.data || packet.data.length === 0) {
       throw new Error("missing data in packet");
     }
-    this.transport.write(Protocol.encodeData(packet.data.subarray(0, -1))); // Discard null byte at end
+    await this.transport.write(Protocol.encodeData(packet.data.subarray(0, -1))); // Discard null byte at end
     await this.transport.parser.readCode(Protocol.OKAY);
     debug('O:A_OKAY');
     this.socket.write(Packet.assemble(Packet.A_OKAY, this.localId, this.remoteId));
@@ -149,7 +149,7 @@ export default class Service extends EventEmitter {
     return this._tryPush();
   }
 
-  private _handleWritePacket(packet: Packet): boolean {
+  private async _handleWritePacket(packet: Packet): Promise<boolean> {
     debug('I:A_WRTE', packet);
     if (this.ended) {
       return false;
@@ -158,7 +158,7 @@ export default class Service extends EventEmitter {
       throw new Service.PrematurePacketError(packet);
     }
     if (this.transport && packet.data) {
-      this.transport.write(packet.data);
+      await this.transport.write(packet.data);
     }
     debug('O:A_OKAY');
     return this.socket.write(Packet.assemble(Packet.A_OKAY, this.localId, this.remoteId));

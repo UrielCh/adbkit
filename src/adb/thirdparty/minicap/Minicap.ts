@@ -222,9 +222,9 @@ export default class Minicap extends EventEmitter {
       }
     }
     this.minicapServer = new PromiseDuplex(await this.client.shell(args.map(a => a.toString()).join(' ')));
-    this.minicapServer.once("finish").then(() => {
+    this.minicapServer.stream.once('finish', () => {
       this.stop(`minicap server finish`);
-    })
+    });
     // minicap: PID: 14231
     // INFO: Using projection 1080x2376@1080x2376/0
     // INFO: (external/MY_minicap/src/minicap_30.cpp:243) Creating SurfaceComposerClient
@@ -246,8 +246,10 @@ export default class Minicap extends EventEmitter {
         debug(`Impossible to connect video Socket localabstract:minicap`, e);
         throw e;
       }
-      this.videoSocket.once('end').then(() => { this.stop('connection to localabstract:minicap ended') })
-      // this.videoSocket.once('finish').then(() => { this.stop('connection to localabstract:minicap finished') })
+      this.videoSocket.stream.once('end', () => {
+        this.stop('connection to localabstract:minicap ended');
+      });
+      // this.videoSocket.stream.once('finish', () => { this.stop('connection to localabstract:minicap finished'); });
 
       void this.startStream(this.videoSocket).catch((e) => this.stop(`stream throws ${e}`));
       // wait until first stream chunk is recieved

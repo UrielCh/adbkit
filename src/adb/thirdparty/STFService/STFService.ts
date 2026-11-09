@@ -182,7 +182,7 @@ export default class STFService extends EventEmitter {
     await this.startService();
     await this.startAgent();
     this.servicesSocket = await this.client.openLocal2('localabstract:stfservice');
-    this.servicesSocket.once('close').then(() => this.stop());
+    this.servicesSocket.stream.once('close', () => this.stop());
     void this.startServiceStream().catch((e) => { console.log('Service failed', e); this.stop() });
     return this;
   }
@@ -195,7 +195,7 @@ export default class STFService extends EventEmitter {
     if (this._minitouchagent) return this._minitouchagent;
     this._minitouchagent = this.client.openLocal2('localabstract:minitouchagent');
     const socket = await this._minitouchagent;
-    socket.once('close').then(() => {
+    socket.stream.once('close', () => {
       this._minitouchagent = undefined;
       // console.log('getMinitouchSocket just closed');
     });
@@ -208,7 +208,7 @@ export default class STFService extends EventEmitter {
     if (this._agentSocket) return this._agentSocket;
     this._agentSocket = this.client.openLocal2('localabstract:stfagent');
     const socket = await this._agentSocket;
-    socket.once('close').then(() => {
+    socket.stream.once('close', () => {
       this._agentSocket = undefined;
       // console.log('agentSocket just closed');
     });
@@ -340,7 +340,7 @@ export default class STFService extends EventEmitter {
    */
   private pushService(type: STF.MessageType, message: Uint8Array | Buffer, requestReader?: null): Promise<void>;
   private pushService<T>(type: STF.MessageType, message: Uint8Array | Buffer, requestReader?: ((req: Uint8Array) => T)): Promise<T>;
-  private pushService<T>(type: STF.MessageType, message: Uint8Array | Buffer, requestReader?: null | ((req: Uint8Array) => T)): Promise<T | void> {
+  private async pushService<T>(type: STF.MessageType, message: Uint8Array | Buffer, requestReader?: null | ((req: Uint8Array) => T)): Promise<T | void> {
     const id = (this.reqCnt + 1) | 0xFFFFFF;
     this.reqCnt = id;
     const envelope = { type, message: message as Uint8Array, id };
@@ -348,25 +348,26 @@ export default class STFService extends EventEmitter {
     const promise = new Promise<T | void>((resolve, reject) => {
       pReject = reject;
       this.responseHook[id] = (message: Uint8Array) => {
+        delete this.responseHook[id];
         if (requestReader) {
           const conv = requestReader(message);
           resolve(conv);
         } else {
           resolve();
         }
-      }
+      };
     });
-    const buf = this.protoSrv.write.Envelope(envelope)
-    if (!this.servicesSocket)
+    const buf = this.protoSrv.write.Envelope(envelope);
+    if (!this.servicesSocket) {
       throw Error('servicesSocket is not open');
-    this.servicesSocket.write(buf);
-    const timeout = Utils.delay(this.config.timeout).then(() => {
+    }
+    await this.servicesSocket.write(buf);
+    void Utils.delay(this.config.timeout).then(() => {
       if (this.responseHook[id]) {
         delete this.responseHook[id];
         pReject(Error('timeout'));
       }
     });
-    Promise.race([promise, timeout]);
     return promise;
   }
 
@@ -582,12 +583,12 @@ export default class STFService extends EventEmitter {
       close = true;
     }
     if (this._agentSocket) {
-      this._agentSocket.then(a => a.destroy());
+      void this._agentSocket.then(a => a.destroy()).catch(() => {});
       this._agentSocket = undefined;
       close = true;
     }
     if (this._minitouchagent) {
-      this._minitouchagent.then(a => a.destroy());
+      void this._minitouchagent.then(a => a.destroy()).catch(() => {});
       this._minitouchagent = undefined;
       close = true;
     }

@@ -32,7 +32,7 @@ export default class StartActivityCommand extends Command<boolean> {
   }
 
   async _run(command: string, args: Array<string | number>): Promise<boolean> {
-    this.sendCommand(`shell:am ${command} ${args.join(' ')}`);
+    await this.sendCommand(`shell:am ${command} ${args.join(' ')}`);
     await this.readOKAY();
     try {
       const match = await this.parser.searchLine(RE_ERROR);
@@ -41,7 +41,7 @@ export default class StartActivityCommand extends Command<boolean> {
       if (err instanceof AdbPrematureEOFError)
         return true;
     } finally {
-      this.parser.end();
+      await this.parser.end();
     }
     // may be incorrect.
     throw await this.parser.readError();

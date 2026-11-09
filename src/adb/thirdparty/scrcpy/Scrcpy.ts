@@ -422,7 +422,7 @@ export default class Scrcpy extends EventEmitter {
         return this;
       const duplex = await this.client.shell(cmdLine);
       this.scrcpyServer = new PromiseDuplex(duplex);
-      this.scrcpyServer.once("finish").then(() => {
+      this.scrcpyServer.stream.once('close', () => {
         debug(`scrcpyServer finished on device ${this.client.serial}`);
         this.stop();
       });

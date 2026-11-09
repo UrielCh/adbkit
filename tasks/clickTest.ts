@@ -18,7 +18,7 @@ interface TapOptions {
   stepY?: number;
 }
 
-const MODES = ["NONE", "CENTER", "MIX", "ALL", ] as const;
+const MODES = ["NONE", "CENTER", "MIX", "ALL"] as const;
 let MODE: (typeof MODES)[number] = "NONE";
 let currentModeIndex = 0;
 MODE = MODES[currentModeIndex];
@@ -79,7 +79,7 @@ async function* getCenterTaps(width: number, height: number, options: TapOptions
     shuffle(selctionsCenter);
     shuffle(selctionsAll);
     shuffle(selctionsMix);
-    
+
     while (true) {
       // console.log("Mode: ", MODE);
       await Utils.delay(100);
@@ -257,7 +257,7 @@ const setupKeyboardInterface = () => {
   console.log('Use ARROW KEYS (←/→) or SPACE to change mode');
   console.log('Press ESC or Ctrl+C to continue');
   console.log(`Current mode: ${MODE}`);
-  
+
   readline.emitKeypressEvents(process.stdin);
   if (process.stdin.isTTY) {
     process.stdin.setRawMode(true);
@@ -271,7 +271,7 @@ const setupKeyboardInterface = () => {
         console.log('\nContinuing with execution...\n');
         return;
       }
-      
+
       if (key.name === 'left' || key.name === 'right' || key.name === 'space') {
         if (key.name === 'left') {
           currentModeIndex = (currentModeIndex - 1 + MODES.length) % MODES.length;
@@ -295,7 +295,7 @@ const setupKeyboardInterface = () => {
   };
 
   process.stdin.on('keypress', keyListener);
-  
+
   return new Promise<void>((resolve) => {
     const originalListener = process.stdin.listeners('keypress').find(l => l === keyListener);
     if (originalListener) {
@@ -320,8 +320,7 @@ const main = async () => {
     return;
   }
   const deviceClient = devices[0].getClient();
-  // await 
-  setupKeyboardInterface();
+  await setupKeyboardInterface();
   // {
   //   let t1 = Date.now();
   //   await testClickExec(deviceClient);

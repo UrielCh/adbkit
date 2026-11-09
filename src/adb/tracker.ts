@@ -49,7 +49,7 @@ export default class Tracker extends EventEmitter {
 
   constructor(private readonly command: HostDevicesCommand | HostDevicesWithPathsCommand | HostTrackDevicesCommand) {
     super();
-    this.readloop();
+    void this.readloop();
   }
 
   public override on = <K extends keyof IEmissions>(event: K, listener: IEmissions[K]): this => {
@@ -81,10 +81,8 @@ export default class Tracker extends EventEmitter {
       }
     } catch (err) {
       if (!this.stoped) {
-        this.emit('error', err as Error)
-        if (err instanceof AdbPrematureEOFError) {
-          throw new Error('Connection closed');
-        }
+        const error = err instanceof AdbPrematureEOFError ? new Error('Connection closed') : (err as Error);
+        this.emit('error', error);
       }
     } finally {
       this.command.parser.end().catch(() => {/* drop error */ });
