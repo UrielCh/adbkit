@@ -46,7 +46,8 @@
             "runtimeExecutable": "${workspaceFolder}/node_modules/.bin/tsx",
             "args": ["./tasks/clickTest.ts"],
             "cwd": "${workspaceFolder}",
-            "internalConsoleOptions": "openOnSessionStart",
+            "console": "integratedTerminal",
+            "internalConsoleOptions": "neverOpen",
             "skipFiles": ["<node_internals>/**"],
             "env": {
               "DEBUG__ALL": "*",

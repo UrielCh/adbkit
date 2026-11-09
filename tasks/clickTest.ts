@@ -320,7 +320,8 @@ const main = async () => {
     return;
   }
   const deviceClient = devices[0].getClient();
-  await setupKeyboardInterface();
+  // setup the UI
+  void setupKeyboardInterface();
   // {
   //   let t1 = Date.now();
   //   await testClickExec(deviceClient);
