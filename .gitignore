@@ -9,3 +9,4 @@ package-lock.json
 parcel.txt
 tasks/*encoder*/
 **/.DS_Store
+tasks/recordings/

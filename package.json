@@ -49,6 +49,7 @@
         "keycode": "tsx tasks/keycode.ts",
         "servicemap": "tsx tasks/servicemap.ts",
         "download:scrcpy": "tsx tasks/downloadScrcpy.ts",
+        "test:video": "tsx tasks/testVideo.ts",
         "prepublish": "npm run clean && npm run compile",
         "docker-clean": "npx --yes modclean -r",
         "docs": "typedoc --entryPointStrategy expand",

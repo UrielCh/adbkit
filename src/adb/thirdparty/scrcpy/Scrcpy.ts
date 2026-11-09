@@ -604,9 +604,21 @@ export default class Scrcpy extends EventEmitter {
     if (this.closed) // can not start once stop called
       return this;
 
-    // Connect videoSocket
-    await Utils.delay(100);
-    this.videoSocket = await this.client.openLocal2(`localabstract:${SC_SOCKET_NAME}`, 'first connection to scrcpy for video');
+    // Connect videoSocket with retry in case server socket is not immediately ready
+    for (let attempt = 0; attempt < 5; attempt++) {
+      try {
+        await Utils.delay(attempt === 0 ? 150 : 250);
+        this.videoSocket = await this.client.openLocal2(`localabstract:${SC_SOCKET_NAME}`, 'first connection to scrcpy for video');
+        break;
+      } catch (err) {
+        if (attempt === 4 || this.closed) {
+          throw err;
+        }
+      }
+    }
+    if (!this.videoSocket) {
+      throw Error('fail to connect videoSocket');
+    }
     this.videoSocket.stream.on('error', (e) => {
       console.error('videoSocket error', e);
     });
@@ -844,33 +856,45 @@ export default class Scrcpy extends EventEmitter {
             /**
              * is a config package pts have PACKET_FLAG_CONFIG flag
              */
-            const sequenceParameterSet = parse_sequence_parameter_set(streamChunk, codec);
-            const {
-              profile_idc: profileIndex,
-              constraint_set: constraintSet,
-              level_idc: levelIndex,
-              pic_width_in_mbs_minus1,
-              pic_height_in_map_units_minus1,
-              frame_mbs_only_flag,
-              frame_crop_left_offset,
-              frame_crop_right_offset,
-              frame_crop_top_offset,
-              frame_crop_bottom_offset,
-            } = sequenceParameterSet;
-            const encodedWidth = (pic_width_in_mbs_minus1 + 1) * 16;
-            const encodedHeight = (pic_height_in_map_units_minus1 + 1) * (2 - frame_mbs_only_flag) * 16;
-            const cropLeft = frame_crop_left_offset * 2;
-            const cropRight = frame_crop_right_offset * 2;
-            const cropTop = frame_crop_top_offset * 2;
-            const cropBottom = frame_crop_bottom_offset * 2;
-            const croppedWidth = encodedWidth - cropLeft - cropRight;
-            const croppedHeight = encodedHeight - cropTop - cropBottom;
+            let videoConf: H264Configuration;
+            try {
+              const sequenceParameterSet = parse_sequence_parameter_set(streamChunk, codec);
+              const {
+                profile_idc: profileIndex,
+                constraint_set: constraintSet,
+                level_idc: levelIndex,
+                pic_width_in_mbs_minus1,
+                pic_height_in_map_units_minus1,
+                frame_mbs_only_flag,
+                frame_crop_left_offset,
+                frame_crop_right_offset,
+                frame_crop_top_offset,
+                frame_crop_bottom_offset,
+              } = sequenceParameterSet;
+              const encodedWidth = (pic_width_in_mbs_minus1 + 1) * 16;
+              const encodedHeight = (pic_height_in_map_units_minus1 + 1) * (2 - frame_mbs_only_flag) * 16;
+              const cropLeft = frame_crop_left_offset * 2;
+              const cropRight = frame_crop_right_offset * 2;
+              const cropTop = frame_crop_top_offset * 2;
+              const cropBottom = frame_crop_bottom_offset * 2;
+              const croppedWidth = encodedWidth - cropLeft - cropRight;
+              const croppedHeight = encodedHeight - cropTop - cropBottom;
 
-            const videoConf: H264Configuration = {
-              profileIndex, constraintSet, levelIndex, encodedWidth, encodedHeight,
-              cropLeft, cropRight, cropTop, cropBottom, croppedWidth, croppedHeight,
-              data: streamChunk,
-            };
+              videoConf = {
+                profileIndex, constraintSet, levelIndex, encodedWidth, encodedHeight,
+                cropLeft, cropRight, cropTop, cropBottom, croppedWidth, croppedHeight,
+                data: streamChunk,
+              };
+            } catch {
+              // For non-H264 codecs (e.g. H265, AV1) or unparsed SPS, store data as config
+              videoConf = {
+                profileIndex: 0, constraintSet: 0, levelIndex: 0,
+                encodedWidth: 0, encodedHeight: 0,
+                cropLeft: 0, cropRight: 0, cropTop: 0, cropBottom: 0,
+                croppedWidth: 0, croppedHeight: 0,
+                data: streamChunk,
+              };
+            }
             this.lastConf = videoConf;
             this.emit('config', videoConf);
           } else {
