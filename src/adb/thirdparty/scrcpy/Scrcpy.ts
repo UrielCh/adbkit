@@ -288,7 +288,8 @@ export default class Scrcpy extends EventEmitter {
       encoderName, powerOffScreenOnClose, clipboardAutosync,
       captureOrientation, angle, newDisplay, vdSystemDecorations, vdDestroyContent,
       displayImePolicy, audioSource, screenOffTimeout,
-      flexDisplay, keepActive, minSizeAlignment, cameraZoom, cameraTorch
+      flexDisplay, keepActive, minSizeAlignment, cameraZoom, cameraTorch,
+      ignoreVideoEncoderConstraints, videoCodec
     } = this.config;
     args.push(`CLASSPATH=${jarDest}`);
     args.push('app_process');
@@ -334,6 +335,10 @@ export default class Scrcpy extends EventEmitter {
 
       if (this.strVersion >= "02.04.00") {
         args.push(`video_source=display`);
+      }
+
+      if (this.major >= 2 && videoCodec) {
+        args.push(`video_codec=${videoCodec}`);
       }
 
       args.push("log_level=info");
@@ -396,6 +401,9 @@ export default class Scrcpy extends EventEmitter {
           }
           if (cameraTorch !== undefined) {
             args.push(`camera_torch=${cameraTorch}`);
+          }
+          if (this.strVersion >= "04.01.00" && ignoreVideoEncoderConstraints !== undefined) {
+            args.push(`ignore_video_encoder_constraints=${ignoreVideoEncoderConstraints}`);
           }
         }
       } else {
@@ -699,6 +707,10 @@ export default class Scrcpy extends EventEmitter {
         return "H265";
       case codexMap.AV1:
         return "AV1";
+      case codexMap.VP8:
+        return "VP8";
+      case codexMap.VP9:
+        return "VP9";
       case codexMap.OPUS:
         return "OPUS";
       case codexMap.AAC:
@@ -1118,5 +1130,14 @@ export default class Scrcpy extends EventEmitter {
     chunk.writeUInt16BE(height, 3);
     assert(this.controlSocket);
     await this.controlSocket.write(chunk);
+  }
+
+  // TYPE_SCAN_FILE (since scrcpy 4.1)
+  async scanFile(path: string): Promise<void> {
+    const chunk = new BufWrite(5);
+    chunk.writeUint8(ControlMessageMap.TYPE_SCAN_FILE);
+    chunk.writeString(path);
+    assert(this.controlSocket);
+    await this.controlSocket.write(chunk.buffer);
   }
 }

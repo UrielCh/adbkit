@@ -8,7 +8,7 @@ export interface ScrcpyOptions {
      * scrcpy id since V 2.0
      */
     scid: string;
-    version: "1.20" | "1.24" | "2.7" | "3.0" | "3.1" | "3.2" | "3.3" | "3.3.1" | "3.3.4" | "4.0" | `${number}.${number}` | `${number}.${number}.${number}`;
+    version: "1.20" | "1.24" | "2.7" | "3.0" | "3.1" | "3.2" | "3.3" | "3.3.1" | "3.3.4" | "4.0" | "4.1" | `${number}.${number}` | `${number}.${number}.${number}`;
     /**
      * maxSize         (integer, multiple of 8) 0
      * Max width
@@ -140,6 +140,16 @@ export interface ScrcpyOptions {
      * cameraTorch since scrcpy 4.0
      */
     cameraTorch?: boolean;
+    /**
+     * ignoreVideoEncoderConstraints since scrcpy 4.1
+     * Ignore encoder size constraints entirely, including alignment
+     */
+    ignoreVideoEncoderConstraints?: boolean;
+    /**
+     * videoCodec since scrcpy 2.0 / 4.1
+     * "h264", "h265", "av1", "vp8", "vp9"
+     */
+    videoCodec?: 'h264' | 'h265' | 'av1' | 'vp8' | 'vp9' | string;
     /**
      * Custom path to scrcpy-server jar file
      */

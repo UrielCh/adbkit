@@ -125,6 +125,8 @@ export const ControlMessageMap = {
     TYPE_CAMERA_ZOOM_IN: 19,
     TYPE_CAMERA_ZOOM_OUT: 20,
     TYPE_RESIZE_DISPLAY: 21,
+    // since scrcpy 4.1
+    TYPE_SCAN_FILE: 22,
 } as const;
 
 export type ControlMessage = typeof ControlMessageMap[keyof typeof ControlMessageMap];
@@ -143,6 +145,8 @@ export const codexMap = {
    H264 : 0x68323634, // "h264" in ASCII
    H265 : 0x68323635, // "h265" in ASCII
    AV1  : 0x00617631, // "av1" in ASCII
+   VP8  : 0x00767038, // "vp8" in ASCII
+   VP9  : 0x00767039, // "vp9" in ASCII
    OPUS : 0x6f707573, // "opus" in ASCII
    AAC  : 0x00616163, // "aac in ASCII"
    RAW  : 0x00726177, // "raw" i

@@ -19,6 +19,8 @@ describe('Scrcpy 3.0 Support & Backwards Compatibility', () => {
 
   describe('parseScrcpyVersion', () => {
     it('should parse simple version string', () => {
+      expect(parseScrcpyVersion('4.1')).to.deep.equal({ version: '4.1' });
+      expect(parseScrcpyVersion('v4.1')).to.deep.equal({ version: '4.1' });
       expect(parseScrcpyVersion('4.0')).to.deep.equal({ version: '4.0' });
       expect(parseScrcpyVersion('v4.0')).to.deep.equal({ version: '4.0' });
       expect(parseScrcpyVersion('3.3.4')).to.deep.equal({ version: '3.3.4' });
@@ -37,6 +39,9 @@ describe('Scrcpy 3.0 Support & Backwards Compatibility', () => {
     });
 
     it('should parse GitHub release tag URL', () => {
+      expect(parseScrcpyVersion('https://github.com/Genymobile/scrcpy/releases/tag/v4.1')).to.deep.equal({
+        version: '4.1',
+      });
       expect(parseScrcpyVersion('https://github.com/Genymobile/scrcpy/releases/tag/v4.0')).to.deep.equal({
         version: '4.0',
       });
@@ -75,6 +80,23 @@ describe('Scrcpy 3.0 Support & Backwards Compatibility', () => {
       const p = getDefaultScrcpyJarPath('3.0');
       expect(p).to.be.a('string');
       expect(p).to.include('scrcpy-server-v3.0.jar');
+    });
+
+    it('should download scrcpy-server v4.1 binary from release URL', async function () {
+      this.timeout(20000);
+      const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'scrcpy-test-41-'));
+      try {
+        const downloadedFile = await downloadScrcpyServer('https://github.com/Genymobile/scrcpy/releases/tag/v4.1', {
+          destDir: tmpDir,
+          force: true,
+        });
+
+        expect(fs.existsSync(downloadedFile)).to.be.true;
+        const stat = fs.statSync(downloadedFile);
+        expect(stat.size).to.be.greaterThan(50000);
+      } finally {
+        fs.rmSync(tmpDir, { recursive: true, force: true });
+      }
     });
 
     it('should download scrcpy-server v4.0 binary from release URL', async function () {
@@ -189,6 +211,23 @@ describe('Scrcpy 3.0 Support & Backwards Compatibility', () => {
       expect(line).to.include('video_source=display');
       expect(line).to.include('scid=');
       // In scrcpy 3.0, lock_video_orientation is removed
+      expect(line).to.not.include('lock_video_orientation');
+    });
+
+    it('should generate v4.1 startup line with ignoreVideoEncoderConstraints and videoCodec', () => {
+      const scrcpy = new Scrcpy(dummyClient, {
+        version: '4.1',
+        newDisplay: '1024x768/160',
+        videoCodec: 'vp9',
+        ignoreVideoEncoderConstraints: true,
+        flexDisplay: true,
+      });
+      const line = scrcpy.getStartupLine('/data/local/tmp/scrcpy-server-v4.1.jar');
+
+      expect(line).to.include('com.genymobile.scrcpy.Server 4.1');
+      expect(line).to.include('video_codec=vp9');
+      expect(line).to.include('ignore_video_encoder_constraints=true');
+      expect(line).to.include('flex_display=true');
       expect(line).to.not.include('lock_video_orientation');
     });
 
@@ -405,6 +444,20 @@ describe('Scrcpy 3.0 Support & Backwards Compatibility', () => {
       expected.writeUInt16BE(1080, 3);
       expect(writtenChunks[0]).to.deep.equal(expected);
     });
+
+    it('should send TYPE_SCAN_FILE control message in v4.1', async () => {
+      const scrcpy = new Scrcpy(dummyClient, { version: '4.1' });
+      (scrcpy as any).controlSocket = mockControlSocket;
+
+      await scrcpy.scanFile('/sdcard/Download/test.jpg');
+      expect(writtenChunks).to.have.lengthOf(1);
+      const filePath = '/sdcard/Download/test.jpg';
+      const expected = Buffer.alloc(1 + 4 + filePath.length);
+      expected.writeUInt8(22, 0);
+      expected.writeUInt32BE(filePath.length, 1);
+      expected.write(filePath, 5, 'utf8');
+      expect(writtenChunks[0]).to.deep.equal(expected);
+    });
   });
 
   describe('Scrcpy video stream header & session metadata', () => {
@@ -483,6 +536,41 @@ describe('Scrcpy 3.0 Support & Backwards Compatibility', () => {
       expect(codec).to.equal('H264');
       expect(width).to.equal(1080);
       expect(height).to.equal(1920);
+
+      mockStream.end();
+      await streamPromise;
+    });
+
+    it('should identify VP8 and VP9 codecs in v4.1', async () => {
+      const scrcpy = new Scrcpy(dummyClient, { version: '4.1' });
+      const mockStream = new PassThrough();
+      const mockPromiseDuplex = new PromiseDuplex(mockStream);
+      (scrcpy as any).videoSocket = mockPromiseDuplex;
+
+      const streamPromise = (scrcpy as any).startStreamWithMeta();
+
+      const nameBuf = Buffer.alloc(64);
+      nameBuf.write('VP9Device', 'utf8');
+      mockStream.write(nameBuf);
+
+      // VP9 codec ID: 0x00767039
+      const codecBuf = Buffer.alloc(4);
+      codecBuf.writeUInt32BE(0x00767039, 0);
+      mockStream.write(codecBuf);
+
+      const sessionBuf = Buffer.alloc(12);
+      sessionBuf.writeUInt32BE(0x80000000, 0);
+      sessionBuf.writeUInt32BE(1280, 4);
+      sessionBuf.writeUInt32BE(720, 8);
+      mockStream.write(sessionBuf);
+
+      const codec = await scrcpy.codec;
+      const width = await scrcpy.width;
+      const height = await scrcpy.height;
+
+      expect(codec).to.equal('VP9');
+      expect(width).to.equal(1280);
+      expect(height).to.equal(720);
 
       mockStream.end();
       await streamPromise;
