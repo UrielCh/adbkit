@@ -78,18 +78,13 @@ export class YaWebAdbManager {
   }
 
   private wrapUsbDeviceClose(usbDev: WebUsbDeviceLike): void {
-    const raw = usbDev.raw as UsbRawDeviceLike & { _yaWrapped?: boolean; reset?: () => Promise<void> };
+    const raw = usbDev.raw as UsbRawDeviceLike & { _yaWrapped?: boolean };
     if (!raw || raw._yaWrapped || typeof raw.close !== 'function') {
       return;
     }
     raw._yaWrapped = true;
     const origClose = raw.close.bind(raw);
     raw.close = async () => {
-      try {
-        await raw.reset?.();
-      } catch {
-        // ignore reset errors if already disconnected
-      }
       try {
         await origClose();
       } catch {
@@ -176,7 +171,7 @@ export class YaWebAdbManager {
   private isUsbBusyError(err: unknown): boolean {
     if (!err) return false;
     const str = `${(err as Error).name || ''} ${(err as Error).message || err}`;
-    return /busy|claimInterface|exclusive access|LIBUSB_ERROR_BUSY/i.test(str);
+    return /busy|claimInterface|exclusive access|LIBUSB_ERROR_BUSY|borrowed mutably|registry id/i.test(str);
   }
 
   /**
@@ -203,7 +198,7 @@ export class YaWebAdbManager {
       entry.connectingPromise = (async () => {
         const { adb: adbMod } = await this.getModules();
         const credentialManager = await this.getCredentialManager();
-        const usbDev = entry.usbDevice!;
+        let usbDev = entry.usbDevice!;
 
         let connection: unknown;
         try {
@@ -215,7 +210,12 @@ export class YaWebAdbManager {
             if (killed) {
               for (let attempt = 0; attempt < 5; attempt++) {
                 try {
-                  if (usbDev.raw.opened) {
+                  const devMgr = await this.getDeviceManager();
+                  const freshDevices = await devMgr.getDevices();
+                  const freshDev = freshDevices.find((d) => (d.serial || 'unknown') === entry.serial) || usbDev;
+                  entry.usbDevice = freshDev;
+                  usbDev = freshDev;
+                  if (usbDev.raw?.opened) {
                     await usbDev.raw.close().catch(() => { });
                   }
                   connection = await usbDev.connect();
@@ -235,10 +235,12 @@ export class YaWebAdbManager {
           }
         }
 
-        const transport: AdbTransportLike = await adbMod.adbDaemonAuthenticate({
+        const auth = adbMod.adbDaemonAuthenticate || (adbMod.AdbDaemonTransport as any)?.authenticate;
+        const transport: AdbTransportLike = await auth({
           serial: entry.serial,
           connection,
           credentialManager,
+          credentialStore: credentialManager,
           onPublicKeyAuthentication: () => {
             debug('Device %s requires on-device public key authorization', entry.serial);
             entry.state = 'unauthorized';
@@ -414,10 +416,12 @@ export class YaWebAdbManager {
     });
 
     const connection = this.createNetDaemonConnection(netSocket, adbMod);
-    const transport: AdbTransportLike = await adbMod.adbDaemonAuthenticate({
+    const auth = adbMod.adbDaemonAuthenticate || (adbMod.AdbDaemonTransport as any)?.authenticate;
+    const transport: AdbTransportLike = await auth({
       serial,
       connection,
       credentialManager,
+      credentialStore: credentialManager,
     });
     const adbInstance: AdbLike = new adbMod.Adb(transport);
 

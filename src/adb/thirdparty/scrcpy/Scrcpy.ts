@@ -380,11 +380,23 @@ export default class Scrcpy extends EventEmitter {
     if (this.closed) // can not start once stop called
       return this;
 
+    // Check if directory exists on the device; ignore ENOENT but rethrow connection/transport errors
+    const checkDir = async (path: string): Promise<Stats | null> => {
+      try {
+        return await this.client.stat(path);
+      } catch (err: any) {
+        if (err?.code === 'ENOENT' || /no such file/i.test(err?.message || '')) {
+          return null;
+        }
+        throw err;
+      }
+    };
+
     let dstFolder = '/data/local/tmp';
-    let dstFolderStat = await this.client.stat(dstFolder).catch((e) => { console.log(e); return null; });
+    let dstFolderStat = await checkDir(dstFolder);
     if (!dstFolderStat) {
       dstFolder = '/tmp';
-      dstFolderStat = await this.client.stat(dstFolder).catch(() => null);
+      dstFolderStat = await checkDir(dstFolder);
     }
     if (!dstFolderStat) {
       throw Error("can not find a writable tmp dest folder in device");
