@@ -238,7 +238,7 @@ const testClickScrcpy = async (deviceClient: DeviceClient, coordinateGenerator: 
   try {
     while (!scrcpy) {
       try {
-        scrcpy = deviceClient.scrcpy({ version: "3.2" });
+        scrcpy = deviceClient.scrcpy({ version: "4.0" });
         await Utils.delay(2);
         await scrcpy.start();
         await scrcpy.width;

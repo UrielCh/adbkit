@@ -8,7 +8,7 @@ export interface ScrcpyOptions {
      * scrcpy id since V 2.0
      */
     scid: string;
-    version: "1.20" | "1.24" | "2.7" | "3.0" | "3.1" | "3.2" | `${number}.${number}` | `${number}.${number}.${number}`;
+    version: "1.20" | "1.24" | "2.7" | "3.0" | "3.1" | "3.2" | "3.3" | "3.3.1" | "3.3.4" | "4.0" | `${number}.${number}` | `${number}.${number}.${number}`;
     /**
      * maxSize         (integer, multiple of 8) 0
      * Max width
@@ -118,6 +118,28 @@ export interface ScrcpyOptions {
      * screenOffTimeout in seconds since scrcpy 3.0
      */
     screenOffTimeout?: number;
+    /**
+     * flexDisplay since scrcpy 4.0
+     * Dynamically resize virtual display to match the client window size
+     */
+    flexDisplay?: boolean;
+    /**
+     * keepActive since scrcpy 4.0
+     * Periodically signals user activity to prevent device screen from turning off
+     */
+    keepActive?: boolean;
+    /**
+     * minSizeAlignment since scrcpy 4.0 (1, 2, 4, 8, or 16)
+     */
+    minSizeAlignment?: 1 | 2 | 4 | 8 | 16 | number;
+    /**
+     * cameraZoom since scrcpy 4.0
+     */
+    cameraZoom?: number;
+    /**
+     * cameraTorch since scrcpy 4.0
+     */
+    cameraTorch?: boolean;
     /**
      * Custom path to scrcpy-server jar file
      */

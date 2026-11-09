@@ -287,7 +287,8 @@ export default class Scrcpy extends EventEmitter {
       sendFrameMeta, control, displayId, showTouches, stayAwake, codecOptions,
       encoderName, powerOffScreenOnClose, clipboardAutosync,
       captureOrientation, angle, newDisplay, vdSystemDecorations, vdDestroyContent,
-      displayImePolicy, audioSource, screenOffTimeout
+      displayImePolicy, audioSource, screenOffTimeout,
+      flexDisplay, keepActive, minSizeAlignment, cameraZoom, cameraTorch
     } = this.config;
     args.push(`CLASSPATH=${jarDest}`);
     args.push('app_process');
@@ -379,6 +380,23 @@ export default class Scrcpy extends EventEmitter {
         }
         if (screenOffTimeout !== undefined) {
           args.push(`screen_off_timeout=${screenOffTimeout}`);
+        }
+        if (this.major >= 4) {
+          if (flexDisplay !== undefined) {
+            args.push(`flex_display=${flexDisplay}`);
+          }
+          if (keepActive !== undefined) {
+            args.push(`keep_active=${keepActive}`);
+          }
+          if (minSizeAlignment !== undefined) {
+            args.push(`min_size_alignment=${minSizeAlignment}`);
+          }
+          if (cameraZoom !== undefined) {
+            args.push(`camera_zoom=${cameraZoom}`);
+          }
+          if (cameraTorch !== undefined) {
+            args.push(`camera_torch=${cameraTorch}`);
+          }
         }
       } else {
         args.push(`lock_video_orientation=${lockedVideoOrientation}`);
@@ -673,6 +691,36 @@ export default class Scrcpy extends EventEmitter {
     this.videoSocket.stream.on('data', d => this.emit('raw', d));
   }
 
+  private mapCodec(codecId: number): string {
+    switch (codecId) {
+      case codexMap.H264:
+        return "H264";
+      case codexMap.H265:
+        return "H265";
+      case codexMap.AV1:
+        return "AV1";
+      case codexMap.OPUS:
+        return "OPUS";
+      case codexMap.AAC:
+        return "AAC";
+      case codexMap.RAW:
+        return "RAW";
+      default:
+        return "UNKNOWN";
+    }
+  }
+
+  private async readExact(socket: PromiseDuplex<Duplex>, size: number, ctxt = ''): Promise<Buffer | null> {
+    while (socket && socket.stream && socket.stream.readable) {
+      const chunk = socket.stream.read(size) as Buffer | null;
+      if (chunk) {
+        return chunk;
+      }
+      await Utils.waitforReadable(socket, 0, ctxt);
+    }
+    return null;
+  }
+
   /**
    * capture all video trafique in a loop
    * get resolve once capture stop
@@ -682,20 +730,16 @@ export default class Scrcpy extends EventEmitter {
     this.videoSocket.stream.pause();
     await Utils.waitforReadable(this.videoSocket, 0, 'videoSocket header');
     if (this.major >= 2) {
-      const chunk = this.videoSocket.stream.read(64) as Buffer;
+      const chunk = await this.readExact(this.videoSocket, 64, 'videoSocket header');
       if (!chunk)
         throw Error('fail to read firstChunk, inclease tunnelDelay for this device.');
-      const name = chunk.toString('utf8', 0, 64).trim();
+      const name = chunk.toString('utf8', 0, 64).replace(/\0/g, '').trim();
       this.setName(name);
-      // const width = chunk.readUint16BE(64);
-      // this.setWidth(width);
-      // const height = chunk.readUint16BE(66);
-      // this.setHeight(height);
     } else {
-      const chunk = this.videoSocket.stream.read(68) as Buffer;
+      const chunk = await this.readExact(this.videoSocket, 68, 'videoSocket header');
       if (!chunk)
         throw Error('fail to read firstChunk, inclease tunnelDelay for this device.');
-      const name = chunk.toString('utf8', 0, 64).trim();
+      const name = chunk.toString('utf8', 0, 64).replace(/\0/g, '').trim();
       this.setName(name);
       const width = chunk.readUint16BE(64);
       this.setWidth(width);
@@ -704,65 +748,75 @@ export default class Scrcpy extends EventEmitter {
     }
 
     let codec = "H264";
-    // let header: Uint8Array | undefined;
-    if (this.major >= 2) {
-      await Utils.waitforReadable(this.videoSocket, 0, 'videoSocket Codec header');
-      const frameMeta = this.videoSocket.stream.read(12) as Buffer;
+    if (this.major >= 4) {
+      // In scrcpy 4.0+:
+      // 1. writeVideoHeader() sends only 4 bytes: codecId
+      // 2. Initial writeSessionMeta() sends 12 bytes: flags (bit 31 = 1), width (4 bytes), height (4 bytes)
+      const codecChunk = await this.readExact(this.videoSocket, 4, 'videoSocket Codec header');
+      if (!codecChunk)
+        throw Error('fail to read videoSocket Codec header');
+      const codecId = codecChunk.readUInt32BE(0);
+      codec = this.mapCodec(codecId);
+      this.setCodec(codec);
+
+      const sessionChunk = await this.readExact(this.videoSocket, 12, 'videoSocket Session header');
+      if (!sessionChunk)
+        throw Error('fail to read videoSocket Session header');
+      const width = sessionChunk.readUInt32BE(4);
+      const height = sessionChunk.readUInt32BE(8);
+      this.setWidth(width);
+      this.setHeight(height);
+      this.emit("codec", { codec, width, height });
+    } else if (this.major >= 2) {
+      // In scrcpy 2.x and 3.x:
+      // writeVideoHeader(videoSize) sends 12 bytes: codecId (4 bytes), width (4 bytes), height (4 bytes)
+      const frameMeta = await this.readExact(this.videoSocket, 12, 'videoSocket Codec header');
+      if (!frameMeta)
+        throw Error('fail to read videoSocket Codec header');
       const codecId = frameMeta.readUInt32BE(0);
-      // Read width (4 bytes)
       const width = frameMeta.readUInt32BE(4);
-      // Read height (4 bytes)
       const height = frameMeta.readUInt32BE(8);
-      switch (codecId) {
-        case codexMap.H264:
-          codec = "H264";
-          break;
-        case codexMap.H265:
-          codec = "H265";
-          break;
-        case codexMap.AV1:
-          codec = "AV1";
-          break;
-        case codexMap.OPUS:
-          codec = "OPUS";
-          break;
-        case codexMap.AAC:
-          codec = "AAC";
-          break;
-        case codexMap.RAW:
-          codec = "RAW";
-          break;
-        default:
-          codec = "UNKNOWN";
-      }
+      codec = this.mapCodec(codecId);
       this.setCodec(codec);
       this.setWidth(width);
       this.setHeight(height);
-
       this.emit("codec", { codec, width, height });
     }
+
+    const flagConfig = this.major >= 4 ? (BigInt(1) << BigInt(62)) : (BigInt(1) << BigInt(63));
+    const flagKeyFrame = this.major >= 4 ? (BigInt(1) << BigInt(61)) : (BigInt(1) << BigInt(62));
 
     let pts = BigInt(0);// Buffer.alloc(0);
     for (; ;) {
       if (!this.videoSocket)
         break;
-      await Utils.waitforReadable(this.videoSocket, 0, 'videoSocket packet size');
       let len: number | undefined = undefined;
       if (this.config.sendFrameMeta) {
         if (!this.videoSocket)
           break;
-        const frameMeta = this.videoSocket.stream.read(12) as Buffer;
+        const frameMeta = await this.readExact(this.videoSocket, 12, 'videoSocket packet size');
         if (!frameMeta) {
           // regular end condition
           return;
         }
+
+        // In scrcpy 4.0, a 12-byte header with bit 63 set is a session packet (no payload data follows)
+        if (this.major >= 4 && (frameMeta[0] & 0x80) !== 0) {
+          const newWidth = frameMeta.readUInt32BE(4);
+          const newHeight = frameMeta.readUInt32BE(8);
+          this.setWidth(newWidth);
+          this.setHeight(newHeight);
+          this.emit("codec", { codec, width: newWidth, height: newHeight });
+          continue;
+        }
+
         pts = frameMeta.readBigUint64BE();
         len = frameMeta.readUInt32BE(8);
         // debug(`\tHeader:PTS =`, pts);
         // debug(`\tHeader:len =`, len);
       }
 
-      const config = !!(pts & PACKET_FLAG_CONFIG);
+      const config = !!(pts & flagConfig);
 
       let streamChunk: Uint8Array | null = null; // Buffer
       while (streamChunk === null) {
@@ -811,9 +865,9 @@ export default class Scrcpy extends EventEmitter {
             /**
              * if pts have PACKET_FLAG_KEY_FRAME, this is a keyframe
              */
-            const keyframe = !!(pts & PACKET_FLAG_KEY_FRAME);
+            const keyframe = !!(pts & flagKeyFrame);
             if (keyframe) {
-              pts &= ~PACKET_FLAG_KEY_FRAME;
+              pts &= ~flagKeyFrame;
             }
             const frame = { keyframe, pts, data: streamChunk, config: this.lastConf };
             if (this.setFirstFrame) {
@@ -1027,6 +1081,41 @@ export default class Scrcpy extends EventEmitter {
   async rotateDevice(): Promise<void> {
     const chunk = Buffer.allocUnsafe(1);
     chunk.writeUInt8(ControlMessageMap.TYPE_ROTATE_DEVICE);
+    assert(this.controlSocket);
+    await this.controlSocket.write(chunk);
+  }
+
+  // TYPE_CAMERA_SET_TORCH (since scrcpy 4.0)
+  async setCameraTorch(on: boolean): Promise<void> {
+    const chunk = Buffer.allocUnsafe(2);
+    chunk.writeUInt8(ControlMessageMap.TYPE_CAMERA_SET_TORCH, 0);
+    chunk.writeUInt8(on ? 1 : 0, 1);
+    assert(this.controlSocket);
+    await this.controlSocket.write(chunk);
+  }
+
+  // TYPE_CAMERA_ZOOM_IN (since scrcpy 4.0)
+  async cameraZoomIn(): Promise<void> {
+    const chunk = Buffer.allocUnsafe(1);
+    chunk.writeUInt8(ControlMessageMap.TYPE_CAMERA_ZOOM_IN);
+    assert(this.controlSocket);
+    await this.controlSocket.write(chunk);
+  }
+
+  // TYPE_CAMERA_ZOOM_OUT (since scrcpy 4.0)
+  async cameraZoomOut(): Promise<void> {
+    const chunk = Buffer.allocUnsafe(1);
+    chunk.writeUInt8(ControlMessageMap.TYPE_CAMERA_ZOOM_OUT);
+    assert(this.controlSocket);
+    await this.controlSocket.write(chunk);
+  }
+
+  // TYPE_RESIZE_DISPLAY (since scrcpy 4.0)
+  async resizeDisplay(width: number, height: number): Promise<void> {
+    const chunk = Buffer.allocUnsafe(5);
+    chunk.writeUInt8(ControlMessageMap.TYPE_RESIZE_DISPLAY, 0);
+    chunk.writeUInt16BE(width, 1);
+    chunk.writeUInt16BE(height, 3);
     assert(this.controlSocket);
     await this.controlSocket.write(chunk);
   }
