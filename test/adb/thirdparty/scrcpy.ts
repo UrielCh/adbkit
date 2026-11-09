@@ -19,6 +19,8 @@ describe('Scrcpy 3.0 Support & Backwards Compatibility', () => {
 
   describe('parseScrcpyVersion', () => {
     it('should parse simple version string', () => {
+      expect(parseScrcpyVersion('5.0.1')).to.deep.equal({ version: '5.0.1' });
+      expect(parseScrcpyVersion('v5.0.1')).to.deep.equal({ version: '5.0.1' });
       expect(parseScrcpyVersion('5.0')).to.deep.equal({ version: '5.0' });
       expect(parseScrcpyVersion('v5.0')).to.deep.equal({ version: '5.0' });
       expect(parseScrcpyVersion('4.1')).to.deep.equal({ version: '4.1' });
@@ -41,6 +43,9 @@ describe('Scrcpy 3.0 Support & Backwards Compatibility', () => {
     });
 
     it('should parse GitHub release tag URL', () => {
+      expect(parseScrcpyVersion('https://github.com/Genymobile/scrcpy/releases/tag/v5.0.1')).to.deep.equal({
+        version: '5.0.1',
+      });
       expect(parseScrcpyVersion('https://github.com/Genymobile/scrcpy/releases/tag/v5.0')).to.deep.equal({
         version: '5.0',
       });
@@ -85,6 +90,23 @@ describe('Scrcpy 3.0 Support & Backwards Compatibility', () => {
       const p = getDefaultScrcpyJarPath('3.0');
       expect(p).to.be.a('string');
       expect(p).to.include('scrcpy-server-v3.0.jar');
+    });
+
+    it('should download scrcpy-server v5.0.1 binary from release URL', async function () {
+      this.timeout(20000);
+      const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'scrcpy-test-501-'));
+      try {
+        const downloadedFile = await downloadScrcpyServer('https://github.com/Genymobile/scrcpy/releases/tag/v5.0.1', {
+          destDir: tmpDir,
+          force: true,
+        });
+
+        expect(fs.existsSync(downloadedFile)).to.be.true;
+        const stat = fs.statSync(downloadedFile);
+        expect(stat.size).to.be.greaterThan(50000);
+      } finally {
+        fs.rmSync(tmpDir, { recursive: true, force: true });
+      }
     });
 
     it('should download scrcpy-server v5.0 binary from release URL', async function () {
@@ -233,6 +255,25 @@ describe('Scrcpy 3.0 Support & Backwards Compatibility', () => {
       expect(line).to.include('video_source=display');
       expect(line).to.include('scid=');
       // In scrcpy 3.0, lock_video_orientation is removed
+      expect(line).to.not.include('lock_video_orientation');
+    });
+
+    it('should generate v5.0.1 startup line with flexDisplay, ignoreVideoEncoderConstraints, and videoCodec', () => {
+      const scrcpy = new Scrcpy(dummyClient, {
+        version: '5.0.1',
+        newDisplay: '1024x768/160',
+        videoCodec: 'h265',
+        ignoreVideoEncoderConstraints: false,
+        flexDisplay: true,
+        keepActive: true,
+      });
+      const line = scrcpy.getStartupLine('/data/local/tmp/scrcpy-server-v5.0.1.jar');
+
+      expect(line).to.include('com.genymobile.scrcpy.Server 5.0.1');
+      expect(line).to.include('video_codec=h265');
+      expect(line).to.include('ignore_video_encoder_constraints=false');
+      expect(line).to.include('flex_display=true');
+      expect(line).to.include('keep_active=true');
       expect(line).to.not.include('lock_video_orientation');
     });
 
