@@ -82,28 +82,28 @@ async function* getCenterTaps(width: number, height: number, options: TapOptions
 
     while (true) {
       // console.log("Mode: ", MODE);
-      await Utils.delay(100);
+      // await Utils.delay(100);
       if (MODE === "CENTER") {
         for (const selection of selctionsCenter) {
-          await Utils.delay(1);
+          // await Utils.delay(1);
           yield selection;
           if (MODE !== "CENTER") {
             break;
           }
         }
       } else if (MODE === "MIX") {
-        await Utils.delay(300);
+        // await Utils.delay(300);
         for (const selection of selctionsMix) {
-          await Utils.delay(1);
+          // await Utils.delay(1);
           yield selection;
           if (MODE !== "MIX") {
             break;
           }
         }
       } else if (MODE === "ALL") {
-        await Utils.delay(400);
+        // await Utils.delay(400);
         for (const selection of selctionsAll) {
-          await Utils.delay(1);
+          // await Utils.delay(1);
           yield selection;
           if (MODE !== "ALL") {
             break;
@@ -160,10 +160,50 @@ async function* getCenterTapsForDevice(deviceClient: DeviceClient, options: TapO
   }
 }
 
+let clickCount = 0;
+let keyboardActive = false;
+
+const printModeBar = () => {
+  let line = `\rCurrent mode`;
+  for (const m of MODES) {
+    if (m === MODE) {
+      line += ` [${m}]`;
+    } else {
+      line += `  ${m} `;
+    }
+  }
+  process.stdout.write(line + '   ');
+};
+
+const startClickRateReporter = (intervalMs = 2000) => {
+  let lastCount = 0;
+  let lastTime = Date.now();
+
+  const timer = setInterval(() => {
+    const now = Date.now();
+    const elapsed = (now - lastTime) / 1000;
+    const delta = clickCount - lastCount;
+    const cps = elapsed > 0 ? delta / elapsed : 0;
+    lastCount = clickCount;
+    lastTime = now;
+
+    if (process.stdout.isTTY) {
+      process.stdout.write('\r\x1b[K');
+    }
+    console.log(`[CPS] ${cps.toFixed(1)} clicks/s (total: ${clickCount})`);
+    if (keyboardActive && process.stdout.isTTY) {
+      printModeBar();
+    }
+  }, intervalMs);
+
+  return () => clearInterval(timer);
+};
+
 const testClickExec = async (deviceClient: DeviceClient) => {
   try {
     for await (const pos of getCenterTapsForDevice(deviceClient)) {
       await deviceClient.execOut(`input tap ${pos.x} ${pos.y}`, "utf8");
+      clickCount++;
     }
   } catch (e) {
     console.error("Impossible to start", e);
@@ -185,6 +225,7 @@ const testClickShell = async (deviceClient: DeviceClient, coordinateGenerator: A
       // const duplex = await deviceClient.shell(`input multitap 2 ${pos1.x} ${pos1.y} ${pos2.x} ${pos2.y}`);
       const duplex = await deviceClient.shell(`input tap ${pos1.x} ${pos1.y}`);
       await new Parser(duplex).readAll();
+      clickCount++;
     }
     console.log("All shell taps completed");
   } catch (e) {
@@ -230,6 +271,7 @@ const testClickScrcpy = async (deviceClient: DeviceClient, coordinateGenerator: 
       // Send ACTION_DOWN followed by ACTION_UP for each tap
       // MotionEvent.ACTION_DOWN
       await scrcpy.injectTouchEvent(MotionEventMap.ACTION_DOWN, 0n, position, screenSize, undefined, 0, MotionEventMap.BUTTON_PRIMARY);
+      await Utils.delay(1);
       // const c2 = await coordinateGenerator.next();
       // if (!c2.done) {
       //   const tap2 = c2.value;
@@ -241,6 +283,8 @@ const testClickScrcpy = async (deviceClient: DeviceClient, coordinateGenerator: 
       //   await scrcpy.injectTouchEvent(MotionEventMap.ACTION_UP, 0n, position, screenSize, undefined, 0, MotionEventMap.BUTTON_SECONDARY);
       // }
       await scrcpy.injectTouchEvent(MotionEventMap.ACTION_UP, 0n, position, screenSize, undefined, 0, 0);
+      await Utils.delay(2);
+      clickCount++;
       // await Utils.delay(1);
     }
     console.log('All scrcpy taps completed');
@@ -253,10 +297,11 @@ const testClickScrcpy = async (deviceClient: DeviceClient, coordinateGenerator: 
 };
 
 const setupKeyboardInterface = () => {
+  keyboardActive = true;
   console.log('\n=== MODE CONTROL ===');
   console.log('Use ARROW KEYS (←/→) or SPACE to change mode');
   console.log('Press ESC or Ctrl+C to continue');
-  console.log(`Current mode: ${MODE}`);
+  printModeBar();
 
   readline.emitKeypressEvents(process.stdin);
   if (process.stdin.isTTY) {
@@ -266,6 +311,7 @@ const setupKeyboardInterface = () => {
   const keyListener = (_chunk: any, key: any) => {
     if (key) {
       if (key.name === 'escape' || (key.ctrl && key.name === 'c')) {
+        keyboardActive = false;
         process.stdin.setRawMode(false);
         process.stdin.removeListener('keypress', keyListener);
         console.log('\nContinuing with execution...\n');
@@ -279,17 +325,7 @@ const setupKeyboardInterface = () => {
           currentModeIndex = (currentModeIndex + 1) % MODES.length;
         }
         MODE = MODES[currentModeIndex];
-        let line = `\rCurrent mode`;
-        for (const m of MODES) {
-          if (m === MODE) {
-            line += ` [${m}]`;
-          } else {
-            line += `  ${m} `;
-          }
-        }
-        process.stdout.write(line + '   ');
-        //
-        //process.stdout.write(`\rCurrent mode: ${MODE}   `);
+        printModeBar();
       }
     }
   };
@@ -313,7 +349,7 @@ const setupKeyboardInterface = () => {
 
 const main = async () => {
   // process.env.DEBUG = '*';
-  const adbClient = adb.createClient({ useYaWebAdb: false });
+  const adbClient = adb.createClient({ useYaWebAdb: true });
   const devices = await adbClient.listDevices();
   if (!devices.length) {
     console.error("Need at least one connected android device");
@@ -322,45 +358,50 @@ const main = async () => {
   const deviceClient = devices[0].getClient();
   // setup the UI
   void setupKeyboardInterface();
-  // {
-  //   let t1 = Date.now();
-  //   await testClickExec(deviceClient);
-  //   t1 = Date.now() - t1;
-  //   console.log(`execOut = ${t1 / NB_CLICK}`); // 50.146 ms
-  // }
-  //
-  if (false) {
-    const promises: Promise<unknown>[] = [];
-    let t2 = Date.now();
-    promises.push(testClickShell(deviceClient, getCenterTapsForDevice(deviceClient)));
-    //promises.push(testClickShell(deviceClient, getFixedCenterForDevice(deviceClient, NB_CLICK));
-    await Promise.all(promises);
-    t2 = Date.now() - t2;
-    console.log(`shell = ${t2 / NB_CLICK}`); // 44.815 ms
-  }
+  const stopReporting = startClickRateReporter(2000);
+  try {
+    // {
+    //   let t1 = Date.now();
+    //   await testClickExec(deviceClient);
+    //   t1 = Date.now() - t1;
+    //   console.log(`execOut = ${t1 / NB_CLICK}`); // 50.146 ms
+    // }
+    //
+    if (false) {
+      const promises: Promise<unknown>[] = [];
+      let t2 = Date.now();
+      promises.push(testClickShell(deviceClient, getCenterTapsForDevice(deviceClient)));
+      //promises.push(testClickShell(deviceClient, getFixedCenterForDevice(deviceClient, NB_CLICK));
+      await Promise.all(promises);
+      t2 = Date.now() - t2;
+      console.log(`shell = ${t2 / NB_CLICK}`); // 44.815 ms
+    }
 
-  if (true) {
-    let t3 = Date.now();
-    const opts = {
-      asPercent: true,
-      xRadius: 0.30,
-      yRadius: 0.14,
-      fromX: 0.08,
-      fromY: 0.2,
-      toX: 0.92,
-      toY: 0.75,// 0.75,
-      stepX: 0.05,
-      stepY: 0.025,
-    } satisfies TapOptions;
-    opts.xRadius *= 0.8;
-    opts.yRadius *= 0.8;
-    await testClickScrcpy(deviceClient, getCenterTapsForDevice(deviceClient, opts));
-    // await testClickScrcpy(deviceClient, getGridPercent(NB_CLICK));
-    t3 = Date.now() - t3;
-    console.log(`scrcpy = ${t3 / NB_CLICK}`);
-  }
+    if (true) {
+      let t3 = Date.now();
+      const opts = {
+        asPercent: true,
+        xRadius: 0.30,
+        yRadius: 0.14,
+        fromX: 0.08,
+        fromY: 0.2,
+        toX: 0.92,
+        toY: 0.75,// 0.75,
+        stepX: 0.05,
+        stepY: 0.025,
+      } satisfies TapOptions;
+      opts.xRadius *= 0.8;
+      opts.yRadius *= 0.8;
+      await testClickScrcpy(deviceClient, getCenterTapsForDevice(deviceClient, opts));
+      // await testClickScrcpy(deviceClient, getGridPercent(NB_CLICK));
+      t3 = Date.now() - t3;
+      console.log(`scrcpy = ${t3 / NB_CLICK}`);
+    }
 
-  console.log(`Done`);
+    console.log(`Done`);
+  } finally {
+    stopReporting();
+  }
 };
 
 process.on("unhandledRejection", (reason, promise) => {
