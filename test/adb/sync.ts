@@ -1,11 +1,14 @@
 import Fs from 'node:fs';
 import Stream from 'node:stream';
+import EventEmitter from 'node:events';
 import Sinon from 'sinon';
 import { use, expect, assert } from 'chai';
 import simonChai from 'sinon-chai';
 import Adb, { Client } from '../../src/index.js';
 import Sync, { ENOENT } from '../../src/adb/sync.js';
 import Stats from '../../src/adb/sync/stats.js';
+import Stats64 from '../../src/adb/sync/stats64.js';
+import Protocol from '../../src/adb/protocol.js';
 import Entry from '../../src/adb/sync/entry.js';
 import PushTransfer from '../../src/adb/sync/pushtransfer.js';
 import PullTransfer from '../../src/adb/sync/pulltransfer.js';
@@ -104,6 +107,58 @@ describe('Sync', () => {
         //     transfer.cancel();
         //     return true;
         // });
+        it('should return PushTransfer immediately and emit progress events asynchronously', async () => {
+            const conn = new MockConnection();
+            const sync = new Sync(conn);
+            const stream = new Stream.PassThrough();
+            const progress: number[] = [];
+
+            conn.getSocket().on('write', (chunk: Buffer) => {
+                if (chunk.subarray(0, 4).toString() === Protocol.DONE) {
+                    conn.getSocket().causeRead(Protocol.OKAY);
+                    conn.getSocket().causeRead(Buffer.alloc(4));
+                }
+            });
+
+            const transfer = await sync.pushStream(stream, 'foo');
+            expect(transfer).to.be.an.instanceof(PushTransfer);
+            transfer.on('progress', (stats) => {
+                progress.push(stats.bytesTransferred);
+            });
+
+            stream.write('hello');
+            stream.end();
+            await transfer.waitForEnd();
+            expect(progress).to.deep.equal([5]);
+        });
+        it('should emit error on PushTransfer when source stream errors', async () => {
+            const conn = new MockConnection();
+            const sync = new Sync(conn);
+            const stream = new Stream.PassThrough();
+            const transfer = await sync.pushStream(stream, 'foo');
+
+            const errorPromise = new Promise<Error>((resolve) => {
+                transfer.once('error', resolve);
+            });
+            stream.destroy(new Error('read boom'));
+            const err = await errorPromise;
+            expect(err.message).to.include('Source Error: read boom');
+        });
+        it('should emit error on PushTransfer when connection errors', async () => {
+            const conn = new MockConnection();
+            // MockConnection overrides `on()` to a no-op; restore EventEmitter.on so `once('error', ...)` registers.
+            conn.on = EventEmitter.prototype.on;
+            const sync = new Sync(conn);
+            const stream = new Stream.PassThrough();
+            const transfer = await sync.pushStream(stream, 'foo');
+
+            const errorPromise = new Promise<Error>((resolve) => {
+                transfer.once('error', resolve);
+            });
+            conn.emit('error', new Error('write boom'));
+            const err = await errorPromise;
+            expect(err.message).to.include('Target Error: write boom');
+        });
         dt('should be able to push >65536 byte chunks without error', async () => {
             await forEachSyncDevice((sync) => {
                 return new Promise<void>(async (resolve, reject) => {
@@ -259,6 +314,25 @@ describe('Sync', () => {
                         return expect(file.mtime).to.not.be.null;
                     });
                 }).finally(done);
+            });
+        });
+        describe('Stats64', () => {
+            it('should compute birthtimeMs from birthtimeNs without infinite recursion', () => {
+                const stats = new Stats64(
+                    0,
+                    1n,
+                    2n,
+                    BigInt(Stats.S_IFREG | 0o644),
+                    1n,
+                    0n,
+                    0n,
+                    123n,
+                    1_000_000n,
+                    2_000_000n,
+                    3_000_000n,
+                );
+                expect(stats.birthtimeMs).to.equal(3_000n);
+                expect(stats.birthtime).to.be.an.instanceof(Date);
             });
         });
     });

@@ -85,7 +85,7 @@ program
       }
       const stream = await device.screencap();
       const capture = await Utils.readAll(stream);
-      fs.writeFileSync(dest, capture);
+      fs.writeFileSync(out, capture);
     }
   });
 

@@ -421,4 +421,29 @@ describe('StartActivityCommand', () => {
         expect(short).to.eql(long);
         done();
     });
+    it('should preserve falsy extra values (false, 0, empty string)', () => {
+        const conn = new MockConnection();
+        const cmd = new StartActivityCommand(conn);
+        conn.getSocket().on('write', (chunk) => {
+            expect(chunk.toString()).to.equal(
+                Protocol.encodeData(
+                    "shell:am start --ez 'boolFalse' 'false' --ei 'intZero' 0 --es 'emptyStr' '' -n 'com.dummy.component/.Main'",
+                ).toString(),
+            );
+        });
+        setImmediate(() => {
+            conn.getSocket().causeRead(Protocol.OKAY);
+            conn.getSocket().causeRead('Success');
+            conn.getSocket().causeEnd();
+        });
+        const options = {
+            component: 'com.dummy.component/.Main',
+            extras: [
+                { key: 'boolFalse', value: false, type: 'bool' },
+                { key: 'intZero', value: 0, type: 'int' },
+                { key: 'emptyStr', value: '', type: 'string' },
+            ],
+        } as StartActivityOptions;
+        return cmd.execute(options);
+    });
 });

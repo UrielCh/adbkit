@@ -36,7 +36,7 @@ export default class Stats64 implements fs.BigIntStats {
     return this.ctimeNs / b1k;
   }
   get birthtimeMs(): bigint {
-    return this.birthtimeMs / b1k;
+    return this.birthtimeNs / b1k;
   }
 
   rdev = BigInt(0);

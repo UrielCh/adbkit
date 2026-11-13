@@ -274,38 +274,75 @@ export default class Sync extends EventEmitter {
     return Sync.temp(path);
   }
 
-  private async _writeData(stream: Readable, timeStamp: number, streamName: string): Promise<PushTransfer> {
+  private _writeData(stream: Readable, timeStamp: number, streamName: string): PushTransfer {
     const transfer = new PushTransfer();
-    stream.once('error', (err) => {
-      throw new Error(`Source Error: ${err.message} while transfering ${streamName}`)
-    });
-    this.connection.once('error', (err: Error) => {
-      stream.destroy(err);
-      this.connection.end();
-      throw new Error(`Target Error: ${err.message} while transfering ${streamName}`);
-    });
-    for (let i = 0; ; i++) {
-      if (stream.closed)
-        break;
-      const readable = await Utils.waitforReadable(stream, STREAM_READ_TIMEOUT);
-      if (!readable)
-        break;
-      let chunk: ReturnType<Readable['read']>;
-      while (chunk = (stream.read(DATA_MAX_LENGTH) || stream.read())) {
-        await this.sendCommandWithLength(Protocol.DATA, chunk.length);
-        transfer.push(chunk.length);
-        await this.connection.write(chunk);
-        transfer.pop();
+    let transferError: Error | null = null;
+    let rejectError: ((err: Error) => void) | null = null;
+
+    const fail = (err: Error) => {
+      if (!transferError) {
+        transferError = err;
+        rejectError?.(err);
       }
-    }
-    await this.sendCommandWithLength(Protocol.DONE, timeStamp);
-    try {
-      await this.parser.readCode(Protocol.OKAY)
-    } catch (err) {
-      transfer.emit('error', err as Error);
-    } finally {
-      transfer.end();
-    }
+    };
+
+    const onStreamError = (err: Error) => {
+      fail(new Error(`Source Error: ${err.message} while transfering ${streamName}`));
+    };
+
+    const onConnectionError = (err: Error) => {
+      fail(new Error(`Target Error: ${err.message} while transfering ${streamName}`));
+      stream.destroy();
+      this.connection.end();
+    };
+
+    stream.once('error', onStreamError);
+    this.connection.once('error', onConnectionError);
+
+    const writeAll = async (): Promise<void> => {
+      const errorPromise = new Promise<never>((_, reject) => {
+        rejectError = reject;
+        if (transferError) {
+          reject(transferError);
+        }
+      });
+      errorPromise.catch(() => {});
+
+      const pump = async (): Promise<void> => {
+        for (let i = 0; ; i++) {
+          if (stream.closed || transferError)
+            break;
+          const readable = await Utils.waitforReadable(stream, STREAM_READ_TIMEOUT);
+          if (!readable || transferError)
+            break;
+          let chunk: ReturnType<Readable['read']>;
+          while (!transferError && (chunk = (stream.read(DATA_MAX_LENGTH) || stream.read()))) {
+            await this.sendCommandWithLength(Protocol.DATA, chunk.length);
+            transfer.push(chunk.length);
+            await this.connection.write(chunk);
+            transfer.pop();
+          }
+        }
+        if (transferError) {
+          throw transferError;
+        }
+        await this.sendCommandWithLength(Protocol.DONE, timeStamp);
+        await this.parser.readCode(Protocol.OKAY);
+      };
+
+      await Promise.race([pump(), errorPromise]);
+    };
+
+    writeAll()
+      .catch((err: Error) => {
+        transfer.emit('error', err);
+      })
+      .finally(() => {
+        stream.off('error', onStreamError);
+        this.connection.off('error', onConnectionError);
+        transfer.end();
+      });
+
     return transfer;
   }
 
