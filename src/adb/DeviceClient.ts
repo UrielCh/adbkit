@@ -1,6 +1,7 @@
 import { Duplex } from 'node:stream';
 import { ReadStream } from 'node:fs';
 import { Buffer } from 'node:buffer';
+import { DOMParser } from '@xmldom/xmldom';
 
 import * as adbkitMonkey from '@u4/adbkit-monkey';
 // import { type Monkey as MonkeyClient } from '@u4/adbkit-monkey';
@@ -1099,9 +1100,19 @@ export default class DeviceClient {
     return scrcpy.recordToFile(filePath, recordOptions);
   }
 
+  private static mapVideoMimeToCodec(mime: string): string {
+    const lower = mime.toLowerCase();
+    if (lower.includes('avc')) return 'h264';
+    if (lower.includes('hevc')) return 'h265';
+    if (lower.includes('av01') || lower.includes('av1')) return 'av1';
+    if (lower.includes('vp8')) return 'vp8';
+    if (lower.includes('vp9')) return 'vp9';
+    return 'unknown';
+  }
+
   /**
    * List available video encoders on this device.
-   * Parses Android's media_codecs configurations or queries scrcpy.
+   * Parses Android's media_codecs configurations.
    */
   public async listVideoEncoders(): Promise<VideoEncoderInfo[]> {
     try {
@@ -1109,27 +1120,42 @@ export default class DeviceClient {
         'cat /vendor/etc/media_codecs*.xml /system/etc/media_codecs*.xml /etc/media_codecs*.xml 2>/dev/null',
         'utf8'
       );
+      const sanitized = output
+        .replace(/<\?xml[\s\S]*?\?>/gi, '')
+        .replace(/<!DOCTYPE[^>]*>/gi, '');
+      const doc = new DOMParser({ onError: () => { } }).parseFromString(`<root>${sanitized}</root>`, 'text/xml');
       const encoders: VideoEncoderInfo[] = [];
       const seen = new Set<string>();
-      const regex = /<MediaCodec\s+name="([^"]+)"\s+type="(video\/[^"]+)"/gi;
-      let match: RegExpExecArray | null;
-      while ((match = regex.exec(output)) !== null) {
-        const name = match[1];
-        const mime = match[2].toLowerCase();
-        if (!seen.has(name) && !name.endsWith('.secure')) {
-          seen.add(name);
-          let codec = 'unknown';
-          if (mime.includes('avc')) codec = 'h264';
-          else if (mime.includes('hevc')) codec = 'h265';
-          else if (mime.includes('av01') || mime.includes('av1')) codec = 'av1';
-          else if (mime.includes('vp8')) codec = 'vp8';
-          else if (mime.includes('vp9')) codec = 'vp9';
-          encoders.push({ name, codec });
+      const encoderSections = doc.getElementsByTagName('Encoders');
+
+      for (let i = 0; i < encoderSections.length; i++) {
+        const section = encoderSections[i];
+        const mediaCodecs = section.getElementsByTagName('MediaCodec');
+        for (let j = 0; j < mediaCodecs.length; j++) {
+          const codecEl = mediaCodecs[j];
+          const name = codecEl.getAttribute('name');
+          if (!name || seen.has(name) || name.endsWith('.secure') || codecEl.getAttribute('enabled') === 'false') {
+            continue;
+          }
+          let mime = codecEl.getAttribute('type') || '';
+          if (!mime.toLowerCase().startsWith('video/')) {
+            mime = '';
+            const typeEls = codecEl.getElementsByTagName('Type');
+            for (let k = 0; k < typeEls.length; k++) {
+              const typeName = typeEls[k].getAttribute('name') || '';
+              if (typeName.toLowerCase().startsWith('video/')) {
+                mime = typeName;
+                break;
+              }
+            }
+          }
+          if (mime.toLowerCase().startsWith('video/')) {
+            seen.add(name);
+            encoders.push({ name, codec: DeviceClient.mapVideoMimeToCodec(mime) });
+          }
         }
       }
-      if (encoders.length > 0) {
-        return encoders;
-      }
+      return encoders;
     } catch {
       // ignore
     }
