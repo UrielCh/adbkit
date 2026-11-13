@@ -1055,11 +1055,16 @@ export default class Scrcpy extends EventEmitter {
   }
 
   // TYPE_COLLAPSE_PANELS
-  async collapsePannels(): Promise<void> {
+  async collapsePanels(): Promise<void> {
     const chunk = Buffer.allocUnsafe(1);
-    chunk.writeUInt8(ControlMessageMap.TYPE_EXPAND_SETTINGS_PANEL);
+    chunk.writeUInt8(ControlMessageMap.TYPE_COLLAPSE_PANELS);
     assert(this.controlSocket);
     await this.controlSocket.write(chunk);
+  }
+
+  /** @deprecated Use {@link collapsePanels} instead. */
+  async collapsePannels(): Promise<void> {
+    return this.collapsePanels();
   }
 
   // TYPE_GET_CLIPBOARD

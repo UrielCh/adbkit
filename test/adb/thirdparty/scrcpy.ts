@@ -550,6 +550,17 @@ describe('Scrcpy 3.0 Support & Backwards Compatibility', () => {
       expected.write(filePath, 5, 'utf8');
       expect(writtenChunks[0]).to.deep.equal(expected);
     });
+
+    it('should send TYPE_COLLAPSE_PANELS control message for collapsePanels and collapsePannels', async () => {
+      const scrcpy = new Scrcpy(dummyClient, { version: '4.1' });
+      (scrcpy as any).controlSocket = mockControlSocket;
+
+      await scrcpy.collapsePanels();
+      await scrcpy.collapsePannels();
+      expect(writtenChunks).to.have.lengthOf(2);
+      expect(writtenChunks[0]).to.deep.equal(Buffer.from([7]));
+      expect(writtenChunks[1]).to.deep.equal(Buffer.from([7]));
+    });
   });
 
   describe('Scrcpy video stream header & session metadata', () => {
