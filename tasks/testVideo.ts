@@ -2,13 +2,12 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { dirname } from 'node:path';
-import { execFile } from 'node:child_process';
-import { promisify } from 'node:util';
 
 import pc from 'picocolors';
 
 import adb, {
   DeviceClient,
+  ScrcpyOptions,
   Utils,
 } from '../src/index.js';
 
@@ -171,7 +170,7 @@ async function recordWithEncoding(
   encoding: EncodingConfig,
   outputDir: string,
   durationSec = 4,
-  scrcpyVersion = '3.0'
+  scrcpyVersion: ScrcpyOptions['version'] = '3.0'
 ): Promise<string | null> {
   const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
   const targetMp4Path = path.join(outputDir, `record_${encoding.id}_${timestamp}.mp4`);
@@ -180,7 +179,7 @@ async function recordWithEncoding(
   console.log(`   Target MP4: ${pc.yellow(targetMp4Path)}`);
   console.log(`   Duration: ${durationSec}s`);
 
-  const scrcpyOptions: Record<string, any> = {
+  const scrcpyOptions: Partial<ScrcpyOptions> = {
     version: scrcpyVersion,
     maxFps: 30,
     maxSize: 1080,

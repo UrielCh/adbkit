@@ -116,7 +116,7 @@ async function* getCenterTaps(width: number, height: number, options: TapOptions
   }
 }
 
-async function* getGridPercent(count: number) {
+async function* _getGridPercent(count: number) {
   const XGap = 0.02;
   const YGap = 0.35;
   const deltaX = 0.07;
@@ -199,7 +199,7 @@ const startClickRateReporter = (intervalMs = 2000) => {
   return () => clearInterval(timer);
 };
 
-const testClickExec = async (deviceClient: DeviceClient) => {
+const _testClickExec = async (deviceClient: DeviceClient) => {
   try {
     for await (const pos of getCenterTapsForDevice(deviceClient)) {
       await deviceClient.execOut(`input tap ${pos.x} ${pos.y}`, "utf8");
@@ -220,7 +220,7 @@ const testClickShell = async (deviceClient: DeviceClient, coordinateGenerator: A
       if (result2.done) break;
 
       const pos1 = result1.value;
-      const pos2 = result2.value;
+      const _pos2 = result2.value;
 
       // const duplex = await deviceClient.shell(`input multitap 2 ${pos1.x} ${pos1.y} ${pos2.x} ${pos2.y}`);
       const duplex = await deviceClient.shell(`input tap ${pos1.x} ${pos1.y}`);
@@ -308,7 +308,7 @@ const setupKeyboardInterface = () => {
     process.stdin.setRawMode(true);
   }
 
-  const keyListener = (_chunk: any, key: any) => {
+  const keyListener = (_chunk: unknown, key: readline.Key) => {
     if (key) {
       if (key.name === 'escape' || (key.ctrl && key.name === 'c')) {
         keyboardActive = false;
@@ -335,7 +335,7 @@ const setupKeyboardInterface = () => {
   return new Promise<void>((resolve) => {
     const originalListener = process.stdin.listeners('keypress').find(l => l === keyListener);
     if (originalListener) {
-      const wrappedListener = (_chunk: any, key: any) => {
+      const wrappedListener = (_chunk: unknown, key: readline.Key) => {
         keyListener(_chunk, key);
         if (key && (key.name === 'escape' || (key.ctrl && key.name === 'c'))) {
           resolve();

@@ -55,7 +55,7 @@
     "docs": "typedoc --entryPointStrategy expand",
     "compile": "tsc -p .",
     "build": "tsc -p .",
-    "lint": "eslint .",
+    "lint": "eslint src tasks --max-warnings 0 && eslint test",
     "format": "eslint . --fix",
     "test": "mocha -r tsx --reporter spec --colors 'test/**/*.ts'",
     "test2": "mocha -r tsx --reporter spec --colors 'test/adb/thirdparty/**/*.ts'",

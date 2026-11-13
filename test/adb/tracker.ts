@@ -24,7 +24,6 @@ describe('Tracker', () => {
         writer = new Stream.PassThrough();
         conn = {
             parser: new Parser(writer),
-            // eslint-disable-next-line @typescript-eslint/no-empty-function
             end: () => { },
         } as Connection;
         cmd = new HostTrackDevicesCommand(conn);

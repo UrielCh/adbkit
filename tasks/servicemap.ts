@@ -44,7 +44,7 @@ function getData(url: string): Promise<Buffer> {
 // https://android.googlesource.com/platform/frameworks/base/+/android-11.0.0_r35/core/java/android/security/keymaster/IKeyAttestationApplicationIdProvider.aidl?format=TEXT
 // https://android.googlesource.com/platform/frameworks/base/+/android-11.0.0_r35/telephony/java/android/hardware/fingerprint/IFingerprintService.aidl?format=TEXT
 
-async function getAllTags2(): Promise<string[]> {
+async function _getAllTags2(): Promise<string[]> {
   const data = await getData('git ls-remote --tags --sort="v:refname" https://android.googlesource.com/platform/frameworks/base.git');
   // git ls-remote --tags --sort="v:refname" https://android.googlesource.com/platform/frameworks/base.git | cut -d'/' -f3 | cut -d'^' -f1 
   const asText = data.toString('ascii');
@@ -63,7 +63,7 @@ async function getAllTags2(): Promise<string[]> {
  * getAllTags from google source git
  * @returns 
  */
-async function getAllTags(): Promise<string[]> {
+async function _getAllTags(): Promise<string[]> {
   const data = await getData('https://android.googlesource.com/platform/frameworks/base/+refs/tags/?format=text');
   // git ls-remote --tags --sort="v:refname" https://android.googlesource.com/platform/frameworks/base.git | cut -d'/' -f3 | cut -d'^' -f1 
   const asText = data.toString('ascii');
@@ -79,14 +79,14 @@ async function getAllTags(): Promise<string[]> {
 }
 
 
-async function getAidl(tag: string, pkgName: string) {
+async function _getAidl(tag: string, pkgName: string) {
   const pkg = pkgName.replace(/\./g, '/');
   let data: Buffer | null = null;
   try {
     const url = `https://android.googlesource.com/platform/frameworks/base/+/${tag}/core/java/${pkg}.aidl?format=TEXT`;
     // console.log(url);
     data = await getData(url);
-  } catch (e) {
+  } catch {
     // console.log(e);
     return;
   }

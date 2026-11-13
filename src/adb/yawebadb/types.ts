@@ -86,11 +86,67 @@ export interface WebUsbDeviceManagerLike {
   trackDevices(): Promise<WebUsbObserverLike>;
 }
 
+export interface AdbCredentialStorageLike {
+  save(privateKey: Uint8Array, name: string | undefined): Promise<undefined>;
+  load(): AsyncGenerator<never, void, void>;
+}
+
+export interface AdbCredentialManagerLike {}
+
+export interface AdbDaemonAuthenticateOptions {
+  serial: string;
+  connection: unknown;
+  credentialManager?: AdbCredentialManagerLike;
+  credentialStore?: AdbCredentialManagerLike;
+  onPublicKeyAuthentication?: () => void;
+}
+
+export type AdbDaemonAuthenticateFn = (options: AdbDaemonAuthenticateOptions) => Promise<AdbTransportLike>;
+
+export interface AdbPacketSerializeStreamLike {
+  readonly readable: {
+    getReader(): {
+      read(): Promise<{ done: boolean; value?: Uint8Array | { value: Uint8Array } }>;
+    };
+  };
+  readonly writable: unknown;
+}
+
+export interface AdbModuleLike {
+  Adb: new (transport: AdbTransportLike) => AdbLike;
+  adbDaemonAuthenticate?: AdbDaemonAuthenticateFn;
+  AdbDaemonTransport?: {
+    authenticate?: AdbDaemonAuthenticateFn;
+  };
+  AdbPacketSerializeStream: new () => AdbPacketSerializeStreamLike;
+}
+
+export interface UsbInstanceLike {
+  dispatchEvent?(event: Event): boolean;
+}
+
+export interface AdbWebUsbModuleLike {
+  AdbDaemonWebUsbDeviceManager: new (usb: UsbInstanceLike) => WebUsbDeviceManagerLike;
+}
+
+export interface AdbCredentialNodejsModuleLike {
+  TangoNodeJsStorage: new () => AdbCredentialStorageLike;
+  AdbWebCryptoCredentialManager: new (storage: AdbCredentialStorageLike) => AdbCredentialManagerLike;
+}
+
+export interface UsbModuleLike {
+  usb?: UsbInstanceLike;
+  WebUSB?: new (options?: { allowAllDevices?: boolean }) => UsbInstanceLike;
+  default?: {
+    usb?: UsbInstanceLike;
+  };
+}
+
 export interface YaWebAdbModules {
-  adb: Record<string, any>;
-  webusb: Record<string, any>;
-  credentialNodejs: Record<string, any>;
-  usb: Record<string, any>;
+  adb: AdbModuleLike;
+  webusb: AdbWebUsbModuleLike;
+  credentialNodejs: AdbCredentialNodejsModuleLike;
+  usb: UsbModuleLike;
 }
 
 export interface ManagedDeviceInfo {
@@ -165,7 +221,12 @@ export async function loadYaWebAdb(): Promise<YaWebAdbModules | null> {
           import('usb'),
         ]);
         debug('ya-webadb optional dependencies loaded successfully');
-        return { adb, webusb, credentialNodejs, usb };
+        return {
+          adb: adb as unknown as AdbModuleLike,
+          webusb,
+          credentialNodejs: credentialNodejs as unknown as AdbCredentialNodejsModuleLike,
+          usb,
+        };
       } catch (err) {
         debug('ya-webadb optional dependencies are not available: %s', (err as Error)?.message || err);
         return null;

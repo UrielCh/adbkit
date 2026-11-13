@@ -457,8 +457,9 @@ export default class Scrcpy extends EventEmitter {
     const checkDir = async (path: string): Promise<Stats | null> => {
       try {
         return await this.client.stat(path);
-      } catch (err: any) {
-        if (err?.code === 'ENOENT' || /no such file/i.test(err?.message || '')) {
+      } catch (err: unknown) {
+        const errnoErr = err as { code?: string; message?: string } | null;
+        if (errnoErr?.code === 'ENOENT' || /no such file/i.test(errnoErr?.message || '')) {
           return null;
         }
         throw err;
@@ -1408,9 +1409,9 @@ export default class Scrcpy extends EventEmitter {
    * @param deviceClient DeviceClient instance
    * @param scrcpyVersion Scrcpy server version (default: '3.0')
    */
-  static async listEncoders(deviceClient: DeviceClient, scrcpyVersion = '3.0'): Promise<string[]> {
+  static async listEncoders(deviceClient: DeviceClient, scrcpyVersion: ScrcpyOptions['version'] = '3.0'): Promise<string[]> {
     const scrcpy = new Scrcpy(deviceClient, {
-      version: scrcpyVersion as any,
+      version: scrcpyVersion,
       encoderName: '_', // intentionally invalid to trigger encoder listing
     });
     // Suppress error events

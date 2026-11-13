@@ -10,12 +10,13 @@ import Adb, {
   YaWebAdbModules,
   YaWebAdbSocket,
 } from '../../src/index.js';
+import type { AdbTransportLike, WebUsbDeviceLike } from '../../src/adb/yawebadb/types.js';
 
 use(sinonChai);
 
 function createMockYaWebAdbModules() {
   const createdSockets: Array<{ service: string; written: Uint8Array[] }> = [];
-  const listeners = new Set<(devices: unknown[]) => void>();
+  const listeners = new Set<(devices: readonly WebUsbDeviceLike[]) => void>();
 
   const mockUsbDevices = [
     {
@@ -44,9 +45,9 @@ function createMockYaWebAdbModules() {
       features: ['shell_v2', 'cmd', 'stat_v2', 'ls_v2'],
     };
     public disconnected = new Promise<void>(() => {});
-    public transport: Record<string, unknown>;
+    public transport: AdbTransportLike;
 
-    constructor(transport: Record<string, unknown>) {
+    constructor(transport: AdbTransportLike) {
       this.transport = transport;
       this.serial = String(transport.serial || 'MOCK_SERIAL_1');
     }
@@ -119,7 +120,13 @@ function createMockYaWebAdbModules() {
         },
         disconnected: new Promise<void>(() => {}),
         clientFeatures: ['shell_v2', 'cmd'],
-        connect: async () => ({}),
+        connect: async () => ({
+          service: '',
+          closed: Promise.resolve(undefined),
+          readable: new globalThis.ReadableStream(),
+          writable: new globalThis.WritableStream(),
+          close: async () => {},
+        }),
         addReverseTunnel: async () => 'tcp:3000',
         removeReverseTunnel: async () => {},
         clearReverseTunnels: async () => {},
@@ -140,9 +147,11 @@ function createMockYaWebAdbModules() {
             current: mockUsbDevices,
             onDeviceAdd: () => () => {},
             onDeviceRemove: () => () => {},
-            onListChange: (cb: (devs: unknown[]) => void) => {
+            onListChange: (cb: (devs: readonly WebUsbDeviceLike[]) => void) => {
               listeners.add(cb);
-              return () => listeners.delete(cb);
+              return () => {
+                listeners.delete(cb);
+              };
             },
             close: () => {
               listeners.clear();
@@ -152,7 +161,12 @@ function createMockYaWebAdbModules() {
       },
     },
     credentialNodejs: {
-      TangoNodeJsStorage: class {},
+      TangoNodeJsStorage: class {
+        async save(): Promise<undefined> {
+          return undefined;
+        }
+        async *load(): AsyncGenerator<never, void, void> {}
+      },
       AdbWebCryptoCredentialManager: class {},
     },
     usb: {

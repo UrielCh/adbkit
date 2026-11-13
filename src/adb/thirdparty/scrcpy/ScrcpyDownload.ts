@@ -204,7 +204,7 @@ export async function downloadScrcpyServer(
       // Rename tmp to target
       await fs.promises.rename(tmpPath, targetPath);
       return targetPath;
-    } catch (err: any) {
+    } catch (err: unknown) {
       await fs.promises.unlink(tmpPath).catch(() => {});
       lastError = err instanceof Error ? err : new Error(String(err));
     }

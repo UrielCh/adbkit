@@ -3,11 +3,14 @@ import { Buffer } from 'node:buffer';
 import Protocol from '../protocol.js';
 import Utils from '../utils.js';
 import {
+  AdbCredentialManagerLike,
   AdbLike,
+  AdbModuleLike,
   AdbSocketLike,
   AdbTransportLike,
   ForwardEntry,
   ManagedDeviceInfo,
+  UsbInstanceLike,
   UsbRawDeviceLike,
   WebUsbDeviceLike,
   WebUsbDeviceManagerLike,
@@ -45,9 +48,9 @@ export class YaWebAdbManager {
   private hasReverseTunnels = false;
   private idleTimer: ReturnType<typeof setTimeout> | null = null;
   private nextTransportId = 1;
-  private credentialManager: any = null;
+  private credentialManager: AdbCredentialManagerLike | null = null;
   private deviceManager: WebUsbDeviceManagerLike | null = null;
-  private usbInstance: any = null;
+  private usbInstance: UsbInstanceLike | null = null;
   private observer: WebUsbObserverLike | null = null;
   private observerDispose: (() => void) | null = null;
 
@@ -59,7 +62,7 @@ export class YaWebAdbManager {
     return mods;
   }
 
-  private async getCredentialManager(): Promise<any> {
+  private async getCredentialManager(): Promise<AdbCredentialManagerLike> {
     if (!this.credentialManager) {
       const { credentialNodejs } = await this.getModules();
       const storage = new credentialNodejs.TangoNodeJsStorage();
@@ -71,7 +74,10 @@ export class YaWebAdbManager {
   private async getDeviceManager(): Promise<WebUsbDeviceManagerLike> {
     if (!this.deviceManager) {
       const { webusb, usb } = await this.getModules();
-      this.usbInstance = usb.usb || (usb.WebUSB ? new usb.WebUSB({ allowAllDevices: true }) : usb.default?.usb);
+      this.usbInstance = usb.usb || (usb.WebUSB ? new usb.WebUSB({ allowAllDevices: true }) : usb.default?.usb) || null;
+      if (!this.usbInstance) {
+        throw new Error('USB instance is not available');
+      }
       this.deviceManager = new webusb.AdbDaemonWebUsbDeviceManager(this.usbInstance);
     }
     return this.deviceManager!;
@@ -235,7 +241,10 @@ export class YaWebAdbManager {
           }
         }
 
-        const auth = adbMod.adbDaemonAuthenticate || (adbMod.AdbDaemonTransport as any)?.authenticate;
+        const auth = adbMod.adbDaemonAuthenticate || adbMod.AdbDaemonTransport?.authenticate;
+        if (!auth) {
+          throw new Error('adbDaemonAuthenticate is not available');
+        }
         const transport: AdbTransportLike = await auth({
           serial: entry.serial,
           connection,
@@ -416,7 +425,10 @@ export class YaWebAdbManager {
     });
 
     const connection = this.createNetDaemonConnection(netSocket, adbMod);
-    const auth = adbMod.adbDaemonAuthenticate || (adbMod.AdbDaemonTransport as any)?.authenticate;
+    const auth = adbMod.adbDaemonAuthenticate || adbMod.AdbDaemonTransport?.authenticate;
+    if (!auth) {
+      throw new Error('adbDaemonAuthenticate is not available');
+    }
     const transport: AdbTransportLike = await auth({
       serial,
       connection,
@@ -454,7 +466,7 @@ export class YaWebAdbManager {
     return 'connected';
   }
 
-  private createNetDaemonConnection(netSocket: Net.Socket, adbMod: Record<string, any>): unknown {
+  private createNetDaemonConnection(netSocket: Net.Socket, adbMod: AdbModuleLike): unknown {
     let buffer = Buffer.alloc(0);
     let closed = false;
     let pendingRead: (() => void) | null = null;
@@ -529,8 +541,8 @@ export class YaWebAdbManager {
       try {
         for (; ;) {
           const { done, value } = await reader.read();
-          if (done) break;
-          const chunk: Uint8Array = value && 'value' in value ? value.value : value;
+          if (done || !value) break;
+          const chunk: Uint8Array = 'value' in value ? value.value : value;
           await new Promise<void>((resolve, reject) => {
             netSocket.write(chunk, (err) => (err ? reject(err) : resolve()));
           });

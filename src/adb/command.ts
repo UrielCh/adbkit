@@ -25,7 +25,7 @@ export default abstract class Command<T> {
     return this.connection.parser;
   }
 
-  // FIXME(intentional any): not "any" will break it all
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   public abstract execute(...args: any[]): Promise<T>;
 
   /**

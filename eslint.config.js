@@ -45,10 +45,4 @@ export default [
       '@typescript-eslint/no-unused-expressions': 'off',
     },
   },
-  {
-    files: ['tasks/**/*.ts'],
-    rules: {
-      '@typescript-eslint/no-unused-vars': 'warn',
-    },
-  },
 ];

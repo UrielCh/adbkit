@@ -423,9 +423,12 @@ export class YaWebAdbSocket extends Duplex {
     }
   }
 
-  public override end(...args: any[]): this {
+  public override end(cb?: () => void): this;
+  public override end(chunk: unknown, cb?: () => void): this;
+  public override end(chunk: unknown, encoding?: BufferEncoding, cb?: () => void): this;
+  public override end(...args: unknown[]): this {
     this.cleanup();
-    return (Duplex.prototype.end as any).apply(this, args);
+    return (Duplex.prototype.end as (...a: unknown[]) => this).apply(this, args);
   }
 
   public override _destroy(error: Error | null, callback: (error: Error | null) => void): void {

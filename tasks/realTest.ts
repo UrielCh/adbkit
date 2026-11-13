@@ -19,7 +19,7 @@ const __dirname = dirname(__filename);
 
 // const logRunning = require('why-is-node-running');
 
-function print(list: Array<IpRouteEntry | IpRuleEntry>) {
+function _print(list: Array<IpRouteEntry | IpRuleEntry>) {
   for (const route of list) console.log(route.toString());
 }
 
@@ -35,7 +35,7 @@ function fmtSize(trData: number): string {
   return str;
 }
 
-const testScrcpy = async (deviceClient: DeviceClient) => {
+const _testScrcpy = async (deviceClient: DeviceClient) => {
   const scrcpy = deviceClient.scrcpy({ version: '2.7' });
   scrcpy.on('error', (e) => {
     console.error('scrcpy error', e);
@@ -87,7 +87,7 @@ const testScrcpy = async (deviceClient: DeviceClient) => {
  * Works with V2.7
  * @param deviceClient 
  */
-const testScrcpyTextInput = async (deviceClient: DeviceClient) => {
+const _testScrcpyTextInput = async (deviceClient: DeviceClient) => {
   const scrcpy = deviceClient.scrcpy({});
   try {
     await scrcpy.start();
@@ -110,7 +110,7 @@ const testScrcpyTextInput = async (deviceClient: DeviceClient) => {
   }
 }
 
-const testScrcpyswap = async (deviceClient: DeviceClient) => {
+const _testScrcpyswap = async (deviceClient: DeviceClient) => {
   // const scrcpy = deviceClient.scrcpy({port: 8099, maxFps: 1, maxSize: 320});
   const scrcpy = deviceClient.scrcpy({ maxFps: 1 });
   try {
@@ -152,11 +152,11 @@ const testScrcpyswap = async (deviceClient: DeviceClient) => {
 
 /** test the 2 ways to capture Error in atrcpy */
 // encoderName had been replaced by list_encoders in V 2.0
-const testScrcpyEncoder = async (deviceClient: DeviceClient) => {
+const _testScrcpyEncoder = async (deviceClient: DeviceClient) => {
   const scrcpy = deviceClient.scrcpy({ encoderName: '_' });
   try {
-    let nbError = 0;
-    scrcpy.on('error', (e) => { nbError++; console.error("scrcpy Error:", e) });
+    let _nbError = 0;
+    scrcpy.on('error', (e) => { _nbError++; console.error("scrcpy Error:", e) });
     // scrcpy.on('error', (e) => { nbError++; /* get Error message line per line */ });
     await scrcpy.start();
     const error = await scrcpy.onTermination;
@@ -174,7 +174,7 @@ const testScrcpyEncoder = async (deviceClient: DeviceClient) => {
   await scrcpy.onTermination;
 }
 
-const testMinicap = async (deviceClient: DeviceClient) => {
+const _testMinicap = async (deviceClient: DeviceClient) => {
   // const scrcpy = deviceClient.scrcpy({port: 8099, maxFps: 1, maxSize: 320});
   const minicap = deviceClient.minicap({});
   try {
@@ -191,7 +191,7 @@ const testMinicap = async (deviceClient: DeviceClient) => {
   }
 }
 
-const stressMinicap = async (deviceClient: DeviceClient) => {
+const _stressMinicap = async (deviceClient: DeviceClient) => {
   // const scrcpy = deviceClient.scrcpy({port: 8099, maxFps: 1, maxSize: 320});
   const minicaps: Minicap[] = [];
   for (let i = 0; i < 15; i++) {
@@ -213,7 +213,7 @@ const stressMinicap = async (deviceClient: DeviceClient) => {
   console.log("closeing", closeing)
 }
 
-const stressTestScrCpy = async (deviceClient: DeviceClient) => {
+const _stressTestScrCpy = async (deviceClient: DeviceClient) => {
   // const scrcpy = deviceClient.scrcpy({port: 8099, maxFps: 1, maxSize: 320});
   const scrcpys: Scrcpy[] = [];
   for (let i = 0; i < 15; i++) {
@@ -244,7 +244,7 @@ const stressTestScrCpy = async (deviceClient: DeviceClient) => {
 }
 
 
-const testService = async (deviceClient: DeviceClient) => {
+const _testService = async (deviceClient: DeviceClient) => {
   //   String getDeviceId(String callingPackage);
   // const imei = await deviceClient.callServiceRaw('iphonesubinfo', 1);
   // console.log(imei.readType());
@@ -312,11 +312,11 @@ const testService = async (deviceClient: DeviceClient) => {
 }
 // Available Encoder are: OMX.qcom.video.encoder.avc, c2.android.avc.encoder, OMX.google.h264.encoder
 
-const extractFramesStream = async (deviceClient: DeviceClient, encoderName: 'OMX.qcom.video.encoder.avc' | 'c2.android.avc.encoder' | 'OMX.google.h264.encoder') => {
+const _extractFramesStream = async (deviceClient: DeviceClient, encoderName: 'OMX.qcom.video.encoder.avc' | 'c2.android.avc.encoder' | 'OMX.google.h264.encoder') => {
   const dest = path.join(__dirname, encoderName || 'capture');
   try {
     fs.mkdirSync(dest);
-  } catch (e) {
+  } catch {
     //ignore 
   }
   const scrcpy = deviceClient.scrcpy({ encoderName });
@@ -345,7 +345,7 @@ const extractFramesStream = async (deviceClient: DeviceClient, encoderName: 'OMX
   await scrcpy.onTermination;
 }
 
-const testSTFService = async (deviceClient: DeviceClient) => {
+const _testSTFService = async (deviceClient: DeviceClient) => {
   // const scrcpy = deviceClient.scrcpy({port: 8099, maxFps: 1, maxSize: 320});
   const STFService = deviceClient.STFService({ timeout: 200000 });
   try {
@@ -382,7 +382,7 @@ const testSTFService = async (deviceClient: DeviceClient) => {
     await STFService.doType({ text: 'test' });
 
 
-    const { x: w, y: h } = await ThirdUtils.getScreenSize(deviceClient);
+    const { x: w, y: _h } = await ThirdUtils.getScreenSize(deviceClient);
     // const dim = `${x}x${y}`;
 
 
@@ -410,10 +410,10 @@ const testSTFService = async (deviceClient: DeviceClient) => {
   }
 }
 
-const testRouting = async (deviceClient: DeviceClient) => {
+const _testRouting = async (deviceClient: DeviceClient) => {
   deviceClient = deviceClient.sudo();
-  const rules = await deviceClient.ipRule('list');
-  const routes = await deviceClient.ipRoute('list', 'table', 'all');
+  const _rules = await deviceClient.ipRule('list');
+  const _routes = await deviceClient.ipRoute('list', 'table', 'all');
   const routesWifi = await deviceClient.ipRoute('show table wlan0');
   const routes4G = await deviceClient.ipRoute('show table rmnet_data2');
   const defaultWifi = routesWifi.find(r => r.dest === 'default')
@@ -455,13 +455,13 @@ const testRouting = async (deviceClient: DeviceClient) => {
  * 
  * @param deviceClient dump an XML file with the current UI
  */
-const testUiautomator = async (deviceClient: DeviceClient) => {
+const _testUiautomator = async (deviceClient: DeviceClient) => {
   const duplex = await deviceClient.shell('uiautomator dump /dev/tty');
   const result = await new Parser(duplex).readAll();
   console.log(result.toString('utf8'));
 }
 
-const testTracker = async (adbClient: Client) => {
+const _testTracker = async (adbClient: Client) => {
   const tracker = await adbClient.trackDevices()
   tracker.on('add', (device) => console.log('add Device ', device))
   tracker.on('remove', (device) => console.log('remove Device ', device))
@@ -471,7 +471,7 @@ const testTracker = async (adbClient: Client) => {
   tracker.end();
 }
 
-async function testBasic(deviceClient: DeviceClient) {
+async function _testBasic(deviceClient: DeviceClient) {
   const ips = await deviceClient.getIpAddress();
   assert(ips.length > 0, "No IP address found");
   // console.log(ips);
@@ -516,7 +516,7 @@ const main = async () => {
     return;
   }
 
-  const deviceClient = devices[0].getClient();
+  const _deviceClient = devices[0].getClient();
 
   // await testBasic(deviceClient);
 
