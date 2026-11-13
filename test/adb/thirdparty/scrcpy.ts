@@ -668,4 +668,18 @@ describe('Scrcpy 3.0 Support & Backwards Compatibility', () => {
       await streamPromise;
     });
   });
+
+  describe('isRunning', () => {
+    it('should return false initially, true when videoSocket is set, and false after stop()', () => {
+      const scrcpy = new Scrcpy(dummyClient, { version: '4.1' });
+      expect(scrcpy.isRunning()).to.be.false;
+
+      const mockStream = new PassThrough();
+      (scrcpy as any).videoSocket = new PromiseDuplex(mockStream);
+      expect(scrcpy.isRunning()).to.be.true;
+
+      expect(scrcpy.stop()).to.be.true;
+      expect(scrcpy.isRunning()).to.be.false;
+    });
+  });
 });

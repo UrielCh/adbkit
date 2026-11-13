@@ -707,7 +707,7 @@ export default class Scrcpy extends EventEmitter {
   }
 
   isRunning(): boolean {
-    return this.videoSocket !== null;
+    return !!this.videoSocket;
   }
 
   private startStreamRaw() {
