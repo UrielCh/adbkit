@@ -5,9 +5,10 @@ import MockConnection from '../../../mock/connection.js';
 import Protocol from '../../../../src/adb/protocol.js';
 import Command from '../../../../src/adb/command.js';
 import Connection from '../../../../src/adb/connection.js';
+import { DeviceClientOptions } from '../../../../src/models/DeviceClientOptions.js';
 
 interface CommandConstructor<T extends Command<U>, U> {
-    new(connection: Connection): T;
+    new(connection: Connection, options?: Partial<DeviceClientOptions>): T;
 }
 
 /**
@@ -41,17 +42,21 @@ export default class Tester {
         return this;
     }
 
+    private consumeSudo(): Partial<DeviceClientOptions> | undefined {
+        if (!this._sudo) {
+            return undefined;
+        }
+        this._sudo = false;
+        return { sudo: true };
+    }
+
     /**
      * check under the hood sent data
      * should send 'xxxxxx'
      */
     testTr(expectWrite: string, ...args: string[]): Promise<any> {
         const conn = new MockConnection();
-        const cmd = new this.cmdClass(conn);
-        if (this.sudo()) {
-            cmd.sudo = true;
-            this._sudo = false;
-        }
+        const cmd = new this.cmdClass(conn, this.consumeSudo());
         if (expectWrite)
             conn.getSocket().on('write', (chunk) => {
                 return expect(chunk.toString()).to.equal(Protocol.encodeData(expectWrite).toString());
@@ -68,11 +73,7 @@ export default class Tester {
      */
     testTr2(expectWrite: string, causeRead?: string, ...args: string[]): Promise<any> {
         const conn = new MockConnection();
-        const cmd = new this.cmdClass(conn);
-        if (this.sudo()) {
-            cmd.sudo = true;
-            this._sudo = false;
-        }
+        const cmd = new this.cmdClass(conn, this.consumeSudo());
         if (expectWrite)
             conn.getSocket().on('write', (chunk) => {
                 return expect(chunk.toString()).to.equal(Protocol.encodeData(expectWrite).toString());
@@ -91,7 +92,7 @@ export default class Tester {
      */
     testPr(readData?: string | string[], ...args: string[]): Promise<any> {
         const conn = new MockConnection();
-        const cmd = new this.cmdClass(conn);
+        const cmd = new this.cmdClass(conn, this.consumeSudo());
         setImmediate(() => {
             conn.getSocket().causeRead(Protocol.OKAY);
             if (readData) {

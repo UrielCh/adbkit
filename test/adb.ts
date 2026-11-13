@@ -1,23 +1,19 @@
-import test from 'node:test';
-import assert from 'node:assert';
+import { expect } from 'chai';
 
-import Adb, { Utils } from '../src/index.js';
+import Adb, { Client, KeyCodesMap, Utils } from '../src/index.js';
 
-void test('Adb', async (t) => {
-    // t.test('should expose Keycode', () => {
-    //     assert.ok(Adb.hasOwnProperty('Keycode'));
-    //     assert.strictEqual(Adb.Keycode, Keycode);
-    // });
-
-    await t.test('should expose util', (t, done) => {
-        assert.ok(Adb.hasOwnProperty('util'));
-        assert.strictEqual(Adb.util, Utils);
-        console.log('done', done);
+describe('Adb', () => {
+    it('should expose KeyCodesMap', () => {
+        expect(KeyCodesMap).to.be.an('object');
     });
 
-    // t.test('@createClient(options)', (t) => {
-    //     t.test('should return a Client instance', () => {
-    //         assert.ok(Adb.createClient() instanceof Client);
-    //     });
-    // });
+    it('should expose util', () => {
+        expect(Adb).to.have.property('util', Utils);
+    });
+
+    describe('@createClient(options)', () => {
+        it('should return a Client instance', () => {
+            expect(Adb.createClient()).to.be.an.instanceOf(Client);
+        });
+    });
 });

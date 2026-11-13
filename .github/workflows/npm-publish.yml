@@ -22,6 +22,12 @@ jobs:
         run: bun install --frozen-lockfile
       - name: Build
         run: bun run build
+      - name: Lint
+        run: bun run lint
+      - name: Test
+        run: bun run test
+      - name: Typetest
+        run: bun run typetest
       - name: Publish
         run: bun publish
         env:

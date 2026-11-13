@@ -45,3 +45,5 @@ jobs:
       run: bun run lint
     - name: Test
       run: bun run test
+    - name: Typetest
+      run: bun run typetest
