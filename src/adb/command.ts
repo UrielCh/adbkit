@@ -66,10 +66,9 @@ export default abstract class Command<T> {
   protected async sendCommand(data: string): Promise<string> {
     if (this.options.sudo) {
       if (data.startsWith('shell:')) {
-        data = 'shell:su -c \'' + data.substring(6).replace(/'/g, "\\'") + '\'';
-      }
-      else if (data.startsWith('exec:')) {
-        data = 'exec:su -c \'' + data.substring(5).replace(/'/g, "\\'") + '\'';
+        data = `shell:su -c ${this.escape(data.substring(6))}`;
+      } else if (data.startsWith('exec:')) {
+        data = `exec:su -c ${this.escape(data.substring(5))}`;
       }
     }
     this.lastCmd = data;
