@@ -155,13 +155,14 @@ export default class Scrcpy extends EventEmitter {
     this._onTermination = new Promise<string>((resolve) => this.setFatalError = resolve);
     this._firstFrame = new Promise<void>((resolve) => this.setFirstFrame = resolve);
 
-    let versionSplit = this.config.version.split(".").map(Number);
-    if (versionSplit.length === 2) {
-      versionSplit = [...versionSplit, 0];
-    }
-    this.major = versionSplit[0];
-    this.minor = versionSplit[1];
-    this.patch = versionSplit[2];
+    const rawVersion = this.config.version.replace(/^v/i, '');
+    const versionParts = rawVersion.split('.').map((part) => {
+      const n = Number(part);
+      return Number.isFinite(n) && n >= 0 ? Math.trunc(n) : 0;
+    });
+    this.major = versionParts[0] ?? 0;
+    this.minor = versionParts[1] ?? 0;
+    this.patch = versionParts[2] ?? 0;
     this.strVersion = `${this.major.toString().padStart(2, '0')}.${this.minor.toString().padStart(2, '0')}.${this.patch.toString().padStart(2, '0')}`;
   }
 
@@ -284,6 +285,17 @@ export default class Scrcpy extends EventEmitter {
     return this._getStartupLine(jarDest);
   }
 
+  private static shellEscapeArg(arg: string | number | boolean): string {
+    const s = arg.toString();
+    if (s.length === 0) {
+      return "''";
+    }
+    if (/^[a-zA-Z0-9_@%+=:,./-]+$/.test(s)) {
+      return s;
+    }
+    return `'${s.replace(/'/g, "'\"'\"'")}'`;
+  }
+
   private _getStartupLine(jarDest: string): string {
     const args: Array<string | number | boolean> = [];
     const {
@@ -295,7 +307,7 @@ export default class Scrcpy extends EventEmitter {
       flexDisplay, keepActive, minSizeAlignment, cameraZoom, cameraTorch,
       ignoreVideoEncoderConstraints, videoCodec
     } = this.config;
-    args.push(`CLASSPATH=${jarDest}`);
+    const envAssignment = `CLASSPATH=${Scrcpy.shellEscapeArg(jarDest)}`;
     args.push('app_process');
     args.push('/');
     args.push('com.genymobile.scrcpy.Server');
@@ -306,10 +318,8 @@ export default class Scrcpy extends EventEmitter {
     } else {
       args.push(this.config.version);
     }
-    // args.push(this.config.version); // arg 0 Scrcpy server version
-    //if (this.config.version <= 20) {
     if (this.major < 2) {
-      // Version 11 => 20
+      // Version 1.x
       args.push("info"); // Log level: info, verbose...
       args.push(maxSize); // Max screen width (long side)
       args.push(bitrate); // Bitrate of video
@@ -326,33 +336,25 @@ export default class Scrcpy extends EventEmitter {
       args.push(encoderName || '-'); //     Encoder name
       args.push(powerOffScreenOnClose); // Power off screen after server closed
     } else {
-      if (this.major >= 2) {
-        args.push(`scid=${this.config.scid}`);
-        if (this.config.noAudio) {
-          args.push(`audio=false`);
-        } else if (audioSource) {
-          args.push(`audio_source=${audioSource}`);
-        }
-        // if (this.config.noControl)
-        //   args.push(`no_control=${this.config.noControl}`);
+      args.push(`scid=${this.config.scid}`);
+      if (this.config.noAudio) {
+        args.push(`audio=false`);
+      } else if (audioSource) {
+        args.push(`audio_source=${audioSource}`);
       }
 
       if (this.strVersion >= "02.04.00") {
         args.push(`video_source=display`);
       }
 
-      if (this.major >= 2 && videoCodec) {
+      if (videoCodec) {
         args.push(`video_codec=${videoCodec}`);
       }
 
       args.push("log_level=info");
       args.push(`max_size=${maxSize}`);
       args.push("clipboard_autosync=false"); // cause crash on some newer phone and we do not use that feature.
-      if (this.major >= 2) {
-        args.push(`video_bit_rate=${bitrate}`);
-      } else {
-        args.push(`bit_rate=${bitrate}`);
-      }
+      args.push(`video_bit_rate=${bitrate}`);
       args.push(`max_fps=${maxFps}`);
 
       if (this.major >= 3) {
@@ -423,35 +425,27 @@ export default class Scrcpy extends EventEmitter {
       args.push(`show_touches=${showTouches}`); // Show touches
       args.push(`stay_awake=${stayAwake}`); //  if self.stay_awake else "false",  Stay awake
       if (codecOptions && codecOptions !== '-')
-        args.push(this.major >= 2 ? `video_codec_options=${codecOptions}` : `codec_options=${codecOptions}`); //     Codec (video encoding) options
+        args.push(`video_codec_options=${codecOptions}`); //     Codec (video encoding) options
       if (encoderName && encoderName !== '-')
-        args.push(this.major >= 2 ? `video_encoder=${encoderName}` : `encoder_name=${encoderName}`); //     Encoder name
+        args.push(`video_encoder=${encoderName}`); //     Encoder name
       args.push(`power_off_on_close=${powerOffScreenOnClose}`); // Power off screen after server closed
-      // args.push(`clipboard_autosync=${clipboardAutosync}`); // default is True
       if (clipboardAutosync !== undefined)
         args.push(`clipboard_autosync=${clipboardAutosync}`); // default is True
-      //if (this.config.version >= 22) {
-      if (this.strVersion >= "01.22.00") {
-        const {
-          downsizeOnError, sendDeviceMeta, sendDummyByte, rawVideoStream
-        } = this.config;
-        if (downsizeOnError !== undefined)
-          args.push(`downsize_on_error=${downsizeOnError}`);
-        if (sendDeviceMeta !== undefined)
-          args.push(`send_device_meta=${sendDeviceMeta}`);
-        if (sendDummyByte !== undefined)
-          args.push(`send_dummy_byte=${sendDummyByte}`);
-        if (rawVideoStream !== undefined)
-          args.push(`raw_video_stream=${rawVideoStream}`);
-      }
-      if (this.strVersion >= "01.22.00") {
-        const { cleanup } = this.config;
-        if (cleanup !== undefined)
-          args.push(`cleanup=${cleanup}`);
-      }
-      // check Server.java
+      const {
+        downsizeOnError, sendDeviceMeta, sendDummyByte, rawVideoStream, cleanup
+      } = this.config;
+      if (downsizeOnError !== undefined)
+        args.push(`downsize_on_error=${downsizeOnError}`);
+      if (sendDeviceMeta !== undefined)
+        args.push(`send_device_meta=${sendDeviceMeta}`);
+      if (sendDummyByte !== undefined)
+        args.push(`send_dummy_byte=${sendDummyByte}`);
+      if (rawVideoStream !== undefined)
+        args.push(`raw_video_stream=${rawVideoStream}`);
+      if (cleanup !== undefined)
+        args.push(`cleanup=${cleanup}`);
     }
-    return args.map(a => a.toString()).join(' ');
+    return `${envAssignment} ${args.map(Scrcpy.shellEscapeArg).join(' ')}`;
   }
 
   /**

@@ -479,6 +479,32 @@ describe('Scrcpy 3.0 Support & Backwards Compatibility', () => {
       expect(line).to.not.include('scid=');
       expect(line).to.not.include('video_bit_rate=');
     });
+
+    it('should parse version string without dots cleanly without NaN', () => {
+      const scrcpy = new Scrcpy(dummyClient, { version: '3' });
+      expect(scrcpy.major).to.equal(3);
+      expect(scrcpy.minor).to.equal(0);
+      expect(scrcpy.patch).to.equal(0);
+      expect(scrcpy.strVersion).to.equal('03.00.00');
+      const line = scrcpy.getStartupLine('/data/local/tmp/scrcpy.jar');
+      expect(line).to.include('com.genymobile.scrcpy.Server 3');
+      expect(line).to.include('scid=');
+    });
+
+    it('should shell-escape jarDest and unsafe config arguments', () => {
+      const scrcpy = new Scrcpy(dummyClient, {
+        version: '4.1',
+        crop: '100:100:0:0;id',
+        encoderName: "OMX.qcom 'test'",
+        newDisplay: '1024x768 $(whoami)',
+      });
+      const line = scrcpy.getStartupLine('/data/local/tmp/my scrcpy.jar');
+
+      expect(line).to.include("CLASSPATH='/data/local/tmp/my scrcpy.jar' ");
+      expect(line).to.include("'crop=100:100:0:0;id'");
+      expect(line).to.include("'video_encoder=OMX.qcom '\"'\"'test'\"'\"''");
+      expect(line).to.include("'new_display=1024x768 $(whoami)'");
+    });
   });
 
   describe('Scrcpy v4.0 control messages', () => {
