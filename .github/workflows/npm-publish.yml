@@ -7,24 +7,23 @@ on:
 
 jobs:
   build:
-
     runs-on: ubuntu-latest
 
     steps:
-    - run: sudo apt-get install -y android-tools-adb
-    - uses: actions/checkout@v4
-    - uses: oven-sh/setup-bun@v2
-    - name: Use Node.js 22
-      uses: actions/setup-node@v4
-      with:
-        node-version: 22
-        registry-url: https://registry.npmjs.org/
-    - name: Install dependencies
-      run: bun install --frozen-lockfile
-    - name: Build
-      run: bun run build
-    - name: Publish
-      run: bun publish
-      env:
-        NODE_AUTH_TOKEN: ${{ secrets.npm_token }}
-        NPM_CONFIG_TOKEN: ${{ secrets.npm_token }}
+      - run: sudo apt-get install -y android-tools-adb
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+      - name: Use Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          registry-url: https://registry.npmjs.org/
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+      - name: Build
+        run: bun run build
+      - name: Publish
+        run: bun publish
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.npm_token }}
+          NPM_CONFIG_TOKEN: ${{ secrets.npm_token }}
