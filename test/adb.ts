@@ -3,13 +3,13 @@ import assert from 'node:assert';
 
 import Adb, { Utils } from '../src/index.js';
 
-test('Adb', (t) => {
+void test('Adb', async (t) => {
     // t.test('should expose Keycode', () => {
     //     assert.ok(Adb.hasOwnProperty('Keycode'));
     //     assert.strictEqual(Adb.Keycode, Keycode);
     // });
 
-    t.test('should expose util', (t, done) => {
+    await t.test('should expose util', (t, done) => {
         assert.ok(Adb.hasOwnProperty('util'));
         assert.strictEqual(Adb.util, Utils);
         console.log('done', done);

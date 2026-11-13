@@ -26,9 +26,6 @@ const debug = Utils.debug('adb:scrcpy');
 // const KEYFRAME_PTS = BigInt(1) << BigInt(62);
 // from https://github.com/Genymobile/scrcpy/blob/master/server/src/main/java/com/genymobile/scrcpy/ScreenEncoder.java
 
-const PACKET_FLAG_CONFIG = BigInt(1) << BigInt(63);
-const PACKET_FLAG_KEY_FRAME = BigInt(1) << BigInt(62);
-
 /**
  * usage reference fron app/src/server.c in scrcpy
  * https://github.com/Genymobile/scrcpy/blob/master/app/src/server.c

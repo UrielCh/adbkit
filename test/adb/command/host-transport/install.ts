@@ -4,8 +4,6 @@ use(simonChai);
 import MockConnection from '../../../mock/connection.js';
 import Protocol from '../../../../src/adb/protocol.js';
 import InstallCommand from '../../../../src/adb/command/host-transport/install.js';
-import Tester from './Tester.js';
-const t = new Tester(InstallCommand);
 
 describe('InstallCommand', () => {
     it("should send 'pm install -r <apk>'", () => {
@@ -39,7 +37,7 @@ describe('InstallCommand', () => {
             conn.getSocket().causeRead('Failure [BAR]\r\n');
             return conn.getSocket().causeEnd();
         });
-        cmd.execute('foo').catch((err) => {
+        cmd.execute('foo').catch((_err) => {
             done();
         });
     });

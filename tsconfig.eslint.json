@@ -3,7 +3,8 @@
   "include": [
     "./src/**/*.ts",
     "./tasks/**/*.ts",
-    "./bench/**/*.ts"
+    "./bench/**/*.ts",
+    "./test/**/*.ts"
   ]
 }
 

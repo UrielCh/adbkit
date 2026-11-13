@@ -70,6 +70,6 @@ describe('WaitBootCompleteCommand', () => {
         conn.getSocket().once('end', () => {
             done();
         });
-        cmd.execute();
+        void cmd.execute();
     });
 });

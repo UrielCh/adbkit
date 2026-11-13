@@ -29,7 +29,7 @@ describe('LocalCommand', () => {
             conn.getSocket().causeRead(Protocol.OKAY);
             return conn.getSocket().causeEnd();
         });
-        const stream = await cmd.execute('localabstract:/foo.sock');
+        await cmd.execute('localabstract:/foo.sock');
     });
     it('should resolve with the stream', async () => {
         const conn = new MockConnection();

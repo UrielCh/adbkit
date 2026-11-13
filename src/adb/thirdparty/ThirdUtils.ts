@@ -32,7 +32,7 @@ export default class ThirdUtils {
           console.log(prefix, msg.trim());
         }
       }
-    } catch (e) {
+    } catch (_e) {
       // End
       return;
     }

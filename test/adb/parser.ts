@@ -167,7 +167,7 @@ describe('Parser', () => {
         it('should reject with AdbPrematureEOFError if stream ends before the value can be read', (done) => {
             const stream = new Stream.PassThrough();
             const parser = new Parser(stream);
-            const p = parser.readValue().catch(err => {
+            void parser.readValue().catch(err => {
                 expect(err).to.be.an.instanceOf(AdbPrematureEOFError);
                 expect(err as AdbPrematureEOFError).to.be.an.instanceOf(AdbPrematureEOFError);
                 done();
@@ -180,7 +180,7 @@ describe('Parser', () => {
         it('should reject with Parser.FailError using the value', (done) => {
             const stream = new Stream.PassThrough();
             const parser = new Parser(stream);
-            parser.readError().then(err => {
+            void parser.readError().then(err => {
                 expect(err).to.be.an.instanceOf(AdbFailError);
                 done();
             })
@@ -190,7 +190,7 @@ describe('Parser', () => {
         it('should reject with AdbPrematureEOFError if stream ends before the error can be read', (done) => {
             const stream = new Stream.PassThrough();
             const parser = new Parser(stream);
-            const p = parser.readError().then(err => {
+            void parser.readError().then(err => {
                 expect(err).to.be.an.instanceOf(AdbPrematureEOFError);
                 done();
             });
@@ -212,7 +212,7 @@ describe('Parser', () => {
         it('should reject with Parser.AdbPrematureEOFError if stream ends before a line is found', (done) => {
             const stream = new Stream.PassThrough();
             const parser = new Parser(stream);
-            const p = parser.searchLine(/nope/).catch(err => {
+            void parser.searchLine(/nope/).catch(err => {
                 expect(err).to.be.an.instanceOf(AdbPrematureEOFError);
                 done();
             })

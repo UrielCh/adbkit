@@ -93,11 +93,6 @@ describe('Tracker', () => {
     it('should read devices from socket', async () => {
         const spy = Sinon.spy();
         tracker.on('changeSet', spy);
-        const device1: Device = { id: 'a', type: 'device', getClient };
-        const device2: Device = { id: 'b', type: 'device', getClient };
-        const device3: Device = { id: 'c', type: 'device', getClient };
-        const device3New: Device = { id: 'c', type: 'offline', getClient };
-        const device4: Device = { id: 'd', type: 'offline', getClient };
         writer.write(
             Protocol.encodeData(`a\tdevice
 b\tdevice

@@ -360,7 +360,7 @@ describe('StartActivityCommand', () => {
             ],
         } as unknown;
         expect(() => {
-            cmd.execute(options as StartActivityOptions);
+            void cmd.execute(options as StartActivityOptions);
         }).to.throw;
         done();
     });

@@ -29,7 +29,7 @@ export default class MockConnection extends Connection {
         })
     }
 
-    // @ts-ignore
+    // @ts-expect-error mock override
     public on(): this {
         return this;
     }

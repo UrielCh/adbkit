@@ -22,7 +22,7 @@ describe('ClearCommand', () => {
     it("should succeed on 'Success'", () => {
         const conn = new MockConnection();
         const cmd = new ClearCommand(conn);
-        conn.getSocket().on('write', (chunk) => {
+        conn.getSocket().on('write', (_chunk) => {
             conn.getSocket().causeRead(Protocol.OKAY);
             conn.getSocket().causeRead('Success\r\n');
             conn.getSocket().causeEnd();
@@ -32,7 +32,7 @@ describe('ClearCommand', () => {
     it("should error on 'Failed'", (done) => {
         const conn = new MockConnection();
         const cmd = new ClearCommand(conn);
-        conn.getSocket().on('write', (chunk) => {
+        conn.getSocket().on('write', (_chunk) => {
             conn.getSocket().causeRead(Protocol.OKAY);
             conn.getSocket().causeRead('Failed\r\n');
             conn.getSocket().causeEnd();
@@ -45,7 +45,7 @@ describe('ClearCommand', () => {
     it("should error on 'Failed' even if connection not closed by device", (done) => {
         const conn = new MockConnection();
         const cmd = new ClearCommand(conn);
-        conn.getSocket().on('write', (chunk) => {
+        conn.getSocket().on('write', (_chunk) => {
             conn.getSocket().causeRead(Protocol.OKAY);
             conn.getSocket().causeRead('Failed\r\n');
         });

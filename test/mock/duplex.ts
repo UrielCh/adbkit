@@ -3,11 +3,11 @@
 import Stream from 'node:stream';
 
 export default class MockDuplex extends Stream.Duplex {
-    _read(size: number): void {
+    _read(_size: number): void {
         // empty
     }
 
-    _write(chunk: Buffer, encoding: string, callback: Function): void {
+    _write(chunk: Buffer, encoding: string, callback: (error?: Error | null) => void): void {
         this.emit('write', chunk, encoding, callback);
         callback(null);
     }

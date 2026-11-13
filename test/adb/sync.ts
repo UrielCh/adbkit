@@ -64,7 +64,7 @@ describe('Sync', () => {
             const sync = new Sync(conn);
             const stream = new Stream.PassThrough();
             Sinon.stub(sync, 'pushStream');
-            sync.push(stream, 'foo');
+            await sync.push(stream, 'foo');
             return expect(sync.pushStream).to.have.been.called;
         });
         it('should call pushFile when contents is a String', async () => {
@@ -73,7 +73,7 @@ describe('Sync', () => {
             // const stream = new Stream.PassThrough();
             Sinon.stub(sync, 'pushFile');
             // __filename
-            sync.push(import.meta.url, 'foo');
+            await sync.push(import.meta.url, 'foo');
             return expect(sync.pushFile).to.have.been.called;
         });
         // now return a promise
@@ -145,7 +145,7 @@ describe('Sync', () => {
             return true;
         });
         dt('should emit error for non-existing files', (done) => {
-            forEachSyncDevice((sync) => {
+            void forEachSyncDevice((sync) => {
                 return new Promise(async (resolve) => {
                     const transfer = await sync.pull(SURELY_NONEXISTING_PATH);
                     return transfer.on('error', resolve);
@@ -153,7 +153,7 @@ describe('Sync', () => {
             }).finally(done);
         });
         dt('should return a PullTransfer instance', (done) => {
-            forEachSyncDevice(async (sync) => {
+            void forEachSyncDevice(async (sync) => {
                 const rval = await sync.pull(SURELY_EXISTING_FILE);
                 expect(rval).to.be.an.instanceof(PullTransfer);
                 return rval.cancel();
@@ -161,7 +161,7 @@ describe('Sync', () => {
         });
         return describe('Stream', () => {
             dt("should emit 'end' when pull is done", (done) => {
-                forEachSyncDevice((sync) => {
+                void forEachSyncDevice((sync) => {
                     return new Promise(async (resolve, reject) => {
                         const transfer = await sync.pull(SURELY_EXISTING_FILE);
                         transfer.on('error', reject);
@@ -174,14 +174,14 @@ describe('Sync', () => {
     });
     return describe('stat(path)', () => {
         dt('should return a Promise', (done) => {
-            forEachSyncDevice((sync) => {
+            void forEachSyncDevice((sync) => {
                 const rval = sync.stat(SURELY_EXISTING_PATH);
                 expect(rval).to.be.an.instanceof(Promise);
                 return rval;
             }).finally(done);
         });
         dt('should call with an ENOENT error if the path does not exist', (done) => {
-            forEachSyncDevice(async (sync) => {
+            void forEachSyncDevice(async (sync) => {
                 try {
                     await sync.stat(SURELY_NONEXISTING_PATH);
                     throw new Error('Should not reach success branch');
@@ -195,7 +195,7 @@ describe('Sync', () => {
             }).finally(done);
         });
         dt('should call with an fs.Stats instance for an existing path', (done) => {
-            forEachSyncDevice(async (sync) => {
+            void forEachSyncDevice(async (sync) => {
                 const stats = await sync.stat(SURELY_EXISTING_PATH);
                 return expect(stats).to.be.an.instanceof(Fs.Stats);
             }).finally(done);
@@ -207,7 +207,7 @@ describe('Sync', () => {
             //     done();
             // });
             dt('should set the `.mode` property for isFile() etc', (done) => {
-                forEachSyncDevice(async (sync) => {
+                void forEachSyncDevice(async (sync) => {
                     const stats = await sync.stat(SURELY_EXISTING_FILE);
                     expect(stats).to.be.an.instanceof(Fs.Stats);
                     expect(stats.mode).to.be.above(0);
@@ -216,7 +216,7 @@ describe('Sync', () => {
                 }).finally(done);
             });
             dt('should set the `.size` property', (done) => {
-                forEachSyncDevice(async (sync) => {
+                void forEachSyncDevice(async (sync) => {
                     const stats = await sync.stat(SURELY_EXISTING_FILE);
                     expect(stats).to.be.an.instanceof(Fs.Stats);
                     expect(stats.isFile()).to.be.true;
@@ -224,7 +224,7 @@ describe('Sync', () => {
                 }).finally(done);
             });
             dt('should set the `.mtime` property', (done) => {
-                forEachSyncDevice(async (sync) => {
+                void forEachSyncDevice(async (sync) => {
                     const stats = await sync.stat(SURELY_EXISTING_FILE);
                     expect(stats).to.be.an.instanceof(Fs.Stats);
                     return expect(stats.mtime).to.be.an.instanceof(Date);
@@ -237,7 +237,7 @@ describe('Sync', () => {
                 done();
             });
             dt('should set the `.name` property', (done) => {
-                forEachSyncDevice(async (sync) => {
+                void forEachSyncDevice(async (sync) => {
                     const files = await sync.readdir(SURELY_EXISTING_PATH);
                     expect(files).to.be.an('Array');
                     return files.forEach((file) => {
@@ -247,7 +247,7 @@ describe('Sync', () => {
                 }).finally(done);
             });
             dt('should set the Stats properties', (done) => {
-                forEachSyncDevice(async (sync) => {
+                void forEachSyncDevice(async (sync) => {
                     const files = await sync.readdir(SURELY_EXISTING_PATH);
                     expect(files).to.be.an('Array');
                     return files.forEach((file) => {

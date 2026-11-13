@@ -1,5 +1,3 @@
-import STFServiceBuf from "../../../src/adb/thirdparty/STFService/STFServiceBuf.js";
-
 describe('Protobuff', () => {
     it("test Protobuff encode / decode", async () => {
         // const encoded = '0610111a020800';
