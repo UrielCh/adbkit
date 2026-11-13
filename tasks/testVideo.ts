@@ -10,11 +10,7 @@ import pc from 'picocolors';
 import adb, {
   DeviceClient,
   Utils,
-  VideoStreamFramePacket,
-  H264Configuration,
 } from '../src/index.js';
-
-const execFileAsync = promisify(execFile);
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
