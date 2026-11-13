@@ -150,10 +150,10 @@ export default class DeviceClient {
    *         const devices = await client.listDevices();
    *         const supportedDevices: string[] = [];
    *         for (const device of devices) {
-   *             const client = device.client();
-   *             const features = await client.getFeatures(device.id);
+   *             const deviceClient = device.getClient();
+   *             const features = await deviceClient.getFeatures();
    *             if (features['android.hardware.nfc'])
-   *                 supportedDevices.push(device.serial);
+   *                 supportedDevices.push(device.id);
    *         }
    *         console.log('The following devices support NFC:', supportedDevices);
    *     } catch (err) {

@@ -10,7 +10,7 @@ Internally, we use this library to drive a multitude of Android devices from a v
 
 ## Requirements
 
-*   [Node.js][nodejs] >= 18
+*   [Node.js][nodejs] >= 20.11.0
 *   Either the optional ya-webadb dependencies described below, or the `adb` command line tool
 
 With the native ADB backend, the target host (where the devices are connected) must have the ADB server running (e.g. via `adb start-server`) or the `adb` binary available in `$PATH`. If the initial connection is refused, adbkit attempts to start the server locally.
@@ -35,7 +35,7 @@ npm install --save @u4/adbkit
 adbkit can use [ya-webadb](https://www.npmjs.com/package/@yume-chan/adb) in-process to communicate with devices, without a native ADB server or binary. Its four dependencies are declared as optional dependencies of adbkit and are normally installed automatically. If they were omitted or failed to install, install them in your application:
 
 ```bash
-npm install @yume-chan/adb@^2.6.4 @yume-chan/adb-daemon-webusb@^3.0.0-beta.5 @yume-chan/adb-credential-nodejs@^3.0.0-beta.5 usb@^3.3.0
+npm install @yume-chan/adb@^3.0.0-beta.5 @yume-chan/adb-daemon-webusb@^3.0.0-beta.5 @yume-chan/adb-credential-nodejs@^3.0.0-beta.5 usb@^3.3.0
 ```
 
 When all four packages can be loaded, `createClient()` selects this backend by default. Use the same client API as in the sample below; no separate ya-webadb setup is needed. Enable USB debugging and authorize the computer on the device when prompted. USB access also requires appropriate operating system permissions. If a native ADB server holds a USB device, the backend may stop the local server to release it.
