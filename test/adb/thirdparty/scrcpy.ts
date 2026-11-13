@@ -693,4 +693,63 @@ describe('Scrcpy 3.0 Support & Backwards Compatibility', () => {
       expect(scrcpy.isRunning()).to.be.false;
     });
   });
+
+  describe('start', () => {
+    const createMockClient = (videoStream: PassThrough): any => {
+      const pkgPath = path.resolve('package.json');
+      const pkgSize = fs.statSync(pkgPath).size;
+      const shellStream = new PassThrough();
+      shellStream.write('[server] INFO: Device: TestDevice\n');
+      return {
+        serial: 'dummy-serial',
+        stat: async (p: string) => (p === '/data/local/tmp' ? { isDirectory: () => true } : { size: pkgSize }),
+        push: async () => ({}),
+        shell: async () => shellStream,
+        openLocal2: async () => new PromiseDuplex(videoStream),
+      };
+    };
+
+    it('should resolve without hanging when sendFrameMeta is false', async () => {
+      const videoStream = new PassThrough();
+      videoStream.write(Buffer.from([0x00]));
+      const client = createMockClient(videoStream);
+
+      const scrcpy = new Scrcpy(client, {
+        version: '4.1',
+        jarPath: path.resolve('package.json'),
+        sendFrameMeta: false,
+        control: false,
+        tunnelDelay: 0,
+      });
+
+      const started = await scrcpy.start();
+      expect(started).to.equal(scrcpy);
+      expect(scrcpy.isRunning()).to.be.true;
+      scrcpy.stop();
+    });
+
+    it('should reject instead of hanging when startStreamWithMeta errors before height is resolved', async () => {
+      const videoStream = new PassThrough();
+      videoStream.write(Buffer.from([0x00]));
+      videoStream.end();
+      const client = createMockClient(videoStream);
+
+      const scrcpy = new Scrcpy(client, {
+        version: '4.1',
+        jarPath: path.resolve('package.json'),
+        sendFrameMeta: true,
+        control: false,
+        tunnelDelay: 0,
+      });
+
+      let caught: Error | undefined;
+      try {
+        await scrcpy.start();
+      } catch (err) {
+        caught = err as Error;
+      }
+      expect(caught).to.be.instanceOf(Error);
+      expect(scrcpy.isRunning()).to.be.false;
+    });
+  });
 });

@@ -668,15 +668,25 @@ export default class Scrcpy extends EventEmitter {
     }
 
     if (this.config.sendFrameMeta) {
+      let streamError: unknown;
       void this.startStreamWithMeta().catch((e) => {
+        streamError = e;
         this._setFatalError(e);
         this.stop();
       });
+      // wait for the first metadata header (height) or stream termination/error
+      await Promise.race([
+        this.height,
+        this._onTermination.then((msg) => {
+          if (streamError instanceof Error) {
+            throw streamError;
+          }
+          throw new Error(`Scrcpy terminated before receiving stream metadata: ${msg}`);
+        }),
+      ]);
     } else {
       this.startStreamRaw();
     }
-    // wait the first chunk
-    await this.height;
     return this;
   }
 
