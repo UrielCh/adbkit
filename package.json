@@ -50,8 +50,8 @@
     "servicemap": "tsx tasks/servicemap.ts",
     "download:scrcpy": "tsx tasks/downloadScrcpy.ts",
     "test:video": "tsx tasks/testVideo.ts",
-    "prepublish": "npm run clean && npm run compile",
-    "docker-clean": "npx --yes modclean -r",
+    "prepublish": "bun run clean && bun run compile",
+    "docker-clean": "bunx modclean -r",
     "docs": "typedoc --entryPointStrategy expand",
     "compile": "tsc -p .",
     "build": "tsc -p .",
@@ -60,8 +60,8 @@
     "test": "mocha -r tsx --reporter spec --colors test/**/*.ts",
     "test2": "mocha -r tsx --reporter spec --colors test/adb/thirdparty/**/*.ts",
     "test3": "mocha -r tsx --reporter spec --colors test/adb/command/host-transport/serviceCall.ts",
-    "typetest": "npx --yes @arethetypeswrong/cli --pack .",
-    "ncu": "npx npm-check-updates -i"
+    "typetest": "bunx @arethetypeswrong/cli --pack .",
+    "ncu": "bunx npm-check-updates -i"
   },
   "dependencies": {
     "@u4/adbkit-logcat": "2.1.2",
