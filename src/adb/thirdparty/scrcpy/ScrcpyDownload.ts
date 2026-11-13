@@ -1,5 +1,8 @@
 import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
+import { Readable, Transform } from 'node:stream';
+import { pipeline } from 'node:stream/promises';
 import prebuilds from '@u4/minicap-prebuilt';
 
 export interface ScrcpyDownloadOptions {
@@ -19,6 +22,10 @@ export interface ScrcpyDownloadOptions {
    * Custom direct download URL
    */
   url?: string;
+  /**
+   * Request timeout in milliseconds (default: 60000)
+   */
+  timeoutMs?: number;
   /**
    * Progress callback
    */
@@ -57,23 +64,43 @@ export function parseScrcpyVersion(versionOrUrl = '3.0'): { version: string; cus
   return { version: '3.0', customUrl: trimmed };
 }
 
+function isWritableDir(dirPath: string): boolean {
+  try {
+    fs.accessSync(dirPath, fs.constants.W_OK);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Resolve the user cache directory for scrcpy-server downloads.
+ */
+export function getUserScrcpyCacheDir(): string {
+  const xdgCache = process.env.XDG_CACHE_HOME;
+  const cacheBase = xdgCache && xdgCache.length > 0
+    ? xdgCache
+    : path.join(os.homedir() || os.tmpdir(), '.cache');
+  return path.join(cacheBase, '@u4', 'adbkit', 'scrcpy');
+}
+
 /**
  * Determine default destination file path for a given version.
  */
 export function getDefaultScrcpyJarPath(version: string): string {
-  // First preference: see if @u4/minicap-prebuilt path can be resolved
+  // First preference: see if @u4/minicap-prebuilt path already exists or its directory is writable
   try {
     const prebuiltPath = prebuilds.getScrcpyJar(version);
     const parentDir = path.dirname(prebuiltPath);
-    if (fs.existsSync(parentDir)) {
+    if (fs.existsSync(prebuiltPath) || (fs.existsSync(parentDir) && isWritableDir(parentDir))) {
       return prebuiltPath;
     }
   } catch {
     // ignore
   }
 
-  // Second preference: workspace/local prebuilt folder
-  return path.resolve(process.cwd(), 'prebuilt', 'scrcpy', `scrcpy-server-v${version}.jar`);
+  // Fallback: user cache directory ($XDG_CACHE_HOME or ~/.cache/@u4/adbkit/scrcpy)
+  return path.join(getUserScrcpyCacheDir(), `scrcpy-server-v${version}.jar`);
 }
 
 /**
@@ -127,10 +154,14 @@ export async function downloadScrcpyServer(
   const targetDir = path.dirname(targetPath);
   await fs.promises.mkdir(targetDir, { recursive: true });
   const tmpPath = `${targetPath}.tmp.${Date.now()}`;
+  const timeoutMs = options.timeoutMs ?? 60_000;
 
   for (const url of candidateUrls) {
     try {
-      const response = await fetch(url, { redirect: 'follow' });
+      const response = await fetch(url, {
+        redirect: 'follow',
+        signal: AbortSignal.timeout(timeoutMs),
+      });
       if (!response.ok) {
         lastError = new Error(`Failed to download scrcpy-server from ${url}: HTTP ${response.status} ${response.statusText}`);
         continue;
@@ -145,27 +176,22 @@ export async function downloadScrcpyServer(
       const totalBytes = contentLengthHeader ? parseInt(contentLengthHeader, 10) : null;
       let downloadedBytes = 0;
 
+      const bodyStream = Readable.fromWeb(response.body as import('node:stream/web').ReadableStream<Uint8Array>);
       const fileStream = fs.createWriteStream(tmpPath);
-      // Read chunks from web stream
-      const reader = response.body.getReader();
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        if (value) {
-          fileStream.write(Buffer.from(value));
-          downloadedBytes += value.byteLength;
-          if (options.onProgress) {
-            options.onProgress(downloadedBytes, totalBytes);
-          }
-        }
-      }
 
-      await new Promise<void>((resolve, reject) => {
-        fileStream.end((err?: Error | null) => {
-          if (err) reject(err);
-          else resolve();
+      if (options.onProgress) {
+        const onProgress = options.onProgress;
+        const progressStream = new Transform({
+          transform(chunk: Buffer, _encoding, callback) {
+            downloadedBytes += chunk.byteLength;
+            onProgress(downloadedBytes, totalBytes);
+            callback(null, chunk);
+          },
         });
-      });
+        await pipeline(bodyStream, progressStream, fileStream);
+      } else {
+        await pipeline(bodyStream, fileStream);
+      }
 
       // Verify downloaded file is not empty
       const stat = await fs.promises.stat(tmpPath).catch(() => null);

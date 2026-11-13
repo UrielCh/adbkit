@@ -1,9 +1,11 @@
 import { expect } from 'chai';
+import { EventEmitter } from 'node:events';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { PassThrough } from 'node:stream';
+import { PassThrough, Writable } from 'node:stream';
 import PromiseDuplex from 'promise-duplex';
+import sinon from 'sinon';
 import Scrcpy from '../../../src/adb/thirdparty/scrcpy/Scrcpy.js';
 import { parseScrcpyVersion, getDefaultScrcpyJarPath, downloadScrcpyServer } from '../../../src/adb/thirdparty/scrcpy/ScrcpyDownload.js';
 import { CaptureOrientationMap, OrientationMap } from '../../../src/adb/thirdparty/scrcpy/ScrcpyConst.js';
@@ -90,6 +92,53 @@ describe('Scrcpy 3.0 Support & Backwards Compatibility', () => {
       const p = getDefaultScrcpyJarPath('3.0');
       expect(p).to.be.a('string');
       expect(p).to.include('scrcpy-server-v3.0.jar');
+    });
+
+    it('should fall back to XDG_CACHE_HOME when prebuilt dir is not writable and jar is missing', () => {
+      const prevXdg = process.env.XDG_CACHE_HOME;
+      const accessStub = sinon.stub(fs, 'accessSync').throws(Object.assign(new Error('EACCES'), { code: 'EACCES' }));
+      const existsStub = sinon.stub(fs, 'existsSync').returns(false);
+      process.env.XDG_CACHE_HOME = '/tmp/custom-xdg-cache';
+      try {
+        const p = getDefaultScrcpyJarPath('99.9.9');
+        expect(p).to.equal(path.join('/tmp/custom-xdg-cache', '@u4', 'adbkit', 'scrcpy', 'scrcpy-server-v99.9.9.jar'));
+      } finally {
+        accessStub.restore();
+        existsStub.restore();
+        if (prevXdg === undefined) delete process.env.XDG_CACHE_HOME;
+        else process.env.XDG_CACHE_HOME = prevXdg;
+      }
+    });
+
+    it('should handle fileStream errors cleanly in downloadScrcpyServer without unhandled stream errors', async () => {
+      const fetchStub = sinon.stub(globalThis, 'fetch').resolves(
+        new Response(new Uint8Array([1, 2, 3, 4]), { status: 200, headers: { 'content-length': '4' } })
+      );
+      const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'scrcpy-dl-err-'));
+      const failingStream = new Writable({
+        write(_chunk, _enc, cb) {
+          cb(Object.assign(new Error('ENOSPC: no space left on device'), { code: 'ENOSPC' }));
+        },
+      });
+      const createWriteStreamStub = sinon.stub(fs, 'createWriteStream').returns(failingStream as any);
+      try {
+        let caught: Error | undefined;
+        try {
+          await downloadScrcpyServer('3.0', {
+            destDir: tmpDir,
+            force: true,
+            url: 'https://example.com/scrcpy-server-v3.0',
+          });
+        } catch (err) {
+          caught = err as Error;
+        }
+        expect(caught).to.be.instanceOf(Error);
+        expect(caught!.message).to.include('ENOSPC');
+      } finally {
+        createWriteStreamStub.restore();
+        fetchStub.restore();
+        fs.rmSync(tmpDir, { recursive: true, force: true });
+      }
     });
 
     it('should download scrcpy-server v5.0.1 binary from release URL', async function (this: Mocha.Context) {
@@ -776,6 +825,131 @@ describe('Scrcpy 3.0 Support & Backwards Compatibility', () => {
       }
       expect(caught).to.be.instanceOf(Error);
       expect(scrcpy.isRunning()).to.be.false;
+    });
+  });
+
+  describe('recordToFile', () => {
+    it('should call stop() in finally even when start() throws', async () => {
+      const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'scrcpy-rec-stop-'));
+      const outPath = path.join(tmpDir, 'out.h264');
+      const scrcpy = new Scrcpy(dummyClient, { version: '4.1' });
+      const startStub = sinon.stub(scrcpy, 'start').rejects(new Error('boom during start'));
+      const stopSpy = sinon.spy(scrcpy, 'stop');
+      try {
+        let caught: Error | undefined;
+        try {
+          await scrcpy.recordToFile(outPath, { remuxMp4: false });
+        } catch (err) {
+          caught = err as Error;
+        }
+        expect(caught).to.be.instanceOf(Error);
+        expect(caught!.message).to.equal('boom during start');
+        expect(stopSpy.calledOnce).to.be.true;
+      } finally {
+        startStub.restore();
+        stopSpy.restore();
+        fs.rmSync(tmpDir, { recursive: true, force: true });
+      }
+    });
+
+    it('should handle fileStream error events cleanly and reject without unhandled error', async () => {
+      const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'scrcpy-rec-err-'));
+      const outPath = path.join(tmpDir, 'out.h264');
+      const scrcpy = new Scrcpy(dummyClient, { version: '4.1' });
+
+      const failingStream = new Writable({
+        write(_chunk, _enc, cb) {
+          cb(Object.assign(new Error('EACCES: permission denied'), { code: 'EACCES' }));
+        },
+      });
+      const createWriteStreamStub = sinon.stub(fs, 'createWriteStream').returns(failingStream as any);
+      const startStub = sinon.stub(scrcpy, 'start').callsFake(async () => {
+        scrcpy.emit('frame', { keyframe: true, pts: 0n, data: new Uint8Array([1, 2, 3]) });
+        return scrcpy;
+      });
+      const stopStub = sinon.stub(scrcpy, 'stop').callsFake(() => {
+        (scrcpy as any)._setFatalError('stopped');
+        return true;
+      });
+
+      try {
+        let caught: Error | undefined;
+        try {
+          await scrcpy.recordToFile(outPath, { remuxMp4: false });
+        } catch (err) {
+          caught = err as Error;
+        }
+        expect(caught).to.be.instanceOf(Error);
+        expect(caught!.message).to.include('EACCES');
+      } finally {
+        createWriteStreamStub.restore();
+        startStub.restore();
+        stopStub.restore();
+        fs.rmSync(tmpDir, { recursive: true, force: true });
+      }
+    });
+
+    it('should pause videoSocket on backpressure and resume on drain', async () => {
+      const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'scrcpy-rec-bp-'));
+      const outPath = path.join(tmpDir, 'out.h264');
+      const scrcpy = new Scrcpy(dummyClient, { version: '4.1' });
+
+      const fakeSocketStream = Object.assign(new EventEmitter(), {
+        pause: sinon.spy(),
+        resume: sinon.spy(),
+        destroy: sinon.spy(),
+      });
+      (scrcpy as any).videoSocket = { stream: fakeSocketStream, destroy: sinon.spy() };
+
+      const fakeFileStream = Object.assign(new EventEmitter(), {
+        destroyed: false,
+        writableEnded: false,
+        write: sinon.stub().returns(false),
+        end: sinon.spy(function (this: EventEmitter) {
+          this.emit('finish');
+        }),
+      });
+      const createWriteStreamStub = sinon.stub(fs, 'createWriteStream').returns(fakeFileStream as any);
+      const startStub = sinon.stub(scrcpy, 'start').callsFake(async () => {
+        scrcpy.emit('frame', { keyframe: true, pts: 0n, data: new Uint8Array([1, 2, 3]) });
+        expect(fakeSocketStream.pause.calledOnce).to.be.true;
+        fakeFileStream.emit('drain');
+        expect(fakeSocketStream.resume.calledOnce).to.be.true;
+        (scrcpy as any)._setFatalError('done');
+        return scrcpy;
+      });
+
+      try {
+        const res = await scrcpy.recordToFile(outPath, { remuxMp4: false });
+        expect(res.frames).to.equal(1);
+        expect(res.remuxError).to.be.undefined;
+      } finally {
+        createWriteStreamStub.restore();
+        startStub.restore();
+        fs.rmSync(tmpDir, { recursive: true, force: true });
+      }
+    });
+
+    it('should report remuxError on VideoRecordResult when ffmpeg remuxing fails', async () => {
+      const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'scrcpy-rec-remux-'));
+      const outPath = path.join(tmpDir, 'out.mp4');
+      const scrcpy = new Scrcpy(dummyClient, { version: '4.1' });
+
+      const startStub = sinon.stub(scrcpy, 'start').callsFake(async () => {
+        // Emit invalid h264 data so ffmpeg remuxing is guaranteed to fail (or ffmpeg missing)
+        scrcpy.emit('frame', { keyframe: true, pts: 0n, data: new Uint8Array([0, 1, 2, 3]) });
+        (scrcpy as any)._setFatalError('done');
+        return scrcpy;
+      });
+
+      try {
+        const res = await scrcpy.recordToFile(outPath, { remuxMp4: true });
+        expect(res.filePath).to.equal(path.join(tmpDir, 'out.h264'));
+        expect(res.remuxError).to.be.a('string').and.not.empty;
+      } finally {
+        startStub.restore();
+        fs.rmSync(tmpDir, { recursive: true, force: true });
+      }
     });
   });
 });

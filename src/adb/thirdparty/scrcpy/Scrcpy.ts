@@ -1215,6 +1215,8 @@ export default class Scrcpy extends EventEmitter {
 
     let stopTimer: NodeJS.Timeout | undefined;
     let abortListener: (() => void) | undefined;
+    let streamError: Error | null = null;
+    let isBackpressured = false;
 
     const stopRecording = () => {
       try {
@@ -1223,6 +1225,34 @@ export default class Scrcpy extends EventEmitter {
         // ignore
       }
     };
+
+    const onStreamError = (err: Error) => {
+      if (!streamError) {
+        streamError = err;
+      }
+      stopRecording();
+    };
+
+    const onDrain = () => {
+      if (isBackpressured) {
+        isBackpressured = false;
+        this.videoSocket?.stream.resume();
+      }
+    };
+
+    const writeToFile = (data: Uint8Array) => {
+      if (streamError || fileStream.destroyed || fileStream.writableEnded) {
+        return;
+      }
+      const ok = fileStream.write(Buffer.from(data));
+      if (!ok && !isBackpressured) {
+        isBackpressured = true;
+        this.videoSocket?.stream.pause();
+      }
+    };
+
+    fileStream.on('error', onStreamError);
+    fileStream.on('drain', onDrain);
 
     if (options.durationMs && options.durationMs > 0) {
       stopTimer = setTimeout(stopRecording, options.durationMs);
@@ -1239,7 +1269,7 @@ export default class Scrcpy extends EventEmitter {
 
     const onConfig = (conf: H264Configuration) => {
       if (conf && conf.data && conf.data.length > 0) {
-        fileStream.write(Buffer.from(conf.data));
+        writeToFile(conf.data);
         totalBytes += conf.data.length;
       }
     };
@@ -1249,7 +1279,7 @@ export default class Scrcpy extends EventEmitter {
         frameCount++;
         if (packet.keyframe) keyframeCount++;
         totalBytes += packet.data.length;
-        fileStream.write(Buffer.from(packet.data));
+        writeToFile(packet.data);
 
         if (options.onProgress) {
           options.onProgress({
@@ -1269,9 +1299,14 @@ export default class Scrcpy extends EventEmitter {
     this.on('config', onConfig);
     this.on('frame', onFrame);
 
+    let trySucceeded = false;
     try {
+      if (streamError) {
+        throw streamError;
+      }
       await this.start();
       await this.onTermination;
+      trySucceeded = true;
     } finally {
       if (stopTimer) clearTimeout(stopTimer);
       if (options.signal && abortListener) {
@@ -1279,7 +1314,28 @@ export default class Scrcpy extends EventEmitter {
       }
       this.off('config', onConfig);
       this.off('frame', onFrame);
-      await new Promise<void>((resolve) => fileStream.end(resolve));
+      stopRecording();
+      fileStream.off('drain', onDrain);
+      fileStream.off('error', onStreamError);
+      if (!fileStream.destroyed && !fileStream.writableEnded) {
+        await new Promise<void>((resolve) => {
+          const onEndErr = (err: Error) => {
+            fileStream.off('finish', onFinish);
+            if (!streamError) streamError = err;
+            resolve();
+          };
+          const onFinish = () => {
+            fileStream.off('error', onEndErr);
+            resolve();
+          };
+          fileStream.once('error', onEndErr);
+          fileStream.once('finish', onFinish);
+          fileStream.end();
+        });
+      }
+    }
+    if (trySucceeded && streamError) {
+      throw streamError;
     }
 
     const durationMs = Date.now() - startTime;
@@ -1303,6 +1359,7 @@ export default class Scrcpy extends EventEmitter {
     }
 
     let finalFilePath = rawPath;
+    let remuxError: string | undefined;
 
     // Remux to MP4 container if requested
     if (shouldRemux) {
@@ -1329,6 +1386,7 @@ export default class Scrcpy extends EventEmitter {
           }
         }
       } catch (remuxErr) {
+        remuxError = remuxErr instanceof Error ? remuxErr.message : String(remuxErr);
         debug('Remuxing to MP4 failed, keeping raw stream file:', remuxErr);
       }
     }
@@ -1336,6 +1394,7 @@ export default class Scrcpy extends EventEmitter {
     return {
       filePath: finalFilePath,
       rawFilePath: finalFilePath !== rawPath ? rawPath : undefined,
+      remuxError,
       frames: frameCount,
       keyframes: keyframeCount,
       bytes: totalBytes,

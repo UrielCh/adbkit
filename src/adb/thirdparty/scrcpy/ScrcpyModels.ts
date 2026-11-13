@@ -234,6 +234,10 @@ export interface VideoRecordResult {
      */
     rawFilePath?: string;
     /**
+     * Error message if MP4 remuxing was attempted and failed (in which case filePath points to the raw stream).
+     */
+    remuxError?: string;
+    /**
      * Total number of captured frames.
      */
     frames: number;
