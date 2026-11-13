@@ -141,158 +141,52 @@ describe('Scrcpy 3.0 Support & Backwards Compatibility', () => {
       }
     });
 
-    it('should download scrcpy-server v5.0.1 binary from release URL', async function (this: Mocha.Context) {
-      this.timeout(20000);
-      const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'scrcpy-test-501-'));
-      try {
-        const downloadedFile = await downloadScrcpyServer('https://github.com/Genymobile/scrcpy/releases/tag/v5.0.1', {
-          destDir: tmpDir,
-          force: true,
-        });
+    const nt = process.env.RUN_NETWORK_TESTS ? it : xit;
+    const scrcpyVersions = ['5.0.1', '5.0', '4.1', '4.0', '3.3.4', '3.3', '3.2', '3.1', '3.0'];
 
-        expect(fs.existsSync(downloadedFile)).to.be.true;
-        const stat = fs.statSync(downloadedFile);
-        expect(stat.size).to.be.greaterThan(50000);
-      } finally {
-        fs.rmSync(tmpDir, { recursive: true, force: true });
-      }
-    });
+    for (const version of scrcpyVersions) {
+      it(`should download scrcpy-server v${version} binary from release URL (mocked)`, async () => {
+        const payload = new Uint8Array([0x50, 0x4b, 0x03, 0x04, 0x01, 0x02, 0x03, 0x04]);
+        const fetchStub = sinon.stub(globalThis, 'fetch').resolves(
+          new Response(payload, { status: 200, headers: { 'content-length': String(payload.byteLength) } })
+        );
+        const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), `scrcpy-mock-${version}-`));
+        try {
+          const downloadedFile = await downloadScrcpyServer(`https://github.com/Genymobile/scrcpy/releases/tag/v${version}`, {
+            destDir: tmpDir,
+            force: true,
+          });
 
-    it('should download scrcpy-server v5.0 binary from release URL', async function (this: Mocha.Context) {
-      this.timeout(20000);
-      const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'scrcpy-test-50-'));
-      try {
-        const downloadedFile = await downloadScrcpyServer('https://github.com/Genymobile/scrcpy/releases/tag/v5.0', {
-          destDir: tmpDir,
-          force: true,
-        });
+          expect(fetchStub.calledOnce).to.be.true;
+          expect(fetchStub.firstCall.args[0]).to.equal(
+            `https://github.com/Genymobile/scrcpy/releases/download/v${version}/scrcpy-server-v${version}`
+          );
+          expect(downloadedFile).to.equal(path.join(tmpDir, `scrcpy-server-v${version}.jar`));
+          expect(fs.existsSync(downloadedFile)).to.be.true;
+          expect(fs.statSync(downloadedFile).size).to.equal(payload.byteLength);
+        } finally {
+          fetchStub.restore();
+          fs.rmSync(tmpDir, { recursive: true, force: true });
+        }
+      });
 
-        expect(fs.existsSync(downloadedFile)).to.be.true;
-        const stat = fs.statSync(downloadedFile);
-        expect(stat.size).to.be.greaterThan(50000);
-      } finally {
-        fs.rmSync(tmpDir, { recursive: true, force: true });
-      }
-    });
+      nt(`should download scrcpy-server v${version} binary from live release URL`, async function (this: Mocha.Context) {
+        this.timeout(20000);
+        const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), `scrcpy-test-${version}-`));
+        try {
+          const downloadedFile = await downloadScrcpyServer(`https://github.com/Genymobile/scrcpy/releases/tag/v${version}`, {
+            destDir: tmpDir,
+            force: true,
+          });
 
-    it('should download scrcpy-server v4.1 binary from release URL', async function (this: Mocha.Context) {
-      this.timeout(20000);
-      const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'scrcpy-test-41-'));
-      try {
-        const downloadedFile = await downloadScrcpyServer('https://github.com/Genymobile/scrcpy/releases/tag/v4.1', {
-          destDir: tmpDir,
-          force: true,
-        });
-
-        expect(fs.existsSync(downloadedFile)).to.be.true;
-        const stat = fs.statSync(downloadedFile);
-        expect(stat.size).to.be.greaterThan(50000);
-      } finally {
-        fs.rmSync(tmpDir, { recursive: true, force: true });
-      }
-    });
-
-    it('should download scrcpy-server v4.0 binary from release URL', async function (this: Mocha.Context) {
-      this.timeout(20000);
-      const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'scrcpy-test-40-'));
-      try {
-        const downloadedFile = await downloadScrcpyServer('https://github.com/Genymobile/scrcpy/releases/tag/v4.0', {
-          destDir: tmpDir,
-          force: true,
-        });
-
-        expect(fs.existsSync(downloadedFile)).to.be.true;
-        const stat = fs.statSync(downloadedFile);
-        expect(stat.size).to.be.greaterThan(50000);
-      } finally {
-        fs.rmSync(tmpDir, { recursive: true, force: true });
-      }
-    });
-
-    it('should download scrcpy-server v3.3.4 binary from release URL', async function (this: Mocha.Context) {
-      this.timeout(20000);
-      const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'scrcpy-test-334-'));
-      try {
-        const downloadedFile = await downloadScrcpyServer('https://github.com/Genymobile/scrcpy/releases/tag/v3.3.4', {
-          destDir: tmpDir,
-          force: true,
-        });
-
-        expect(fs.existsSync(downloadedFile)).to.be.true;
-        const stat = fs.statSync(downloadedFile);
-        expect(stat.size).to.be.greaterThan(50000);
-      } finally {
-        fs.rmSync(tmpDir, { recursive: true, force: true });
-      }
-    });
-
-    it('should download scrcpy-server v3.3 binary from release URL', async function (this: Mocha.Context) {
-      this.timeout(20000);
-      const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'scrcpy-test-33-'));
-      try {
-        const downloadedFile = await downloadScrcpyServer('https://github.com/Genymobile/scrcpy/releases/tag/v3.3', {
-          destDir: tmpDir,
-          force: true,
-        });
-
-        expect(fs.existsSync(downloadedFile)).to.be.true;
-        const stat = fs.statSync(downloadedFile);
-        expect(stat.size).to.be.greaterThan(50000);
-      } finally {
-        fs.rmSync(tmpDir, { recursive: true, force: true });
-      }
-    });
-
-    it('should download scrcpy-server v3.2 binary from release URL', async function (this: Mocha.Context) {
-      this.timeout(20000);
-      const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'scrcpy-test-32-'));
-      try {
-        const downloadedFile = await downloadScrcpyServer('https://github.com/Genymobile/scrcpy/releases/tag/v3.2', {
-          destDir: tmpDir,
-          force: true,
-        });
-
-        expect(fs.existsSync(downloadedFile)).to.be.true;
-        const stat = fs.statSync(downloadedFile);
-        expect(stat.size).to.be.greaterThan(50000);
-      } finally {
-        fs.rmSync(tmpDir, { recursive: true, force: true });
-      }
-    });
-
-    it('should download scrcpy-server v3.1 binary from release URL', async function (this: Mocha.Context) {
-      this.timeout(20000);
-      const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'scrcpy-test-31-'));
-      try {
-        const downloadedFile = await downloadScrcpyServer('https://github.com/Genymobile/scrcpy/releases/tag/v3.1', {
-          destDir: tmpDir,
-          force: true,
-        });
-
-        expect(fs.existsSync(downloadedFile)).to.be.true;
-        const stat = fs.statSync(downloadedFile);
-        expect(stat.size).to.be.greaterThan(50000);
-      } finally {
-        fs.rmSync(tmpDir, { recursive: true, force: true });
-      }
-    });
-
-    it('should download scrcpy-server v3.0 binary from release URL', async function (this: Mocha.Context) {
-      this.timeout(20000);
-      const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'scrcpy-test-'));
-      try {
-        const downloadedFile = await downloadScrcpyServer('https://github.com/Genymobile/scrcpy/releases/tag/v3.0', {
-          destDir: tmpDir,
-          force: true,
-        });
-
-        expect(fs.existsSync(downloadedFile)).to.be.true;
-        const stat = fs.statSync(downloadedFile);
-        expect(stat.size).to.be.greaterThan(50000);
-      } finally {
-        fs.rmSync(tmpDir, { recursive: true, force: true });
-      }
-    });
+          expect(fs.existsSync(downloadedFile)).to.be.true;
+          const stat = fs.statSync(downloadedFile);
+          expect(stat.size).to.be.greaterThan(50000);
+        } finally {
+          fs.rmSync(tmpDir, { recursive: true, force: true });
+        }
+      });
+    }
   });
 
   describe('Scrcpy startup command generation', () => {
