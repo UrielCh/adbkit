@@ -10,6 +10,30 @@ import {
   sanitizeToken,
 } from './types.js';
 
+function waitForNetSocketDrain(netSocket: Net.Socket): Promise<boolean> {
+  if (netSocket.destroyed || !netSocket.writable) {
+    return Promise.resolve(false);
+  }
+  return new Promise<boolean>((resolve) => {
+    const cleanup = () => {
+      netSocket.off('drain', onDrain);
+      netSocket.off('close', onCloseOrError);
+      netSocket.off('error', onCloseOrError);
+    };
+    const onDrain = () => {
+      cleanup();
+      resolve(true);
+    };
+    const onCloseOrError = () => {
+      cleanup();
+      resolve(false);
+    };
+    netSocket.once('drain', onDrain);
+    netSocket.once('close', onCloseOrError);
+    netSocket.once('error', onCloseOrError);
+  });
+}
+
 /**
  * Bridge bidirectional data and lifecycle between a Node `net.Socket` and a `@yume-chan/adb` socket.
  */
@@ -19,9 +43,17 @@ export function bridgeNetAndAdbSocket(netSocket: Net.Socket, adbSocket: AdbSocke
 
   netSocket.on('data', (chunk: Buffer) => {
     const uint8 = new Uint8Array(chunk.buffer, chunk.byteOffset, chunk.byteLength);
-    writer.write(uint8).catch(() => {
-      netSocket.destroy();
-    });
+    netSocket.pause();
+    writer.write(uint8).then(
+      () => {
+        if (!netSocket.destroyed) {
+          netSocket.resume();
+        }
+      },
+      () => {
+        netSocket.destroy();
+      },
+    );
   });
 
   const closeAdb = () => void Promise.resolve(adbSocket.close()).catch(() => {});
@@ -40,7 +72,11 @@ export function bridgeNetAndAdbSocket(netSocket: Net.Socket, adbSocket: AdbSocke
         const { done, value } = await reader.read();
         if (done) break;
         if (value && !netSocket.destroyed) {
-          netSocket.write(Buffer.from(value.buffer, value.byteOffset, value.byteLength));
+          const canContinue = netSocket.write(Buffer.from(value.buffer, value.byteOffset, value.byteLength));
+          if (!canContinue) {
+            const drained = await waitForNetSocketDrain(netSocket);
+            if (!drained) break;
+          }
         }
       }
     } catch {
@@ -59,12 +95,18 @@ export function bridgeNetAndAdbSocket(netSocket: Net.Socket, adbSocket: AdbSocke
  * Wrap a Node `net.Socket` into a WebStreams packet connection compatible with `@yume-chan/adb`.
  */
 export function createNetDaemonConnection(netSocket: Net.Socket, adbMod: AdbModuleLike): unknown {
-  let buffer = Buffer.alloc(0);
+  let chunks: Buffer[] = [];
+  let chunkIndex = 0;
+  let headOffset = 0;
+  let bufferedBytes = 0;
   let closed = false;
   let pendingRead: (() => void) | null = null;
 
   netSocket.on('data', (chunk: Buffer) => {
-    buffer = Buffer.concat([buffer, chunk]);
+    if (chunk.length > 0) {
+      chunks.push(chunk);
+      bufferedBytes += chunk.length;
+    }
     if (pendingRead) {
       const resolve = pendingRead;
       pendingRead = null;
@@ -85,14 +127,49 @@ export function createNetDaemonConnection(netSocket: Net.Socket, adbMod: AdbModu
   netSocket.on('error', onEndOrError);
 
   const readBytes = async (n: number): Promise<Uint8Array | null> => {
-    while (buffer.length < n) {
+    if (n === 0) {
+      return new Uint8Array(0);
+    }
+    while (bufferedBytes < n) {
       if (closed) return null;
       await new Promise<void>((resolve) => {
         pendingRead = resolve;
       });
     }
-    const out = new Uint8Array(buffer.buffer, buffer.byteOffset, n);
-    buffer = buffer.subarray(n);
+    const first = chunks[chunkIndex]!;
+    if (first.length - headOffset >= n) {
+      const out = new Uint8Array(first.buffer, first.byteOffset + headOffset, n);
+      headOffset += n;
+      bufferedBytes -= n;
+      if (headOffset === first.length) {
+        chunkIndex += 1;
+        headOffset = 0;
+      }
+      if (chunkIndex > 64 && chunkIndex * 2 >= chunks.length) {
+        chunks = chunks.slice(chunkIndex);
+        chunkIndex = 0;
+      }
+      return out;
+    }
+    const out = new Uint8Array(n);
+    let written = 0;
+    while (written < n) {
+      const head = chunks[chunkIndex]!;
+      const avail = head.length - headOffset;
+      const toCopy = Math.min(avail, n - written);
+      out.set(head.subarray(headOffset, headOffset + toCopy), written);
+      written += toCopy;
+      headOffset += toCopy;
+      bufferedBytes -= toCopy;
+      if (headOffset === head.length) {
+        chunkIndex += 1;
+        headOffset = 0;
+      }
+    }
+    if (chunkIndex > 64 && chunkIndex * 2 >= chunks.length) {
+      chunks = chunks.slice(chunkIndex);
+      chunkIndex = 0;
+    }
     return out;
   };
 

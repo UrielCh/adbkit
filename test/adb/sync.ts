@@ -1,4 +1,6 @@
 import Fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
 import Stream from 'node:stream';
 import Sinon from 'sinon';
 import { use, expect, assert } from 'chai';
@@ -11,6 +13,7 @@ import Protocol from '../../src/adb/protocol.js';
 import Entry from '../../src/adb/sync/entry.js';
 import PushTransfer from '../../src/adb/sync/pushtransfer.js';
 import PullTransfer from '../../src/adb/sync/pulltransfer.js';
+import Utils from '../../src/adb/utils.js';
 import MockConnection from '../mock/connection.js';
 import Device from '../../src/models/Device.js';
 use(simonChai);
@@ -54,6 +57,9 @@ describe('Sync', () => {
         const devices = await client.listDevices();
         deviceList = devices;
     });
+    afterEach(() => {
+        Sinon.restore();
+    });
     describe('end()', () => {
         it('should end the sync connection', async () => {
             const conn = new MockConnection();
@@ -94,6 +100,46 @@ describe('Sync', () => {
         //     return true;
         // });
     });
+    describe('pushFile(file, path[, mode])', () => {
+        it('should preserve error code and cause when stat fails (e.g. ENOENT)', async () => {
+            const conn = new MockConnection();
+            const sync = new Sync(conn);
+            const missingPath = path.join(os.tmpdir(), `adbkit-missing-${Date.now()}-${Math.random()}`);
+            let caught: unknown;
+            try {
+                await sync.pushFile(missingPath, '/data/local/tmp/out');
+            } catch (err) {
+                caught = err;
+            }
+            expect(caught).to.be.an.instanceOf(Error);
+            const err = caught as Error & { code?: string; cause?: NodeJS.ErrnoException };
+            expect(err.code).to.equal('ENOENT');
+            expect(err.cause).to.be.an.instanceOf(Error);
+            expect(err.cause?.code).to.equal('ENOENT');
+            expect(err.message).to.include('can not read file');
+            expect(err.message).to.not.include('Err: {}');
+        });
+        it('should throw directory error without masking it as unreadable file', async () => {
+            const conn = new MockConnection();
+            const sync = new Sync(conn);
+            const tmpDir = Fs.mkdtempSync(path.join(os.tmpdir(), 'adbkit-pushdir-'));
+            try {
+                let caught: unknown;
+                try {
+                    await sync.pushFile(tmpDir, '/data/local/tmp/out');
+                } catch (err) {
+                    caught = err;
+                }
+                expect(caught).to.be.an.instanceOf(Error);
+                const err = caught as Error & { code?: string };
+                expect(err.message).to.include('can not push directory');
+                expect(err.message).to.not.include('can not read file');
+                expect(err.code).to.equal('EISDIR');
+            } finally {
+                Fs.rmSync(tmpDir, { recursive: true, force: true });
+            }
+        });
+    });
     describe('pushStream(stream, path[, mode])', () => {
         // now return a promise
         // it('pushStream > should return a PushTransfer instance', async () => {
@@ -129,6 +175,55 @@ describe('Sync', () => {
             stream.end();
             await transfer.waitForEnd();
             expect(progress).to.deep.equal([5]);
+        });
+        it('should emit timeout error and not send DONE when slow stream times out before ending', async () => {
+            const conn = new MockConnection();
+            const sync = new Sync(conn);
+            const stream = new Stream.PassThrough();
+            const writtenCommands: string[] = [];
+
+            conn.getSocket().on('write', (chunk: Buffer) => {
+                if (chunk.length >= 4) {
+                    writtenCommands.push(chunk.subarray(0, 4).toString());
+                }
+            });
+
+            Sinon.stub(Utils, 'waitforReadable').resolves(false);
+
+            const transfer = await sync.pushStream(stream, 'foo');
+            const err = await new Promise<Error>((resolve) => {
+                transfer.once('error', resolve);
+            });
+            await transfer.waitForEnd();
+
+            expect(err.message).to.include('timed out');
+            expect(writtenCommands).to.not.include(Protocol.DONE);
+            expect(stream.destroyed).to.equal(true);
+        });
+        it('should complete promptly on readableEnded when autoDestroy is false', async () => {
+            const conn = new MockConnection();
+            const sync = new Sync(conn);
+            const stream = new Stream.PassThrough({ autoDestroy: false });
+            const progress: number[] = [];
+
+            conn.getSocket().on('write', (chunk: Buffer) => {
+                if (chunk.subarray(0, 4).toString() === Protocol.DONE) {
+                    conn.getSocket().causeRead(Protocol.OKAY);
+                    conn.getSocket().causeRead(Buffer.alloc(4));
+                }
+            });
+
+            const transfer = await sync.pushStream(stream, 'foo');
+            transfer.on('progress', (stats) => {
+                progress.push(stats.bytesTransferred);
+            });
+
+            stream.write('abc');
+            stream.end();
+            await transfer.waitForEnd();
+            expect(stream.readableEnded).to.equal(true);
+            expect(stream.closed).to.equal(false);
+            expect(progress).to.deep.equal([3]);
         });
         it('should emit error on PushTransfer when source stream errors', async () => {
             const conn = new MockConnection();

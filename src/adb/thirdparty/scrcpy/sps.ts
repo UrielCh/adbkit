@@ -41,6 +41,9 @@ class BitReader {
   }
 
   public next(): number {
+    if (this.bytePosition >= this.buffer.length) {
+      throw new Error('Invalid data');
+    }
     const value = (this.buffer[this.bytePosition]! >> (7 - this.bitPosition)) & 1;
     this.bitPosition += 1;
     if (this.bitPosition === 8) {
@@ -59,6 +62,26 @@ class BitReader {
       return 0;
     }
     return (1 << length | this.read(length)) - 1;
+  }
+
+  public decodeSignedExponentialGolombNumber(): number {
+    const codeNum = this.decodeExponentialGolombNumber();
+    if (codeNum === 0) {
+      return 0;
+    }
+    return (codeNum & 1) ? ((codeNum + 1) >> 1) : -(codeNum >> 1);
+  }
+}
+
+function skipScalingList(reader: BitReader, sizeOfScalingList: number): void {
+  let lastScale = 8;
+  let nextScale = 8;
+  for (let j = 0; j < sizeOfScalingList; j++) {
+    if (nextScale !== 0) {
+      const deltaScale = reader.decodeSignedExponentialGolombNumber();
+      nextScale = (((lastScale + deltaScale) % 256) + 256) % 256;
+    }
+    lastScale = nextScale === 0 ? lastScale : nextScale;
   }
 }
 
@@ -219,16 +242,13 @@ export function parse_sequence_parameter_set(buffer: ArrayBuffer | Uint8Array, _
         const seq_scaling_list_present_flag: boolean[] = [];
         for (let i = 0; i < ((chroma_format_idc !== 3) ? 8 : 12); i++) {
           seq_scaling_list_present_flag[i] = !!reader.next();
-          if (seq_scaling_list_present_flag[i])
+          if (seq_scaling_list_present_flag[i]) {
             if (i < 6) {
-              // TODO
-              // scaling_list( ScalingList4x4[ i ], 16,
-              //               UseDefaultScalingMatrix4x4Flag[ i ])
+              skipScalingList(reader, 16);
             } else {
-              // TODO
-              // scaling_list( ScalingList8x8[ i − 6 ], 64,
-              //               UseDefaultScalingMatrix8x8Flag[ i − 6 ] )
+              skipScalingList(reader, 64);
             }
+          }
         }
       }
     }

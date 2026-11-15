@@ -81,6 +81,8 @@ export default class Utils {
     // short-cut
     if (stream.readableLength > 0)
       return true;
+    if (stream.readableEnded)
+      return false;
     /**
      * readable is true by default
      */
@@ -91,9 +93,28 @@ export default class Utils {
      */
     let onClose: (() => void) = () => { /* dummy */ };
     const waitClose = new Promise<void>((resolveAsClosed) => {
-      onClose = resolveAsClosed;
+      onClose = () => {
+        if (stream.readableLength === 0) {
+          readable = false;
+        }
+        resolveAsClosed();
+      };
       stream.on('close', onClose);
-    })
+    });
+
+    /**
+     * handle end event
+     */
+    let onEnd: (() => void) = () => { /* dummy */ };
+    const waitEnd = new Promise<void>((resolveAsEnded) => {
+      onEnd = () => {
+        if (stream.readableLength === 0) {
+          readable = false;
+        }
+        resolveAsEnded();
+      };
+      stream.on('end', onEnd);
+    });
 
     /**
      * Handle readable event
@@ -101,11 +122,16 @@ export default class Utils {
      */
     let theResolve: (() => void) = () => { /* dummy */ };
     const waitRead = new Promise<void>((resolveAsReadable) => {
-      theResolve = resolveAsReadable;
+      theResolve = () => {
+        if (stream.readableLength === 0 && stream.readableEnded) {
+          readable = false;
+        }
+        resolveAsReadable();
+      };
       stream.on('readable', theResolve)
     });
 
-    const promises = [waitRead, waitClose];
+    const promises = [waitRead, waitEnd, waitClose];
     /**
      * Handle timeout event
      */
@@ -122,6 +148,7 @@ export default class Utils {
      * clean unused events
      */
     stream.off('readable', theResolve)
+    stream.off('end', onEnd);
     stream.off('close', onClose);
     if (timeOut)
       timeOut.cancel();
@@ -143,7 +170,19 @@ export default class Utils {
     const t0 = Date.now();
     let nextTimeout = timeout;
     for (; ;) {
-      await this.waitforReadable(duplex, timeout);
+      if (timeout) {
+        const timeSpend = Date.now() - t0;
+        nextTimeout = timeout - timeSpend;
+        if (nextTimeout <= 0)
+          throw Error(`timeout waiting for ${expected}, receved: ${allText}`);
+      }
+      const readable = await this.waitforReadable(duplex, nextTimeout);
+      if (!readable) {
+        if (duplex.stream.readableEnded || duplex.stream.closed) {
+          throw Error(`stream ended waiting for ${expected}, receved: ${allText}`);
+        }
+        throw Error(`timeout waiting for ${expected}, receved: ${allText}`);
+      }
       const buf = await duplex.read();
       if (buf) {
         const text = buf.toString();
@@ -151,12 +190,8 @@ export default class Utils {
         if (expected.test(allText))
           return text;
         // console.log('RCV Non matching DATA:', text);
-      }
-      if (timeout) {
-        const timeSpend = Date.now() - t0;
-        if (nextTimeout <= 0)
-          throw Error(`timeout waiting for ${expected}, receved: ${allText}`);
-        nextTimeout = timeout - timeSpend;
+      } else if (duplex.stream.readableEnded || duplex.stream.closed) {
+        throw Error(`stream ended waiting for ${expected}, receved: ${allText}`);
       }
     }
   }

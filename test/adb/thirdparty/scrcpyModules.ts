@@ -16,6 +16,7 @@ import {
   buildTouchEventMessage,
 } from '../../../src/adb/thirdparty/scrcpy/ScrcpyControlWriter.js';
 import { mapScrcpyCodec, parseVideoConfigPacket, readDeviceMessage } from '../../../src/adb/thirdparty/scrcpy/ScrcpyProtocol.js';
+import { parse_sequence_parameter_set } from '../../../src/adb/thirdparty/scrcpy/sps.js';
 import { buildScrcpyStartupLine, parseScrcpyVersionParts, shellEscapeArg } from '../../../src/adb/thirdparty/scrcpy/ScrcpyStartupArgs.js';
 
 describe('Scrcpy decomposed modules', () => {
@@ -145,6 +146,177 @@ describe('Scrcpy decomposed modules', () => {
       }
       expect(err).to.be.instanceOf(Error);
       expect((err as Error).message).to.include('Unsupported message type:99');
+    });
+  });
+
+  describe('H.264 SPS High Profile parser', () => {
+    class SpsBitWriter {
+      private bits: number[] = [];
+
+      writeBit(b: number): void {
+        this.bits.push(b & 1);
+      }
+
+      writeBits(val: number, len: number): void {
+        for (let i = len - 1; i >= 0; i--) {
+          this.writeBit((val >> i) & 1);
+        }
+      }
+
+      writeUE(v: number): void {
+        const val = v + 1;
+        const len = Math.floor(Math.log2(val));
+        for (let i = 0; i < len; i++) this.writeBit(0);
+        this.writeBits(val, len + 1);
+      }
+
+      writeSE(v: number): void {
+        const codeNum = v <= 0 ? -2 * v : 2 * v - 1;
+        this.writeUE(codeNum);
+      }
+
+      toAnnexBNalu(): Uint8Array {
+        // RBSP trailing bits
+        this.writeBit(1);
+        while (this.bits.length % 8 !== 0) {
+          this.writeBit(0);
+        }
+        const raw: number[] = [];
+        for (let i = 0; i < this.bits.length; i += 8) {
+          let byte = 0;
+          for (let j = 0; j < 8; j++) {
+            byte = (byte << 1) | this.bits[i + j];
+          }
+          raw.push(byte);
+        }
+        // Escape emulation prevention bytes
+        const escaped: number[] = [0x00, 0x00, 0x00, 0x01];
+        let zeros = 0;
+        for (const byte of raw) {
+          if (zeros === 2 && byte <= 0x03) {
+            escaped.push(0x03);
+            zeros = 0;
+          }
+          escaped.push(byte);
+          zeros = byte === 0 ? zeros + 1 : 0;
+        }
+        return new Uint8Array(escaped);
+      }
+    }
+
+    it('should parse High Profile SPS with seq_scaling_matrix_present_flag=1 without bit misalignment', () => {
+      const w = new SpsBitWriter();
+      // NALU header: forbidden_zero_bit=0, nal_ref_idc=3, nal_unit_type=7 (SPS)
+      w.writeBit(0);
+      w.writeBits(3, 2);
+      w.writeBits(7, 5);
+      // profile_idc=100 (High), constraint_set=0, level_idc=41
+      w.writeBits(100, 8);
+      w.writeBits(0, 8);
+      w.writeBits(41, 8);
+      w.writeUE(0); // seq_parameter_set_id
+      w.writeUE(1); // chroma_format_idc = 1 (4:2:0)
+      w.writeUE(0); // bit_depth_luma_minus8
+      w.writeUE(0); // bit_depth_chroma_minus8
+      w.writeBit(0); // qpprime_y_zero_transform_bypass_flag
+      w.writeBit(1); // seq_scaling_matrix_present_flag = 1
+
+      // 8 scaling lists (chroma_format_idc !== 3):
+      // i=0: present=1, delta_scale=-8 -> nextScale=0 (use default shortcut, 1 se(v) only)
+      w.writeBit(1);
+      w.writeSE(-8);
+      // i=1..2: present=0
+      w.writeBit(0);
+      w.writeBit(0);
+      // i=3: present=1, 16 explicit entries (4x4): first=+8 (16), rest=0 (15 times)
+      w.writeBit(1);
+      w.writeSE(8);
+      for (let k = 1; k < 16; k++) w.writeSE(0);
+      // i=4..5: present=0
+      w.writeBit(0);
+      w.writeBit(0);
+      // i=6: present=1, 8x8 list stopping early at j=2 (j=0: +4 -> 12, j=1: +4 -> 16, j=2: -16 -> 0)
+      w.writeBit(1);
+      w.writeSE(4);
+      w.writeSE(4);
+      w.writeSE(-16);
+      // i=7: present=0
+      w.writeBit(0);
+
+      w.writeUE(0); // log2_max_frame_num_minus4
+      w.writeUE(0); // pic_order_cnt_type = 0
+      w.writeUE(2); // log2_max_pic_order_cnt_lsb_minus4
+      w.writeUE(2); // max_num_ref_frames
+      w.writeBit(0); // gaps_in_frame_num_value_allowed_flag
+      w.writeUE(119); // pic_width_in_mbs_minus1 -> 120 * 16 = 1920
+      w.writeUE(67); // pic_height_in_map_units_minus1 -> 68 * 16 = 1088
+      w.writeBit(1); // frame_mbs_only_flag = 1
+      w.writeBit(1); // direct_8x8_inference_flag = 1
+      w.writeBit(1); // frame_cropping_flag = 1
+      w.writeUE(0); // frame_crop_left_offset
+      w.writeUE(0); // frame_crop_right_offset
+      w.writeUE(0); // frame_crop_top_offset
+      w.writeUE(4); // frame_crop_bottom_offset -> 4 * 2 = 8 -> 1088 - 8 = 1080
+      w.writeBit(0); // vui_parameters_present_flag = 0
+
+      const nalu = w.toAnnexBNalu();
+      const sps = parse_sequence_parameter_set(nalu, 'H264');
+      expect(sps.profile_idc).to.equal(100);
+      expect(sps.pic_width_in_mbs_minus1).to.equal(119);
+      expect(sps.pic_height_in_map_units_minus1).to.equal(67);
+      expect(sps.frame_mbs_only_flag).to.equal(1);
+      expect(sps.frame_cropping_flag).to.equal(true);
+      expect(sps.frame_crop_bottom_offset).to.equal(4);
+
+      const conf = parseVideoConfigPacket(nalu, 'H264', 0, 0);
+      expect(conf.encodedWidth).to.equal(1920);
+      expect(conf.encodedHeight).to.equal(1088);
+      expect(conf.croppedWidth).to.equal(1920);
+      expect(conf.croppedHeight).to.equal(1080);
+    });
+
+    it('should parse High 4:4:4 Profile SPS (chroma_format_idc=3) with 12 scaling lists', () => {
+      const w = new SpsBitWriter();
+      w.writeBit(0);
+      w.writeBits(3, 2);
+      w.writeBits(7, 5);
+      w.writeBits(244, 8); // High 4:4:4 Predictive
+      w.writeBits(0, 8);
+      w.writeBits(41, 8);
+      w.writeUE(0); // seq_parameter_set_id
+      w.writeUE(3); // chroma_format_idc = 3
+      w.writeBit(0); // separate_colour_plane_flag
+      w.writeUE(0); // bit_depth_luma_minus8
+      w.writeUE(0); // bit_depth_chroma_minus8
+      w.writeBit(0); // qpprime_y_zero_transform_bypass_flag
+      w.writeBit(1); // seq_scaling_matrix_present_flag = 1
+
+      // 12 scaling lists when chroma_format_idc === 3
+      for (let i = 0; i < 12; i++) {
+        if (i === 11) {
+          w.writeBit(1); // full 64-entry 8x8 list on the 12th list
+          for (let k = 0; k < 64; k++) w.writeSE(0);
+        } else {
+          w.writeBit(0);
+        }
+      }
+
+      w.writeUE(0); // log2_max_frame_num_minus4
+      w.writeUE(0); // pic_order_cnt_type = 0
+      w.writeUE(0); // log2_max_pic_order_cnt_lsb_minus4
+      w.writeUE(1); // max_num_ref_frames
+      w.writeBit(0); // gaps_in_frame_num_value_allowed_flag
+      w.writeUE(79); // pic_width_in_mbs_minus1 -> 80 * 16 = 1280
+      w.writeUE(44); // pic_height_in_map_units_minus1 -> 45 * 16 = 720
+      w.writeBit(1); // frame_mbs_only_flag
+      w.writeBit(1); // direct_8x8_inference_flag
+      w.writeBit(0); // frame_cropping_flag
+      w.writeBit(0); // vui_parameters_present_flag
+
+      const sps = parse_sequence_parameter_set(w.toAnnexBNalu(), 'H264');
+      expect(sps.profile_idc).to.equal(244);
+      expect(sps.pic_width_in_mbs_minus1).to.equal(79);
+      expect(sps.pic_height_in_map_units_minus1).to.equal(44);
     });
   });
 });

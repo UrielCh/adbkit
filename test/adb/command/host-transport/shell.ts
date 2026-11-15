@@ -64,4 +64,28 @@ describe('ShellCommand', () => {
         }
         return true;
     });
+    it('should wrap command in su -c when sudo option is true', () => {
+        const conn = new MockConnection();
+        const cmd = new ShellCommand(conn, { sudo: true });
+        conn.getSocket().on('write', (chunk) => {
+            expect(chunk.toString()).to.equal(Protocol.encodeData(`shell:su -c 'id'`).toString());
+        });
+        setImmediate(() => {
+            conn.getSocket().causeRead(Protocol.OKAY);
+            conn.getSocket().causeEnd();
+        });
+        return cmd.execute('id');
+    });
+    it('should wrap escaped Array command in su -c when sudo option is true', () => {
+        const conn = new MockConnection();
+        const cmd = new ShellCommand(conn, { sudo: true });
+        conn.getSocket().on('write', (chunk) => {
+            expect(chunk.toString()).to.equal(Protocol.encodeData(`shell:su -c ''"'"'echo'"'"' '"'"'hi'"'"''`).toString());
+        });
+        setImmediate(() => {
+            conn.getSocket().causeRead(Protocol.OKAY);
+            conn.getSocket().causeEnd();
+        });
+        return cmd.execute(['echo', 'hi']);
+    });
 });

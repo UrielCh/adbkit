@@ -1,6 +1,7 @@
 import { expect, use } from 'chai';
 import sinonChai from 'sinon-chai';
 import { Buffer } from 'node:buffer';
+import { EventEmitter } from 'node:events';
 import Net from 'node:net';
 import Adb, {
   Client,
@@ -10,7 +11,8 @@ import Adb, {
   YaWebAdbModules,
   YaWebAdbSocket,
 } from '../../src/index.js';
-import type { AdbTransportLike, WebUsbDeviceLike } from '../../src/adb/yawebadb/types.js';
+import { bridgeNetAndAdbSocket, createNetDaemonConnection } from '../../src/adb/yawebadb/tcpBridge.js';
+import type { AdbModuleLike, AdbSocketLike, AdbTransportLike, WebUsbDeviceLike } from '../../src/adb/yawebadb/types.js';
 
 use(sinonChai);
 
@@ -297,5 +299,141 @@ describe('ya-webadb integration', () => {
     expect(await client.listDevices()).to.have.lengthOf(0);
     await device.attach();
     expect(await client.listDevices()).to.have.lengthOf(1);
+  });
+
+  describe('tcpBridge', () => {
+    it('createNetDaemonConnection should reassemble fragmented and multi-chunk packets cleanly', async () => {
+      const mockSocket = new EventEmitter() as unknown as Net.Socket;
+      mockSocket.destroy = (() => mockSocket) as Net.Socket['destroy'];
+      mockSocket.write = ((_data: unknown, cb?: (err?: Error | null) => void) => {
+        cb?.(null);
+        return true;
+      }) as unknown as Net.Socket['write'];
+
+      const mockAdbMod = {
+        AdbPacketSerializeStream: class {
+          readable = new globalThis.ReadableStream();
+          writable = new globalThis.WritableStream();
+        },
+      } as unknown as AdbModuleLike;
+
+      const conn = createNetDaemonConnection(mockSocket, mockAdbMod) as {
+        readable: ReadableStream<{
+          command: number;
+          arg0: number;
+          arg1: number;
+          payloadLength: number;
+          checksum: number;
+          magic: number;
+          payload: Uint8Array;
+        }>;
+      };
+
+      const makePacket = (cmd: number, payload: Buffer) => {
+        const hdr = Buffer.alloc(24);
+        hdr.writeUInt32LE(cmd, 0);
+        hdr.writeUInt32LE(1, 4);
+        hdr.writeUInt32LE(2, 8);
+        hdr.writeUInt32LE(payload.length, 12);
+        hdr.writeUInt32LE(0x1234, 16);
+        hdr.writeUInt32LE((~cmd) >>> 0, 20);
+        return Buffer.concat([hdr, payload]);
+      };
+
+      const p1Payload = Buffer.alloc(200, 0xaa);
+      const p2Payload = Buffer.alloc(0);
+      const p3Payload = Buffer.from('hello-yawebadb-chunk-queue');
+      const combined = Buffer.concat([
+        makePacket(0x4e584e43, p1Payload),
+        makePacket(0x4e45504f, p2Payload),
+        makePacket(0x45545257, p3Payload),
+      ]);
+
+      // Feed data in tiny uneven slices (7 bytes at a time) across chunk boundaries
+      for (let i = 0; i < combined.length; i += 7) {
+        mockSocket.emit('data', combined.subarray(i, i + 7));
+      }
+      mockSocket.emit('end');
+
+      const reader = conn.readable.getReader();
+      const packets = [];
+      for (; ;) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        packets.push(value);
+      }
+
+      expect(packets).to.have.lengthOf(3);
+      expect(packets[0].command).to.equal(0x4e584e43);
+      expect(Buffer.from(packets[0].payload)).to.deep.equal(p1Payload);
+      expect(packets[1].command).to.equal(0x4e45504f);
+      expect(packets[1].payload.length).to.equal(0);
+      expect(packets[2].command).to.equal(0x45545257);
+      expect(Buffer.from(packets[2].payload)).to.deep.equal(p3Payload);
+    });
+
+    it('bridgeNetAndAdbSocket should wait for drain when netSocket.write returns false', async () => {
+      const mockNetSocket = new EventEmitter() as unknown as Net.Socket;
+      mockNetSocket.destroyed = false;
+      mockNetSocket.writable = true;
+      mockNetSocket.pause = (() => mockNetSocket) as Net.Socket['pause'];
+      mockNetSocket.resume = (() => mockNetSocket) as Net.Socket['resume'];
+      mockNetSocket.destroy = (() => {
+        mockNetSocket.destroyed = true;
+        return mockNetSocket;
+      }) as Net.Socket['destroy'];
+      let ended = false;
+      mockNetSocket.end = (() => {
+        ended = true;
+        return mockNetSocket;
+      }) as unknown as Net.Socket['end'];
+
+      const writtenToNet: Buffer[] = [];
+      let allowWrite = false;
+      mockNetSocket.write = ((chunk: Buffer) => {
+        writtenToNet.push(chunk);
+        return allowWrite;
+      }) as unknown as Net.Socket['write'];
+
+      let pulls = 0;
+      const adbReadable = new globalThis.ReadableStream<Uint8Array>({
+        pull(controller) {
+          pulls += 1;
+          if (pulls === 1) {
+            controller.enqueue(new Uint8Array([1, 2, 3]));
+          } else if (pulls === 2) {
+            controller.enqueue(new Uint8Array([4, 5, 6]));
+          } else {
+            controller.close();
+          }
+        },
+      });
+
+      const mockAdbSocket: AdbSocketLike = {
+        service: 'test',
+        readable: adbReadable,
+        writable: new globalThis.WritableStream<Uint8Array>(),
+        close: async () => {},
+      };
+
+      bridgeNetAndAdbSocket(mockNetSocket, mockAdbSocket);
+
+      // Give microtasks time to process the first chunk
+      await new Promise((r) => setTimeout(r, 20));
+      expect(writtenToNet).to.have.lengthOf(1);
+      expect(Buffer.from(writtenToNet[0])).to.deep.equal(Buffer.from([1, 2, 3]));
+      // Second chunk must NOT have been written yet because netSocket hasn't drained
+      expect(pulls).to.be.at.most(2);
+      expect(ended).to.equal(false);
+
+      // Now signal drain and allow subsequent writes
+      allowWrite = true;
+      mockNetSocket.emit('drain');
+
+      await new Promise((r) => setTimeout(r, 20));
+      expect(writtenToNet).to.have.lengthOf(2);
+      expect(Buffer.from(writtenToNet[1])).to.deep.equal(Buffer.from([4, 5, 6]));
+      expect(ended).to.equal(true);
+    });
   });
 });

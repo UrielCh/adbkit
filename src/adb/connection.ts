@@ -162,6 +162,10 @@ export default class Connection extends EventEmitter {
         return reject(err)
       }
 
+      if (!socket) {
+        return reject(new Error('Socket is not connected'))
+      }
+
       if (!socket.writable || socket.destroyed) {
         return reject(new Error("write in a closed socket"))
       }

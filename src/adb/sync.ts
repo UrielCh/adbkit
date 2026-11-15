@@ -219,13 +219,26 @@ export default class Sync extends EventEmitter {
    * @returns See `sync.push()` for details.
    */
   public async pushFile(file: string, path: string, mode = DEFAULT_CHMOD): Promise<PushTransfer> {
-    // mode || (mode = DEFAULT_CHMOD);
+    let stats: fs.Stats;
     try {
-      const stats = await fs.promises.stat(file);
-      if (stats.isDirectory())
-        throw Error(`can not push directory "${file}" only files are supported for now.`);
+      stats = await fs.promises.stat(file);
     } catch (e) {
-      throw Error(`can not read file "${file}" Err: ${JSON.stringify(e)}`);
+      const msg = e instanceof Error ? e.message : String(e);
+      const err = new Error(`can not read file "${file}": ${msg}`, { cause: e }) as NodeJS.ErrnoException;
+      if (e && typeof e === 'object') {
+        if ('code' in e && typeof (e as NodeJS.ErrnoException).code === 'string') {
+          err.code = (e as NodeJS.ErrnoException).code;
+        }
+        if ('errno' in e && typeof (e as NodeJS.ErrnoException).errno === 'number') {
+          err.errno = (e as NodeJS.ErrnoException).errno;
+        }
+      }
+      throw err;
+    }
+    if (stats.isDirectory()) {
+      const err = new Error(`can not push directory "${file}" only files are supported for now.`) as NodeJS.ErrnoException;
+      err.code = 'EISDIR';
+      throw err;
     }
     const stream = fs.createReadStream(file);
     return this.pushStream(stream, path, mode, file);
@@ -280,6 +293,7 @@ export default class Sync extends EventEmitter {
     let rejectError: ((err: Error) => void) | null = null;
     let cancelled = false;
     let resolveCancel: (() => void) | null = null;
+    let streamEnded = stream.readableEnded;
 
     const fail = (err: Error) => {
       if (!transferError) {
@@ -290,6 +304,10 @@ export default class Sync extends EventEmitter {
 
     const onStreamError = (err: Error) => {
       fail(new Error(`Source Error: ${err.message} while transfering ${streamName}`));
+    };
+
+    const onStreamEnd = () => {
+      streamEnded = true;
     };
 
     const onConnectionError = (err: Error) => {
@@ -306,6 +324,7 @@ export default class Sync extends EventEmitter {
     };
 
     stream.once('error', onStreamError);
+    stream.once('end', onStreamEnd);
     this.connection.once('error', onConnectionError);
     transfer.once('cancel', onCancel);
 
@@ -326,18 +345,37 @@ export default class Sync extends EventEmitter {
       });
 
       const pump = async (): Promise<void> => {
-        for (let i = 0; ; i++) {
-          if (stream.closed || transferError || cancelled)
+        for (; ;) {
+          if (transferError || cancelled) {
             break;
-          const readable = await Utils.waitforReadable(stream, STREAM_READ_TIMEOUT);
-          if (!readable || transferError || cancelled)
-            break;
+          }
           let chunk: ReturnType<Readable['read']>;
           while (!transferError && !cancelled && (chunk = (stream.read(DATA_MAX_LENGTH) || stream.read()))) {
             await this.sendCommandWithLength(Protocol.DATA, chunk.length);
             transfer.push(chunk.length);
             await this.connection.write(chunk);
             transfer.pop();
+          }
+          if (transferError || cancelled || streamEnded || stream.readableEnded) {
+            break;
+          }
+          if (stream.closed) {
+            throw new Error(`Source Error: stream closed before ending while transfering ${streamName}`);
+          }
+          const readable = await Utils.waitforReadable(stream, STREAM_READ_TIMEOUT);
+          if (transferError || cancelled) {
+            break;
+          }
+          if (!readable) {
+            if (streamEnded || stream.readableEnded) {
+              break;
+            }
+            if (stream.closed) {
+              throw new Error(`Source Error: stream closed before ending while transfering ${streamName}`);
+            }
+            stream.destroy();
+            this.connection.end();
+            throw new Error(`Source Timeout: stream read timed out after ${STREAM_READ_TIMEOUT}ms while transfering ${streamName}`);
           }
         }
         if (transferError) {
@@ -363,6 +401,7 @@ export default class Sync extends EventEmitter {
       })
       .finally(() => {
         stream.off('error', onStreamError);
+        stream.off('end', onStreamEnd);
         this.connection.off('error', onConnectionError);
         transfer.off('cancel', onCancel);
         transfer.end();

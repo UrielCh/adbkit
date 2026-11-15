@@ -134,6 +134,21 @@ describe('Client & Connection reliability', () => {
   });
 
   describe('Connection.write()', () => {
+    it('should reject with explicit error when called before connect()', async () => {
+      const client = Adb.createClient({ useYaWebAdb: false });
+      const conn = new Connection(client);
+
+      let caught: unknown;
+      try {
+        await conn.write(Buffer.from('hello'));
+      } catch (err) {
+        caught = err;
+      }
+      expect(caught).to.be.an.instanceOf(Error);
+      expect(caught).to.not.be.an.instanceOf(TypeError);
+      expect((caught as Error).message).to.equal('Socket is not connected');
+    });
+
     it('should reject if the socket closes before draining after write returns false', async () => {
       const client = Adb.createClient({ useYaWebAdb: false });
       const conn = new Connection(client);
