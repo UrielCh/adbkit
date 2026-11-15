@@ -1,11 +1,39 @@
 # CHANGELOG
 
 ## Unreleased
-* Add explicit `auto`, `native`, and `ya-webadb` backend selection.
-* Remove `useYaWebAdb`; select `backend: 'native'` or `backend: 'ya-webadb'` instead.
-* **Behavior change:** ya-webadb no longer stops the native ADB server on a busy USB device by default. Set `stopNativeAdbServerOnUsbBusy: true` to enable the previous retry behavior.
-* Fix ya-webadb forward rebinding and apply backpressure to device streams.
-* Add a native-backend emulator integration check and document physical USB testing.
+
+### Breaking changes
+
+* Require Node.js 22 or later.
+* Remove `useYaWebAdb` in favor of the `backend` option: `auto`, `native`, or `ya-webadb`. Explicit `ya-webadb` selection fails when its optional dependencies cannot be loaded; `auto` can fall back to the native server.
+* ya-webadb no longer stops the native ADB server automatically when it encounters a busy USB device. Set `stopNativeAdbServerOnUsbBusy: true` to permit the previous stop-and-retry behavior.
+
+### Added
+
+* Accept multiple flags in `getPackages` and add `throwOnFailure` and structured `UninstallError` details for uninstall failures.
+* Add the scrcpy `collapsePanels` control method and deprecate the misspelled `collapsePannels` method.
+* Export `PushTransfer` with the previous `Pushtransfer` spelling retained as a deprecated alias.
+
+### Fixed
+
+* Fix ya-webadb forward rebinding, stream backpressure, and USB connection cleanup.
+* Improve connection and parser error propagation, fragmented stream handling, and IPv6 host and port parsing.
+* Improve sync transfers, including cancellation, large-payload chunking, resource cleanup, and error reporting; fix 64-bit stat birth times.
+* Preserve falsy intent extras, escape command arguments, and improve installation, uninstallation, and framebuffer error handling.
+* Improve scrcpy recording backpressure and error handling, startup failure handling, server download fallbacks, and H.264 SPS parsing.
+* Write debug output to stderr without changing the global `console.log` binding.
+
+### Development
+
+* Move the project lockfile and CI installation to Bun, update the Node.js test matrix, and remove unused Jest dependencies.
+* Refactor device, scrcpy, and ya-webadb internals; strengthen types, linting, and unit tests.
+* Add a scheduled and manually triggered native-backend emulator integration check and physical USB testing guidance.
+
+## V5.2.1
+
+* Add scrcpy screen recording through `DeviceClient.recordScreen` and `Scrcpy.recordToFile`, with progress, cancellation, duration and frame limits, and optional MP4 remuxing.
+* Add `DeviceClient.listVideoEncoders` to discover encoders from device media codec configurations or scrcpy.
+* Improve scrcpy codec and socket connection handling and add a video testing task.
 
 ## V5.2.0 (2026-11-09)
 * update scrcpy-server support up to v5.0.1 (including v3.0, v3.1, v3.2, v3.3, v3.3.4, v4.0, v4.1, v5.0, v5.0.1)
