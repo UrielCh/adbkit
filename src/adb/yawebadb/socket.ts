@@ -2,6 +2,7 @@ import { Duplex } from 'node:stream';
 import Net from 'node:net';
 import { Buffer } from 'node:buffer';
 import Protocol from '../protocol.js';
+import { parseHostPort } from '../parseHostPort.js';
 import Utils from '../utils.js';
 import type { AdbTransportSocket } from '../connection.js';
 import type { ClientOptions } from '../../models/ClientOptions.js';
@@ -197,8 +198,7 @@ export class YaWebAdbSocket extends Duplex implements AdbTransportSocket {
 
       if (cmd.startsWith('host:connect:')) {
         const rest = cmd.slice('host:connect:'.length);
-        const [host, portStr] = rest.split(':');
-        const port = parseInt(portStr || '5555', 10) || 5555;
+        const { host, port } = parseHostPort(rest, 5555);
         this.sendOkay();
         try {
           const status = await manager.connectTcp(host, port);
@@ -216,8 +216,7 @@ export class YaWebAdbSocket extends Duplex implements AdbTransportSocket {
 
       if (cmd.startsWith('host:disconnect:')) {
         const rest = cmd.slice('host:disconnect:'.length);
-        const [host, portStr] = rest.split(':');
-        const port = parseInt(portStr || '5555', 10) || 5555;
+        const { host, port } = parseHostPort(rest, 5555);
         this.sendOkay();
         const ok = await manager.disconnectTcp(host, port);
         if (ok) {
@@ -343,12 +342,13 @@ export class YaWebAdbSocket extends Duplex implements AdbTransportSocket {
 
   private async handleTransportService(adb: AdbLike, service: string): Promise<void> {
     // Register reverse tunnel handler on the host if requested
+    let reverseForward: { remote: string; local: string } | undefined;
     if (service.startsWith('reverse:forward:')) {
       let spec = service.slice('reverse:forward:'.length);
       if (spec.startsWith('norebind:')) {
         spec = spec.slice('norebind:'.length);
       }
-      const [, local] = spec.split(';');
+      const [remote, local] = spec.split(';');
       if (local) {
         try {
           await adb.transport.removeReverseTunnel(local);
@@ -368,11 +368,22 @@ export class YaWebAdbSocket extends Duplex implements AdbTransportSocket {
             void Promise.resolve(incomingAdbSocket.close()).catch(() => { });
           }
         }, local);
-        YaWebAdbManager.getInstance().markReverseTunnelAdded();
+        reverseForward = { remote, local };
       }
     }
 
-    const adbSocket = await adb.createSocket(service);
+    let adbSocket: AdbSocketLike;
+    try {
+      adbSocket = await adb.createSocket(service);
+    } catch (err) {
+      if (reverseForward) await Promise.resolve(adb.transport.removeReverseTunnel(reverseForward.local)).catch(() => {});
+      throw err;
+    }
+    if (this.destroyed || this.remoteEnded) {
+      await adbSocket.close();
+      if (reverseForward) await Promise.resolve(adb.transport.removeReverseTunnel(reverseForward.local)).catch(() => {});
+      return;
+    }
     this.adbSocket = adbSocket;
     this.adbWriter = adbSocket.writable.getWriter();
     this.streaming = true;
@@ -380,11 +391,28 @@ export class YaWebAdbSocket extends Duplex implements AdbTransportSocket {
 
     const reader = adbSocket.readable.getReader();
     void (async () => {
+      let reverseStatus = Buffer.alloc(0);
+      let reverseSettled = false;
+      const isReverseMutation = !!reverseForward || service.startsWith('reverse:killforward:') || service === 'reverse:killforward-all';
       try {
         while (!this.destroyed && !this.remoteEnded) {
           const { done, value } = await reader.read();
           if (done) break;
           if (value && !this.remoteEnded && !this.destroyed) {
+            if (isReverseMutation && reverseStatus.length < 4) {
+              reverseStatus = Buffer.concat([reverseStatus, Buffer.from(value)]);
+              if (reverseStatus.length >= 4) {
+                reverseSettled = true;
+                if (reverseStatus.subarray(0, 4).toString() === 'OKAY') {
+                  const manager = YaWebAdbManager.getInstance();
+                  if (reverseForward) manager.markReverseTunnelAdded(adb, reverseForward.remote, reverseForward.local);
+                  else if (service === 'reverse:killforward-all') await manager.removeReverseTunnels(adb);
+                  else await manager.removeReverseTunnels(adb, service.slice('reverse:killforward:'.length));
+                } else if (reverseForward) {
+                  await Promise.resolve(adb.transport.removeReverseTunnel(reverseForward.local)).catch(() => {});
+                }
+              }
+            }
             if (!this.push(Buffer.from(value.buffer, value.byteOffset, value.byteLength))) {
               await new Promise<void>((resolve) => { this.resumeReader = resolve; });
             }
@@ -393,6 +421,9 @@ export class YaWebAdbSocket extends Duplex implements AdbTransportSocket {
       } catch (err) {
         debug('ADB socket read ended for %s: %s', service, (err as Error)?.message || err);
       } finally {
+        if (reverseForward && !reverseSettled) {
+          await Promise.resolve(adb.transport.removeReverseTunnel(reverseForward.local)).catch(() => {});
+        }
         reader.releaseLock();
         this.endRemote();
       }

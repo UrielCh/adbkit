@@ -244,7 +244,7 @@ export async function connectTcpDevice(params: ConnectTcpDeviceParams): Promise<
   const serial = `${host}:${port}`;
 
   const netSocket = await new Promise<Net.Socket>((resolve, reject) => {
-    const s = Net.connect({ host, port });
+    const s = Net.connect({ host: host.startsWith('[') && host.endsWith(']') ? host.slice(1, -1) : host, port });
     s.setNoDelay(true);
     const onError = (err: Error) => {
       s.off('connect', onConnect);

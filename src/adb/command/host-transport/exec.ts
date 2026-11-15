@@ -4,8 +4,8 @@ import WithToString from '../../../models/WithToString.js';
 
 export default class ExecCommand extends Command<Duplex> {
   async execute(command: string | ArrayLike<WithToString>): Promise<Duplex> {
-    if (Array.isArray(command)) {
-      command = command.map(this.escape).join(' ');
+    if (typeof command !== 'string') {
+      command = Array.from(command, this.escape).join(' ');
     }
     await this.sendCommand(`exec:${command}`);
     await this.readOKAY();

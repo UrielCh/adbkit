@@ -18,7 +18,7 @@ export async function installApk(params: {
   installRemote: (remotePath: string) => Promise<boolean>;
 }): Promise<boolean> {
   const { apk, push, installRemote } = params;
-  const temp = Sync.temp(typeof apk === 'string' ? apk : `_stream_${randomUUID()}.apk`);
+  const temp = Sync.temp(`_${typeof apk === 'string' ? 'install' : 'stream'}_${randomUUID()}.apk`);
   const transfer = await push(apk, temp);
   await transfer.waitForEnd();
   return installRemote(temp);
@@ -49,9 +49,6 @@ export async function installRemoteApk(params: {
     await execOut(['rm', '-f', apk]);
   } catch (cleanupErr) {
     debug(`Failed to remove temporary APK '${apk}': ${cleanupErr}`);
-    if (!hasInstallError) {
-      throw cleanupErr;
-    }
   }
   if (hasInstallError) {
     throw installError;

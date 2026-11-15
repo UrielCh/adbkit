@@ -20,7 +20,13 @@ export async function withSync<T>(getSync: () => Promise<Sync>, fn: (sync: Sync)
  */
 export async function syncPull(getSync: () => Promise<Sync>, path: string): Promise<PullTransfer> {
   const sync = await getSync();
-  const pullTransfer = await sync.pull(path);
+  let pullTransfer: PullTransfer;
+  try {
+    pullTransfer = await sync.pull(path);
+  } catch (err) {
+    sync.end();
+    throw err;
+  }
   void pullTransfer
     .waitForEnd()
     .catch(() => {})
@@ -38,7 +44,13 @@ export async function syncPush(
   mode?: number,
 ): Promise<PushTransfer> {
   const sync = await getSync();
-  const transfer = await sync.push(contents, path, mode);
+  let transfer: PushTransfer;
+  try {
+    transfer = await sync.push(contents, path, mode);
+  } catch (err) {
+    sync.end();
+    throw err;
+  }
   void transfer
     .waitForEnd()
     .catch(() => {})

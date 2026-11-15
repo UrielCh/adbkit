@@ -45,7 +45,7 @@ export class YaWebAdbManager {
   private forwardManager = new YaWebAdbForwardManager();
   private trackerListeners = new Set<(devices: ManagedDeviceInfo[]) => void>();
   private activeSockets = new Set<YaWebAdbSocket>();
-  private hasReverseTunnels = false;
+  private reverseTunnels = new Map<AdbLike, Map<string, string>>();
   private idleTimer: ReturnType<typeof setTimeout> | null = null;
   private nextTransportId = 1;
   private credentialManager: AdbCredentialManagerLike | null = null;
@@ -139,6 +139,7 @@ export class YaWebAdbManager {
     for (const [serial, entry] of this.devices.entries()) {
       if (!entry.isTcp && !seenUsbSerials.has(serial)) {
         this.devices.delete(serial);
+        await this.closeDeviceAdb(entry);
       }
     }
 
@@ -182,7 +183,9 @@ export class YaWebAdbManager {
         const devMgr = await this.getDeviceManager();
         this.observer = await devMgr.trackDevices();
         const onDeviceChange = () => {
-          void this.syncDevices(port).then(() => this.notifyTrackers());
+          void this.syncDevices(port).then(() => this.notifyTrackers()).catch((err) => {
+            debug('USB device refresh failed: %s', (err as Error)?.message || err);
+          });
         };
         const unsubs = [
           this.observer.onListChange(onDeviceChange),
@@ -251,6 +254,7 @@ export class YaWebAdbManager {
 
   private async closeDeviceAdb(entry: ManagedDeviceInfo): Promise<void> {
     const adb = entry.adb;
+    if (adb) await this.removeReverseTunnels(adb);
     entry.adb = undefined;
     entry.connectingPromise = undefined;
     try {
@@ -312,7 +316,7 @@ export class YaWebAdbManager {
       this.activeSockets.size > 0 ||
       this.forwardManager.size > 0 ||
       this.trackerListeners.size > 0 ||
-      this.hasReverseTunnels
+      this.reverseTunnels.size > 0
     );
   }
 
@@ -326,9 +330,29 @@ export class YaWebAdbManager {
     this.scheduleIdleCheck();
   }
 
-  public markReverseTunnelAdded(): void {
-    this.hasReverseTunnels = true;
+  public markReverseTunnelAdded(adb: AdbLike, remote: string, local: string): void {
+    let tunnels = this.reverseTunnels.get(adb);
+    if (!tunnels) {
+      tunnels = new Map();
+      this.reverseTunnels.set(adb, tunnels);
+    }
+    tunnels.set(remote, local);
     this.clearIdleTimer();
+  }
+
+  public async removeReverseTunnels(adb: AdbLike, remote?: string): Promise<void> {
+    const tunnels = this.reverseTunnels.get(adb);
+    if (!tunnels) return;
+    const locals = remote === undefined ? [...tunnels.values()] : [tunnels.get(remote)];
+    if (remote === undefined) tunnels.clear();
+    else tunnels.delete(remote);
+    if (tunnels.size === 0) this.reverseTunnels.delete(adb);
+    for (const local of new Set(locals)) {
+      if (local && ![...tunnels.values()].includes(local)) {
+        try { await adb.transport.removeReverseTunnel(local); } catch { /* already removed */ }
+      }
+    }
+    this.scheduleIdleCheck();
   }
 
   private scheduleIdleCheck(): void {
@@ -355,7 +379,7 @@ export class YaWebAdbManager {
 
   public async killAll(): Promise<void> {
     this.clearIdleTimer();
-    this.hasReverseTunnels = false;
+    this.reverseTunnels.clear();
     if (this.observerDispose) {
       this.observerDispose();
     }

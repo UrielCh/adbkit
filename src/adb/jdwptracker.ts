@@ -47,21 +47,21 @@ interface IEmissions {
 export default class JdwpTracker extends EventEmitter {
   private pids: string[] = [];
   private pidMap = Object.create(null);
-  // private reader: Promise<JdwpTracker | boolean>;
+  private stopped = false;
 
   constructor(private command: Command<JdwpTracker>) {
     super();
     this.command = command;
     this.pids = [];
     this.pidMap = Object.create(null);
-    // this.reader = 
-    this.read().catch(err => {
-      if (err instanceof AdbPrematureEOFError) {
-        return this.emit('end');
+    void this.read().catch(err => {
+      if (!this.stopped && !(err instanceof AdbPrematureEOFError)) {
+        this.emit('error', err);
       }
+    }).finally(() => {
       this.command.connection.end();
-      this.emit('error', err);
-      return this.emit('end');
+      void this.command.parser.end().catch(() => {});
+      this.emit('end');
     });
   }
 
@@ -71,13 +71,14 @@ export default class JdwpTracker extends EventEmitter {
   public override emit = <K extends keyof IEmissions>(event: K, ...args: Parameters<IEmissions[K]>): boolean => super.emit(event, ...args)
 
   async read(): Promise<JdwpTracker> {
-    const list = await this.command.parser.readValue('utf8');
-    const pids = list.split('\n');
-    const maybeEmpty = pids.pop();
-    if (maybeEmpty) {
-      pids.push(maybeEmpty);
+    while (!this.stopped) {
+      const list = await this.command.parser.readValue('utf8');
+      if (this.stopped) break;
+      const pids = list.split('\n');
+      if (pids[pids.length - 1] === '') pids.pop();
+      this.update(pids);
     }
-    return this.update(pids);
+    return this;
   }
 
   update(newList: string[]): JdwpTracker {
@@ -91,8 +92,8 @@ export default class JdwpTracker extends EventEmitter {
       if (!this.pidMap[pid]) {
         changeSet.added.push(pid);
         this.emit('add', pid);
-        newMap[pid] = pid;
       }
+      newMap[pid] = pid;
     }
     const ref = this.pids;
     for (let j = 0, len1 = ref.length; j < len1; j++) {
@@ -109,6 +110,9 @@ export default class JdwpTracker extends EventEmitter {
   }
 
   end(): JdwpTracker {
+    this.stopped = true;
+    this.command.connection.end();
+    void this.command.parser.end().catch(() => {});
     return this;
   }
 }
