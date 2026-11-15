@@ -3,7 +3,9 @@ import fs from 'node:fs';
 
 const b1k = BigInt(1000);
 
-export default class Stats64 implements fs.BigIntStats {
+// Node 26 adds Temporal.Instant properties to BigIntStats, but Temporal is not
+// available on every Node version supported by this package.
+export default class Stats64 implements Omit<fs.BigIntStats, 'atimeInstant' | 'mtimeInstant' | 'ctimeInstant' | 'birthtimeInstant'> {
   isFile(): boolean {
     return !!(Number(this.mode) & Stats.S_IFREG);
   }
