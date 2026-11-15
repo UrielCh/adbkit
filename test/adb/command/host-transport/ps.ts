@@ -8,7 +8,11 @@ const t = new Tester(PsCommand);
 describe('psCommand', () => {
     it("should send 'ps'", () => t.testTr('shell:ps'));
 
-    it("should send 'ps -f'", () => t.testTr('shell:ps -f', '-f'));
+    it("should send 'ps -f'", () => t.testTr("shell:ps '-f'", '-f'));
+
+    it('keeps partial rows without repeating columns', async () => {
+        expect(await t.testPr('USER PID CMD\nroot 1\n  shell\t2\tprocess --arg')).to.eql([{ USER: 'root', PID: '1' }, { USER: 'shell', PID: '2', CMD: 'process --arg' }]);
+    });
 
     it('should return a list of PsEntry', async () => {
         const result = await t.testPr(`UID             PID   PPID C STIME TTY          TIME CMD

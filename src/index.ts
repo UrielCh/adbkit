@@ -116,3 +116,25 @@ export * as STFServiceModel from './adb/thirdparty/STFService/STFServiceModel.js
  * Keep @u4/adbkit v3.x default export shape
  */
 export default Adb;
+export { deviceTypes } from './models/Device.js';
+export { ParcelValMap, type ParcelVal } from './adb/command/host-transport/Parcel.js';
+export type * from './adb/yawebadb/types.js';
+export { default as Command } from './adb/command.js';
+export type { IEmissions as ClientEvents } from './adb/client.js';
+export type { IEmissions as ConnectionEvents } from './adb/connection.js';
+export type { IEmissions as TrackerEvents } from './adb/tracker.js';
+export type { IEmissions as JdwpTrackerEvents } from './adb/jdwptracker.js';
+export type { IEmissions as SyncEvents } from './adb/sync.js';
+export type { IEmissions as PushTransferEvents } from './adb/sync/pushtransfer.js';
+export type { IEmissions as ProcStatEvents } from './adb/proc/stat.js';
+export type { IEmissions as PacketReaderEvents } from './adb/tcpusb/packetreader.js';
+export type { IEmissions as TcpUsbServerEvents } from './adb/tcpusb/server.js';
+export type { IEmissions as ServiceEvents } from './adb/tcpusb/service.js';
+export type { IEmissions as SocketEvents } from './adb/tcpusb/socket.js';
+export type { IEmissions as ScrcpyEvents } from './adb/thirdparty/scrcpy/Scrcpy.js';
+export type { IEmissions as MinicapEvents } from './adb/thirdparty/minicap/Minicap.js';
+export type { IEmissions as STFServiceEvents } from './adb/thirdparty/STFService/STFService.js';
+export { default as HostDevicesCommand } from './adb/command/host/HostDevicesCommand.js';
+export { default as HostDevicesWithPathsCommand } from './adb/command/host/HostDevicesWithPathsCommand.js';
+export { default as HostTrackDevicesCommand } from './adb/command/host/HostTrackDevicesCommand.js';
+export type { JdwpTrackerChangeSet } from './adb/jdwptracker.js';

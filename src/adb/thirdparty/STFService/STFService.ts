@@ -12,7 +12,7 @@ import protobufjs from 'protobufjs';
 import STFServiceBuf from './STFServiceBuf.js';
 import Utils from '../../utils.js';
 
-interface IEmissions {
+export interface IEmissions {
   airplaneMode: (data: STF.AirplaneModeEvent) => void
   battery: (data: STF.BatteryEvent) => void
   connectivity: (data: STF.ConnectivityEvent) => void
@@ -34,7 +34,7 @@ export interface STFServiceOptions {
   noInstall: boolean;
 }
 
-// const debug = Debug('STFService');
+const debug = Utils.debug('adb:stfservice');
 const PKG = 'jp.co.cyberagent.stf';
 
 export default class STFService extends EventEmitter {
@@ -137,7 +137,7 @@ export default class STFService extends EventEmitter {
     const result = await Utils.waitforText(agentProcess, /@stfagent|Address already in use/, 10000);
     if (result.includes("@stfagent"))
       return; // started
-    // console.log(`${this.client.serial} stfagent already running`);
+    // debug(`${this.client.serial} stfagent already running`);
     // debug only
     // ThirdUtils.dumpReadable(agentProcess, 'STFagent');
   }
@@ -183,7 +183,7 @@ export default class STFService extends EventEmitter {
     await this.startAgent();
     this.servicesSocket = new PromiseDuplex(await this.client.openLocal('localabstract:stfservice'));
     this.servicesSocket.stream.once('close', () => this.stop());
-    void this.startServiceStream().catch((e) => { console.log('Service failed', e); this.stop() });
+    void this.startServiceStream().catch((e) => { debug('Service failed', e); this.stop() });
     return this;
   }
 
@@ -197,7 +197,7 @@ export default class STFService extends EventEmitter {
     const socket = await this._minitouchagent;
     socket.stream.once('close', () => {
       this._minitouchagent = undefined;
-      // console.log('getMinitouchSocket just closed');
+      // debug('getMinitouchSocket just closed');
     });
     void this.startMinitouchStream(socket).catch(() => { socket.destroy() });
     return socket;
@@ -210,7 +210,7 @@ export default class STFService extends EventEmitter {
     const socket = await this._agentSocket;
     socket.stream.once('close', () => {
       this._agentSocket = undefined;
-      // console.log('agentSocket just closed');
+      // debug('agentSocket just closed');
     });
     void this.startAgentStream(socket).catch(() => { socket.destroy() });
     return this._agentSocket;
@@ -254,7 +254,7 @@ export default class STFService extends EventEmitter {
               delete this.responseHook[id];
               resolv(message);
             } else {
-              console.error(`STFService RCV response to unknown QueryId:${id} Type:${eventObj.type}`);
+              debug(`STFService RCV response to unknown QueryId:${id} Type:${eventObj.type}`);
             }
             continue;
           }
@@ -265,12 +265,12 @@ export default class STFService extends EventEmitter {
             case STF.MessageTypeMap.EVENT_ROTATION: this.emit("rotation", this.protoSrv.read.RotationEvent(message)); break;
             case STF.MessageTypeMap.EVENT_PHONE_STATE: this.emit("phoneState", this.protoSrv.read.PhoneStateEvent(message)); break;
             case STF.MessageTypeMap.EVENT_BROWSER_PACKAGE: this.emit("browerPackage", this.protoSrv.read.BrowserPackageEvent(message)); break;
-            default: console.error(`STFService Response Type (${eventObj.type}) is not implemented`);
+            default: debug(`STFService Response Type (${eventObj.type}) is not implemented`);
           }
         } catch (e) {
           if (chunk)
-            console.error(chunk.toString('hex'));
-          console.error(e);
+            debug(chunk.toString('hex'));
+          debug(e);
         }
       }
       await Utils.delay(0);
@@ -308,7 +308,7 @@ export default class STFService extends EventEmitter {
           this.setMaxPressure(Number(mp));
           continue;
         }
-        console.error('minitouchSocket RCV chunk len:', line);
+        debug('minitouchSocket RCV chunk len:', line);
       }
       await Utils.delay(0);
     }
@@ -319,7 +319,7 @@ export default class STFService extends EventEmitter {
       await Utils.waitforReadable(socket);
       const chunk = await socket.read() as Buffer;
       if (chunk) {
-        console.log('agentSocket RCV chunk len:', chunk.length, chunk.toString('hex').substring(0, 80));
+        debug('agentSocket RCV chunk len:', chunk.length, chunk.toString('hex').substring(0, 80));
       } else {
         return;
       }

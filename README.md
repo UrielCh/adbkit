@@ -112,6 +112,8 @@ For USB backend changes, also test on a physical device: authorize a new compute
 
 ## License
 
+API documentation can be generated locally with `bun run docs`. The documentation workflow builds and publishes it on pushes to `master`; configure the repository's GitHub Pages source as **GitHub Actions** to enable publishing.
+
 See [LICENSE](LICENSE).
 
 [nodejs]: http://nodejs.org/

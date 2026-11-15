@@ -14,3 +14,5 @@ tasks/*encoder*/
 tasks/recordings/
 
 /coverage/
+
+/docs/

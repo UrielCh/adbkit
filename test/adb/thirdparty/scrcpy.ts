@@ -121,6 +121,41 @@ describe('Scrcpy 3.0 Support & Backwards Compatibility', () => {
       }
     });
 
+    it('cancels error response bodies', async () => {
+      const cancel = sinon.spy();
+      const body = new ReadableStream({ cancel });
+      const fetchStub = sinon.stub(globalThis, 'fetch').resolves(new Response(body, { status: 404 }));
+      const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'scrcpy-cancel-'));
+      try {
+        let error: unknown;
+        try { await downloadScrcpyServer('3.0', { destDir: tmpDir, url: 'https://example.com/missing' }); }
+        catch (err) { error = err; }
+        expect((error as Error).message).to.include('404');
+        expect(cancel.calledOnce).to.equal(true);
+      } finally {
+        fetchStub.restore();
+        fs.rmSync(tmpDir, { recursive: true, force: true });
+      }
+    });
+
+    it('uses distinct temporary files for concurrent downloads', async () => {
+      const fetchStub = sinon.stub(globalThis, 'fetch').callsFake(async () => new Response(new Uint8Array([1, 2, 3])));
+      const nowStub = sinon.stub(Date, 'now').returns(123);
+      const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'scrcpy-concurrent-'));
+      try {
+        const paths = await Promise.all([1, 2].map(() => downloadScrcpyServer('3.0', {
+          destDir: tmpDir, force: true, url: 'https://example.com/server',
+        })));
+        expect(paths[0]).to.equal(paths[1]);
+        expect(fs.readFileSync(paths[0])).to.deep.equal(Buffer.from([1, 2, 3]));
+        expect(fs.readdirSync(tmpDir)).to.deep.equal(['scrcpy-server-v3.0.jar']);
+      } finally {
+        nowStub.restore();
+        fetchStub.restore();
+        fs.rmSync(tmpDir, { recursive: true, force: true });
+      }
+    });
+
     it('should handle fileStream errors cleanly in downloadScrcpyServer without unhandled stream errors', async () => {
       const fetchStub = sinon.stub(globalThis, 'fetch').resolves(
         new Response(new Uint8Array([1, 2, 3, 4]), { status: 200, headers: { 'content-length': '4' } })

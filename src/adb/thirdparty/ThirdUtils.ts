@@ -11,6 +11,8 @@ import { dirname } from 'node:path';
 import Utils from '../../adb/utils.js';
 import DeviceClient from '../DeviceClient.js';
 
+const debug = Utils.debug('adb:thirdparty');
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
@@ -29,7 +31,7 @@ export default class ThirdUtils {
         const data = await duplex.read();
         if (data) {
           const msg = data.toString();
-          console.log(prefix, msg.trim());
+          debug(prefix, msg.trim());
         }
       }
     } catch (_e) {

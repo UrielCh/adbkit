@@ -43,7 +43,7 @@ export class UnauthorizedError extends Error {
 /**
  * enforce EventEmitter typing
  */
-interface IEmissions {
+export interface IEmissions {
   end: (serv: boolean) => void
   userActivity: (packet: Packet) => void
   error: (data: Error) => void

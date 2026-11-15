@@ -26,7 +26,7 @@ const debug = Utils.debug('adb:minicap');
 /**
  * enforce EventEmitter typing
  */
-interface IEmissions {
+export interface IEmissions {
   data: (data: Buffer) => void
   error: (error: Error) => void
   disconnect: (cause: string) => void
@@ -306,7 +306,7 @@ export default class Minicap extends EventEmitter {
             streamChunk = Buffer.concat([streamChunk, chunk]);
           }
           if (streamChunk[0] !== 0xFF || streamChunk[1] !== 0xD8) {
-            console.error('Frame body does not start with JPG header');
+            debug('Frame body does not start with JPG header');
             return;
           }
         }

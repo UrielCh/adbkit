@@ -5,7 +5,7 @@ import Command from './command.js';
 /**
  * An object with the following properties always present:
  */
-interface JdwpTrackerChangeSet {
+export interface JdwpTrackerChangeSet {
   /**
    * An array of pids that were removed. Empty if none.
    */
@@ -19,7 +19,7 @@ interface JdwpTrackerChangeSet {
 /**
  * enforce EventEmitter typing
  */
-interface IEmissions {
+export interface IEmissions {
   /**
    * Emitted when the underlying connection ends.
    */

@@ -9,7 +9,7 @@ import { HostTrackDevicesCommand } from './command/host/index.js';
 /**
  * enforce EventEmitter typing
  */
-interface IEmissions {
+export interface IEmissions {
   /**
    * Emitted when the underlying connection ends.
    */

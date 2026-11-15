@@ -22,7 +22,7 @@ import DeviceClient from './DeviceClient.js';
 /**
  * enforce EventEmitter typing
  */
-interface IEmissions {
+export interface IEmissions {
   error: (data: Error) => void
 }
 

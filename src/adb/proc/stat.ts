@@ -19,7 +19,7 @@ export type ProcStats = { cpus: LoadsWithLine };
 /**
  * enforce EventEmitter typing
  */
- interface IEmissions {
+ export interface IEmissions {
   load: (arg: Loads) => void
   error: (data: Error) => void
 }

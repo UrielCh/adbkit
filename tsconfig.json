@@ -18,12 +18,28 @@
         "forceConsistentCasingInFileNames": true,
         "resolveJsonModule": true,
         "isolatedModules": true,
-        "types": ["node", "mocha"],
-        "lib": ["ES2023"]
+        "types": [
+            "node",
+            "mocha"
+        ],
+        "lib": [
+            "ES2023"
+        ]
     },
-    "include": [ "./src/**/*.ts" ],
+    "include": [
+        "./src/**/*.ts"
+    ],
     "typedocOptions": {
-        "entryPoints": [ "src/index.ts" ],
-        "out": "docs"
+        "entryPoints": [
+            "src/index.ts"
+        ],
+        "out": "docs",
+        "externalSymbolLinkMappings": {
+            "@types/node": {
+                "Stream.Writable.write": "https://nodejs.org/api/stream.html#writablewritechunk-encoding-callback",
+                "Stream.Writable.end": "https://nodejs.org/api/stream.html#writableendchunk-encoding-callback"
+            }
+        },
+        "treatWarningsAsErrors": true
     }
 }

@@ -18,7 +18,7 @@ const debug = Utils.debug('adb:connection');
 /**
  * enforce EventEmitter typing
  */
-interface IEmissions {
+export interface IEmissions {
   connect: () => void
   end: () => void
   drain: () => void

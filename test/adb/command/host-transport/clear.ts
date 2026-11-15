@@ -12,7 +12,7 @@ describe('ClearCommand', () => {
         const conn = new MockConnection();
         const cmd = new ClearCommand(conn);
         conn.getSocket().on('write', (chunk) => {
-            expect(chunk.toString()).to.equal(Protocol.encodeData('shell:pm clear foo.bar.c').toString());
+            expect(chunk.toString()).to.equal(Protocol.encodeData("shell:pm clear 'foo.bar.c'").toString());
             conn.getSocket().causeRead(Protocol.OKAY);
             conn.getSocket().causeRead('Success\r\n');
             conn.getSocket().causeEnd();

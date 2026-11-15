@@ -92,7 +92,12 @@ export default class DeviceClient {
     ...args: Args
   ): Promise<T> {
     const transport = await this.transport();
-    return new CommandCtor(transport, this.options).execute(...args);
+    try {
+      return await new CommandCtor(transport, this.options).execute(...args);
+    } catch (err) {
+      transport.end();
+      throw err;
+    }
   }
 
   private async runSerialCommand<T, Args extends unknown[]>(
@@ -100,7 +105,12 @@ export default class DeviceClient {
     ...args: Args
   ): Promise<T> {
     const conn = await this.connection();
-    return new CommandCtor(conn).execute(this.serial, ...args);
+    try {
+      return await new CommandCtor(conn).execute(this.serial, ...args);
+    } catch (err) {
+      conn.end();
+      throw err;
+    }
   }
 
   /**
@@ -212,7 +222,7 @@ export default class DeviceClient {
   }
 
   /**
-   * Call `ip route` command.
+   * Call `ip route` command. Pass each argument separately, e.g. `ipRoute('list', 'table', 'all')`.
    *
    * @returns An `IpRouteEntry` array.
    */
@@ -221,7 +231,7 @@ export default class DeviceClient {
   }
 
   /**
-   * Call `ip rule` command.
+   * Call `ip rule` command. Pass each argument separately.
    *
    * @returns An `IpRuleEntry` array.
    */
@@ -350,8 +360,13 @@ export default class DeviceClient {
    */
   public async transport(): Promise<Connection> {
     const conn = await this.connection();
-    await new HostTransportCommand(conn).execute(this.serial);
-    return conn;
+    try {
+      await new HostTransportCommand(conn).execute(this.serial);
+      return conn;
+    } catch (err) {
+      conn.end();
+      throw err;
+    }
   }
 
   /**

@@ -44,7 +44,7 @@ const debug = Utils.debug('adb:scrcpy');
 /**
  * enforce EventEmitter typing
  */
-interface IEmissions {
+export interface IEmissions {
   frame: (data: VideoStreamFramePacket) => void
   /**
    * since Scrcpy v2.0 an extra event is emitted with the codec, width and height
@@ -437,7 +437,7 @@ export default class Scrcpy extends EventEmitter {
 
     this.videoSocket = await this.connectVideoSocket(socketName);
     this.videoSocket.stream.on('error', (e) => {
-      console.error('videoSocket error', e);
+      debug('videoSocket error', e);
     });
 
     if (this.closed) {

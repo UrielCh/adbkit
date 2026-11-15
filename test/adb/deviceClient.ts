@@ -160,6 +160,29 @@ describe('DeviceClient.startActivity / startService', () => {
 });
 
 describe('DeviceClient resource reliability', () => {
+  it('closes a transport if sending a command fails', async () => {
+    const conn = new MockConnection();
+    const end = Sinon.spy(conn, 'end');
+    Sinon.stub(conn, 'write').rejects(new Error('write failed'));
+    const device = new DeviceClient(mockClient, 'serial');
+    device.transport = async () => conn;
+    let error: unknown;
+    try { await device.isInstalled('app'); } catch (err) { error = err; }
+    expect((error as Error).message).to.equal('write failed');
+    expect(end.calledOnce).to.equal(true);
+  });
+
+  it('closes the connection if transport selection fails', async () => {
+    const conn = new MockConnection();
+    const end = Sinon.spy(conn, 'end');
+    Sinon.stub(conn, 'write').rejects(new Error('selection failed'));
+    const device = new DeviceClient({ connection: async () => conn } as unknown as Client, 'serial');
+    let error: unknown;
+    try { await device.transport(); } catch (err) { error = err; }
+    expect((error as Error).message).to.equal('selection failed');
+    expect(end.calledOnce).to.equal(true);
+  });
+
   it('screencap should close the first transport when falling back to framebuffer', async () => {
     const firstConn = new MockConnection();
     const endSpy = Sinon.spy(firstConn, 'end');

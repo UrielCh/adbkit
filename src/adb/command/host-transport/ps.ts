@@ -33,7 +33,7 @@ export default class PsCommand extends Command<Array<Partial<PsEntry>>> {
     if (!args.length) {
       await this.sendCommand(`shell:ps`); //  2>/dev/null
     } else {
-      await this.sendCommand(`shell:ps ${args.join(' ')}`); //  2>/dev/null
+      await this.sendCommand(`shell:ps ${args.map(arg => this.escape(arg)).join(' ')}`); //  2>/dev/null
     }
     await this.readOKAY();
     const data = await this.parser.readAll()
@@ -43,21 +43,30 @@ export default class PsCommand extends Command<Array<Partial<PsEntry>>> {
   private _parsePs(value: string): Array<Partial<PsEntry>> {
     const lines: string[] = value.split(/[\r\n]+/g);
     const titles = (lines.shift() || '').trim();
+    if (!titles) return [];
     const cols = titles.split(/\s+/g) as Array<keyof PsEntry>;
     const result: Partial<PsEntry>[] = [];
     for (const line of lines) {
-      if (!line)
+      if (!line.trim())
         continue;
       const ps: Partial<PsEntry> = {};
       let p = 0;
       const last = cols.length - 1;
+      p = line.search(/\S/);
       for (let i = 0; i < last; i++) {
-        const p2 = line.indexOf(' ', p);
+        if (p >= line.length) break;
+        const separator = line.slice(p).search(/\s/);
+        const p2 = separator < 0 ? -1 : p + separator;
+        if (p2 === -1) {
+          (ps as { [key: string]: string })[cols[i]] = line.substring(p);
+          p = line.length;
+          break;
+        }
         (ps as { [key: string]: string })[cols[i]] = line.substring(p, p2);
         p = p2 + 1;
-        while (line[p] == ' ') p++;
+        while (p < line.length && /\s/.test(line[p])) p++;
       }
-      (ps as { [key: string]: string })[cols[last]] = line.substring(p);
+      if (p < line.length) (ps as { [key: string]: string })[cols[last]] = line.substring(p);
       result.push(ps);
     }
     return result;

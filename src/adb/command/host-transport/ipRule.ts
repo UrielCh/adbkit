@@ -18,7 +18,7 @@ import Command from '../../command.js';
  */
 export default class IpRuleCommand extends Command<Array<IpRuleEntry>> {
   async execute(...args: string[]): Promise<Array<IpRuleEntry>> {
-    await this.sendCommand(['shell:ip', 'rule', ...args].join(' '));
+    await this.sendCommand(['shell:ip', 'rule', ...args.map(arg => this.escape(arg))].join(' '));
     await this.readOKAY();
     const data = await this.parser.readAll()
     return this.parseIpRule(data.toString());
@@ -78,7 +78,12 @@ export class IpRuleEntry {
   lookup?: string;
   unreachable?: boolean;
 
+  /** @deprecated Use toString() instead. */
   toStirng(): string {
+    return this.toString();
+  }
+
+  toString(): string {
     const opt: string[] = [];
     for (const field of ['from', 'fwmark', 'iif', 'oif', 'uidrange', 'lookup'] as const) {
       const value = this[field];

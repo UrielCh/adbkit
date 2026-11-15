@@ -20,14 +20,16 @@ const __dirname = dirname(__filename);
 
 const pkg: { version: string } = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'package.json'), { encoding: 'utf-8' }));
 
+function parsePort(value: string): number {
+  if (!/^\d+$/.test(value) || Number(value) < 1 || Number(value) > 65535) {
+    throw new InvalidArgumentError('Port must be an integer between 1 and 65535.');
+  }
+  return Number(value);
+}
+
 program.version(pkg.version)
   .option('--host <host>', 'ADB server host')
-  .option('--port <port>', 'ADB server port', (value: string) => {
-    if (!/^\d+$/.test(value) || Number(value) < 1 || Number(value) > 65535) {
-      throw new InvalidArgumentError('Port must be an integer between 1 and 65535.');
-    }
-    return Number(value);
-  })
+  .option('--port <port>', 'ADB server port', parsePort)
   .addOption(new Option('--backend <backend>', 'ADB backend').choices(['auto', 'native', 'ya-webadb']));
 
 program
@@ -43,7 +45,8 @@ program
         return console.log(forge.ssh.publicKeyToOpenSSH(key, 'adbkey').trim());
       default:
         console.error("Unsupported format '" + options.format + "'");
-        return process.exit(1);
+        process.exitCode = 1;
+        return;
     }
   });
 
@@ -57,9 +60,9 @@ program
 
 program
   .command('usb-device-to-tcp <serial>')
-  .option('-p, --port <port>', 'port number', (value: string) => String(value), '6174')
+  .option('-p, --port <port>', 'port number', parsePort, 6174)
   .description('Provides an USB device over TCP using a translating proxy.')
-  .action((serial: string, options: { port: string }) => {
+  .action((serial: string, options: { port: number }) => {
     const adb = createCliClient();
     const server = adb
       .createTcpUsbBridge(serial, {

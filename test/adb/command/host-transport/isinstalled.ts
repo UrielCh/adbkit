@@ -11,7 +11,7 @@ describe('IsInstalledCommand', () => {
         const conn = new MockConnection();
         const cmd = new IsInstalledCommand(conn);
         conn.getSocket().on('write', (chunk) => {
-            return expect(chunk.toString()).to.equal(Protocol.encodeData('shell:pm path foo 2>/dev/null').toString());
+            return expect(chunk.toString()).to.equal(Protocol.encodeData("shell:pm path 'foo' 2>/dev/null").toString());
         });
         setImmediate(() => {
             conn.getSocket().causeRead(Protocol.OKAY);
@@ -19,6 +19,19 @@ describe('IsInstalledCommand', () => {
             return conn.getSocket().causeEnd();
         });
         return cmd.execute('foo');
+    });
+    it('honors sudo and quotes package names', async () => {
+        const conn = new MockConnection();
+        const cmd = new IsInstalledCommand(conn, { sudo: true });
+        let sent = '';
+        conn.getSocket().on('write', chunk => { sent = chunk.toString().slice(4); });
+        setImmediate(() => {
+            conn.getSocket().causeRead(Protocol.OKAY);
+            conn.getSocket().causeRead('package:foo\r\n');
+            conn.getSocket().causeEnd();
+        });
+        expect(await cmd.execute('foo;id')).to.equal(true);
+        expect(sent).to.equal(`shell:su -c 'pm path '"'"'foo;id'"'"' 2>/dev/null'`);
     });
     it('should resolve with true if package returned by command', async () => {
         const conn = new MockConnection();

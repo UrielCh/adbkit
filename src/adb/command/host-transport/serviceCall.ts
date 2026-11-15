@@ -27,13 +27,16 @@ export class ParcelReader {
   constructor(private data: Buffer) {
   }
 
-  public read(): string {
+  /** Read a string or null value; other Parcel value types are not yet supported. */
+  public read(): string | null {
     const type: ParcelVal = this.readType();
     switch (type) {
+      case ParcelValMap.VAL_NULL:
+        return null;
       case ParcelValMap.VAL_STRING:
         return this.readString();
       default:
-        throw Error(`ParcelReader need to be complet, and do not support Type: ${type}`)
+        throw Error(`Unsupported Parcel value type: ${type}`)
     }
   }
 
@@ -49,13 +52,19 @@ export class ParcelReader {
     return type as ParcelVal;
   }
 
-  public readString(): string {
+  public readString(): string | null {
     let pos = this.pos;
     const data = this.data;
     // 32 bit len in number of char16_t chars
     const chars = data.readInt32BE(pos);
     pos += 4;
-    const block = (chars + 1) >> 1;
+    if (chars === -1) {
+      this.pos = pos;
+      return null;
+    }
+    if (chars < -1) throw new Error(`Invalid Parcel string length: ${chars}`);
+    const block = Math.ceil((chars + 1) / 2);
+    if (block * 4 > data.length - pos) throw new RangeError('Truncated Parcel string');
     const dest = Buffer.allocUnsafe(block * 4);
 
     for (let i = 0; i < block; i++) {
@@ -68,11 +77,7 @@ export class ParcelReader {
     }
     this.pos = pos + block * 4;
 
-    if (chars & 1) {
-      return dest.toString('utf16le', 0, dest.length - 1);
-    } else {
-      return dest.toString('utf16le');
-    }
+    return dest.toString('utf16le', 0, chars * 2);
   }
 
   public dump(): string {
@@ -91,16 +96,14 @@ export class ParcelReader {
  */
 export default class ServiceCallCommand extends Command<ParcelReader> {
   async execute(serviceName: KnownServices | string, code: number | string, args?: Array<ServiceCallArg>): Promise<ParcelReader> {
-    let cmd = `exec:service call ${serviceName} ${code}`
+    let cmd = `exec:service call ${this.escape(serviceName)} ${this.escape(code)}`
     if (args)
       for (const arg of args) {
         cmd += ` ${arg.type}`;
         if (arg.type === 'null') {
           continue;
         } else if (arg.type === 's16') {
-          let str = arg.value.replace(/"/g, '\\"');
-          str = str.replace(/\$/g, '\\$'); // should replace {} and {} ?
-          cmd += ` "${str}"`;
+          cmd += ` ${this.escape(arg.value)}`;
         } else {
           cmd += ` ${arg.value}`;
         }
@@ -113,34 +116,19 @@ export default class ServiceCallCommand extends Command<ParcelReader> {
   }
 
   private _parse(value: string): Buffer {
-    const RE_HEX = /0x[0-9a-f]{8}: ([0-9a-f]{8}) ([0-9a-f ]{8})? ([0-9a-f ]{8}) ([0-9a-f ]{8}) '.{16}'/gm;
     const data: Buffer[] = [];
+    const appendWords = (words: string): void => {
+      for (const word of words.match(/[0-9a-f]{8}/gi) ?? []) {
+        data.push(Buffer.from(word, 'hex'));
+      }
+    };
+    const lines = /0x[0-9a-f]{8}:\s*((?:[0-9a-f]{8}\s*){1,4})'/gi;
+    for (const match of value.matchAll(lines)) appendWords(match[1]);
+    if (data.length) return Utils.concatBuffer(data);
 
-    for (; ;) {
-      const match = RE_HEX.exec(value);
-      if (match) {
-        for (let i = 1; i <= 4; i++) {
-          const chunk = match[i].trim();
-          if (!chunk)
-            break;
-          data.push(Buffer.from(chunk, 'hex'));
-        }
-      } else {
-        break;
-      }
-    }
-    if (data.length) {
-      return Utils.concatBuffer(data);
-    }
-    // sinngle line Parcel
-    const m1 = value.match(/Parcel\(([0-9a-f]{8}) ([0-9a-f ]{8})? ([0-9a-f ]{8}) ([0-9a-f ]{8}) '.{16}'\)/);
-    if (m1) {
-      for (let i = 1; i <= 4; i++) {
-        const chunk = m1[i].trim();
-        if (!chunk)
-          break;
-        data.push(Buffer.from(chunk, 'hex'));
-      }
+    const single = value.match(/Parcel\(\s*((?:[0-9a-f]{8}\s*){1,4})'/i);
+    if (single) {
+      appendWords(single[1]);
       return Utils.concatBuffer(data);
     }
     // Read Error Parcel

@@ -1,4 +1,5 @@
 import fs from 'node:fs';
+import { randomUUID } from 'node:crypto';
 import os from 'node:os';
 import path from 'node:path';
 import { Readable, Transform } from 'node:stream';
@@ -153,7 +154,7 @@ export async function downloadScrcpyServer(
   let lastError: Error | null = null;
   const targetDir = path.dirname(targetPath);
   await fs.promises.mkdir(targetDir, { recursive: true });
-  const tmpPath = `${targetPath}.tmp.${Date.now()}`;
+  const tmpPath = `${targetPath}.tmp.${randomUUID()}`;
   const timeoutMs = options.timeoutMs ?? 60_000;
 
   for (const url of candidateUrls) {
@@ -164,6 +165,7 @@ export async function downloadScrcpyServer(
       });
       if (!response.ok) {
         lastError = new Error(`Failed to download scrcpy-server from ${url}: HTTP ${response.status} ${response.statusText}`);
+        await response.body?.cancel().catch(() => {});
         continue;
       }
 

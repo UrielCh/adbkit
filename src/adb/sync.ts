@@ -57,7 +57,7 @@ export type AdbSyncStatErrorCode = typeof AdbSyncStatErrorCodeMap[keyof typeof A
 /**
  * enforce EventEmitter typing
  */
-interface IEmissions {
+export interface IEmissions {
   error: (data: Error) => void
 }
 

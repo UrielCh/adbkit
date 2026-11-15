@@ -3,7 +3,7 @@ import Command from '../../command.js';
 
 export default class IsInstalledCommand extends Command<boolean> {
   async execute(pkg: string): Promise<boolean> {
-    await this._send(`shell:pm path ${pkg} 2>/dev/null`);
+    await this.sendCommand(`shell:pm path ${this.escape(pkg)} 2>/dev/null`);
     await this.readOKAY();
     try {
       const reply = await this.parser.readAscii(8);

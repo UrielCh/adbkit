@@ -33,7 +33,7 @@ export class LateTransportError extends Error {
 /**
  * enforce EventEmitter typing
  */
-interface IEmissions {
+export interface IEmissions {
   end: () => void
   error: (data: Error) => void
 }

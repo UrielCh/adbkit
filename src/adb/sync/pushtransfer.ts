@@ -3,7 +3,7 @@ import EventEmitter from 'node:events';
 /**
  * enforce EventEmitter typing
  */
-interface IEmissions {
+export interface IEmissions {
   /**
    * Emitted on error.
    */

@@ -48,12 +48,18 @@ describe('CLI', () => {
     expect(help).to.include('Disable wifi.');
     expect(help).to.include('Enable data.');
   });
-  it('reports missing packet files and rejects invalid options', () => {
+  it('reports missing packet files and rejects invalid options', function () {
+    this.timeout(10000);
     const missing = run('parse-tcp-packets', '/missing-adbkit-packet-file');
     expect(missing.status).to.equal(1);
     expect(missing.stderr).to.include('ENOENT');
     expect(missing.stderr).not.to.include('Unhandled');
     expect(run('--backend', 'invalid', 'parse-tcp-packets', 'x').status).to.equal(1);
     expect(run('--port', 'oops', 'parse-tcp-packets', 'x').status).to.equal(1);
+    for (const port of ['0', '65536', '1.5', 'abc']) {
+      const result = run('usb-device-to-tcp', 'serial', '--port', port);
+      expect(result.status).to.equal(1);
+      expect(result.stderr).to.include('Port must be an integer between 1 and 65535');
+    }
   });
 });

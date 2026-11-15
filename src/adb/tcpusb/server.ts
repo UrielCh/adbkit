@@ -7,7 +7,7 @@ import SocketOptions from '../../models/SocketOptions.js';
 /**
  * enforce EventEmitter typing
  */
- interface IEmissions {
+ export interface IEmissions {
   listening: () => void
   close: () => void
   connection: (socket: Socket) => void
