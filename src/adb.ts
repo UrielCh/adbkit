@@ -37,19 +37,14 @@ export interface AdbOptions {
  * ```
 
  */
-export function createClient(options: AdbOptions = { port: 5037 }): Client {
+export function createClient(options: AdbOptions = {}): Client {
+  const port = options.port ?? (process.env.ADB_PORT ? Number.parseInt(process.env.ADB_PORT, 10) : undefined);
   const opts: ClientOptions = {
     bin: options.bin,
     host: options.host || process.env.ADB_HOST,
-    port: options.port || 5037,
+    port: port === undefined || Number.isNaN(port) ? 5037 : port,
     backend: options.backend,
     stopNativeAdbServerOnUsbBusy: options.stopNativeAdbServerOnUsbBusy,
   };
-  if (!opts.port) {
-    const port = parseInt(process.env.ADB_PORT || '5037', 10);
-    if (!isNaN(port)) {
-      opts.port = port;
-    }
-  }
   return new Client(opts);
 }

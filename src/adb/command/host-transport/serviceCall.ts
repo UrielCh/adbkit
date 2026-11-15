@@ -4,7 +4,7 @@ import { EOL } from 'node:os';
 import Command from '../../command.js';
 import { KnownServices } from './servicesList.js';
 import { type ParcelVal, ParcelValMap } from './Parcel.js';
-import { Utils } from '../../../index.js';
+import Utils from '../../utils.js';
 
 export type ServiceCallArg = ServiceCallArgNumber | ServiceCallArgString | ServiceCallArgNull;
 

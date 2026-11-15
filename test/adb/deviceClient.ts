@@ -445,3 +445,26 @@ describe('DeviceClient API cleanup & deprecated aliases', () => {
     expect(getPackagesStub.secondCall.args).to.deep.equal(['-3']);
   });
 });
+
+describe('DeviceClientExtra settings switches', () => {
+  afterEach(() => Sinon.restore());
+
+  it('taps the center of a localized airplane switch', async () => {
+    const device = new DeviceClient(mockClient, 'dummy-serial');
+    Sinon.stub(device, 'startActivity').resolves();
+    const exec = Sinon.stub(device, 'execOut').resolves('');
+    exec.withArgs('uiautomator dump /dev/tty', 'utf8').resolves('<hierarchy><node class="android.widget.Switch" checked="false" bounds="[10,20][30,60]"/></hierarchy>UI hierchary dumped to: /dev/tty');
+    expect(await device.extra.airplaneMode(true)).to.equal(true);
+    expect(exec.calledWith(['input', 'tap', 20, 40], 'utf8')).to.equal(true);
+  });
+
+  it('strips the dump footer and taps the center of the USB switch', async () => {
+    const device = new DeviceClient(mockClient, 'dummy-serial');
+    Sinon.stub(device, 'startActivity').resolves();
+    const execOut = Sinon.stub(device, 'execOut').resolves('');
+    execOut.withArgs('uiautomator dump /dev/tty', 'utf8').resolves('<hierarchy><node><node><node text="USB tethering"/></node><node><node class="android.widget.Switch" checked="false" bounds="[10,20][30,60]"/></node></node></hierarchy>UI hierchary dumped to: /dev/tty');
+    const exec = Sinon.stub(device, 'exec').resolves('');
+    expect(await device.extra.usbTethering(true)).to.equal(true);
+    expect(exec.calledWith(['input', 'tap', 20, 40])).to.equal(true);
+  });
+});

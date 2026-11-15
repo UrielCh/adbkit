@@ -85,7 +85,7 @@ describe('util', () => {
             setTimeout(() => stream.write('hello '), 10);
             setTimeout(() => stream.write('world!'), 20);
             const match = await Utils.waitforText(duplex, /hello world!/, 500);
-            expect(match).to.equal('world!');
+            expect(match).to.equal('hello world!');
             stream.destroy();
         });
     });

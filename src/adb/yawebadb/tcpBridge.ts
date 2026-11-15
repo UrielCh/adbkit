@@ -216,8 +216,11 @@ export function createNetDaemonConnection(netSocket: Net.Socket, adbMod: AdbModu
           netSocket.write(chunk, (err) => (err ? reject(err) : resolve()));
         });
       }
-    } catch {
-      // socket closed
+    } catch (err) {
+      netSocket.destroy();
+      await reader.cancel(err).catch(() => {});
+    } finally {
+      reader.releaseLock();
     }
   })();
 
@@ -258,38 +261,43 @@ export async function connectTcpDevice(params: ConnectTcpDeviceParams): Promise<
     s.once('connect', onConnect);
   });
 
-  const connection = createNetDaemonConnection(netSocket, adbMod);
-  const auth = adbMod.adbDaemonAuthenticate || adbMod.AdbDaemonTransport?.authenticate;
-  if (!auth) {
-    throw new Error('adbDaemonAuthenticate is not available');
+  try {
+    const connection = createNetDaemonConnection(netSocket, adbMod);
+    const auth = adbMod.adbDaemonAuthenticate || adbMod.AdbDaemonTransport?.authenticate;
+    if (!auth) {
+      throw new Error('adbDaemonAuthenticate is not available');
+    }
+    const transport: AdbTransportLike = await auth({
+      serial,
+      connection,
+      credentialManager,
+      credentialStore: credentialManager,
+    });
+    const adbInstance: AdbLike = new adbMod.Adb(transport);
+
+    const entry: ManagedDeviceInfo = {
+      serial,
+      state: 'device',
+      path: `tcp:${host}:${port}`,
+      product: sanitizeToken(adbInstance.banner?.product, 'unknown'),
+      model: sanitizeToken(adbInstance.banner?.model, 'unknown'),
+      device: sanitizeToken(adbInstance.banner?.device, 'unknown'),
+      transportId,
+      isTcp: true,
+      detached: false,
+      adb: adbInstance,
+      cleanup: async () => {
+        netSocket.destroy();
+      },
+    };
+
+    void adbInstance.disconnected.finally(() => {
+      onDisconnected(adbInstance);
+    });
+
+    return entry;
+  } catch (err) {
+    netSocket.destroy();
+    throw err;
   }
-  const transport: AdbTransportLike = await auth({
-    serial,
-    connection,
-    credentialManager,
-    credentialStore: credentialManager,
-  });
-  const adbInstance: AdbLike = new adbMod.Adb(transport);
-
-  const entry: ManagedDeviceInfo = {
-    serial,
-    state: 'device',
-    path: `tcp:${host}:${port}`,
-    product: sanitizeToken(adbInstance.banner?.product, 'unknown'),
-    model: sanitizeToken(adbInstance.banner?.model, 'unknown'),
-    device: sanitizeToken(adbInstance.banner?.device, 'unknown'),
-    transportId,
-    isTcp: true,
-    detached: false,
-    adb: adbInstance,
-    cleanup: async () => {
-      netSocket.destroy();
-    },
-  };
-
-  void adbInstance.disconnected.finally(() => {
-    onDisconnected(adbInstance);
-  });
-
-  return entry;
 }

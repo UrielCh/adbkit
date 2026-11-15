@@ -184,7 +184,7 @@ export default class Utils {
         const text = buf.toString();
         allText += text;
         if (expected.test(allText))
-          return text;
+          return allText;
         // console.log('RCV Non matching DATA:', text);
       } else if (duplex.stream.readableEnded || duplex.stream.closed) {
         throw Error(`stream ended waiting for ${expected}, receved: ${allText}`);

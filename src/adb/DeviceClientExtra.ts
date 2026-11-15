@@ -2,7 +2,7 @@ import DeviceClient from "./DeviceClient.js";
 import xpath from 'xpath';
 import { DOMParser } from '@xmldom/xmldom';
 import { KeyCodesMap, type KeyCodes } from "./keycode.js";
-import { Utils } from "../index.js";
+import Utils from './utils.js';
 
 export default class DeviceClientExtra {
   constructor(private deviceClient: DeviceClient) { }
@@ -14,12 +14,12 @@ export default class DeviceClientExtra {
   async usbTethering(enable: boolean): Promise<boolean> {
     await this.keyCode(KeyCodesMap.KEYCODE_WAKEUP);
     await this.deviceClient.startActivity({ component: 'com.android.settings/.TetherSettings', wait: true });
-    const xml = await this.deviceClient.execOut('uiautomator dump /dev/tty', 'utf8');
+    const xml = (await this.deviceClient.execOut('uiautomator dump /dev/tty', 'utf8')).replace(/UI hierchary dumped to: \/dev\/tty/g, '');
     const doc = new DOMParser().parseFromString(xml, "text/xml");
     // https://gist.github.com/LeCoupa/8c305ec8c713aad07b14
     const nodesRaw = xpath.select('//*[contains(@text,"USB")]/../..', doc as unknown as Node);
     const nodes = Array.isArray(nodesRaw)
-      ? nodesRaw.filter((n): n is Element => n instanceof Element)
+      ? nodesRaw.filter((n): n is Element => n.nodeType === 1)
       : [];
     if (!nodes.length)
       throw Error('can not find USB labeled node');
@@ -41,14 +41,13 @@ export default class DeviceClientExtra {
     const m = bounds.match(/\[(\d+),(\d+)\]\[(\d+),(\d+)\]/)
     if (!m)
       throw Error('failed to parse Switch bounds');
-    const [, x1, y1] = m; // , x2, y2
-    await this.deviceClient.exec(['input', 'tap', x1, y1]);
+    const [, x1, y1, x2, y2] = m.map(Number);
+    await this.deviceClient.exec(['input', 'tap', Math.floor((x1 + x2) / 2), Math.floor((y1 + y2) / 2)]);
     return true;
   }
 
   /**
    * Rootless version of enabling or disabling airplane mode.
-   * Depends on phone language; will fail with non-latin languages.
    * @param enable expected final state for airplane mode
    * @param twiceMs if > 0 will switch airplane mode 2 times to match expected state
    */
@@ -59,30 +58,14 @@ export default class DeviceClientExtra {
     // await Utils.delay(100);
     let xml = await this.deviceClient.execOut('uiautomator dump /dev/tty', 'utf8');
     xml = xml.replace('UI hierchary dumped to: /dev/tty', '');
-    // xml = xml.replace(/ ([a-z-]+)=""/g, '');
-    // xml = xml.replace(/ (checkable|clickable|content-desc|enabled|focused|focusable|index|long-clickable|package|password|resource-id|scrollable|selected)="[^"]*"/g, '');
-    const textFilter = (text: string) => text.toLowerCase();
-    const doc = new DOMParser().parseFromString(textFilter(xml), 'text/xml')
-
-    const all_switch_widget = xpath.select(textFilter('//*/node[@class="android.widget.Switch"]'), doc as unknown as Node) as Element[];
-    if (!Array.isArray(all_switch_widget)) {
-      throw Error('no switch on screen.');
-    }
-    let theSwitch: Element | null = null;
-    if (!all_switch_widget.length) {
-      throw Error('no switch on screen.');
-    }
-    for (let i = 0; i < all_switch_widget.length; i++) {
-      const nodes = xpath.select('../../*/node[contains(@text,"mode")]', all_switch_widget[i]) as Element[];
-      if (nodes.length) {
-        theSwitch = all_switch_widget[i] as Element;
-      }
-    }
-    if (!theSwitch) {
-      throw Error('can not find mode labeled node "mode avion" airplaneMode switch failed');
-    }
-    // https://gist.github.com/LeCoupa/8c305ec8c713aad07b14
-    // "Airplane mode"
+    const doc = new DOMParser().parseFromString(xml, 'text/xml');
+    const switches = xpath.select('//node[@class="android.widget.Switch"]', doc as unknown as Node) as Element[];
+    if (!Array.isArray(switches) || !switches.length) throw Error('no switch on screen.');
+    // The dedicated settings screen normally contains a single switch. If there
+    // are several, only choose one with a recognizable airplane resource ID.
+    const identified = switches.filter(node => /airplane|aeroplane/i.test(node.getAttribute('resource-id') ?? ''));
+    const theSwitch = identified.length === 1 ? identified[0] : switches.length === 1 ? switches[0] : undefined;
+    if (!theSwitch) throw Error('cannot uniquely identify the airplane mode switch');
     const checked = theSwitch.getAttribute('checked') === 'true';
     const bounds = theSwitch.getAttribute('bounds');
     if (!bounds)
@@ -93,11 +76,13 @@ export default class DeviceClientExtra {
     const m = bounds.match(/\[(\d+),(\d+)\]\[(\d+),(\d+)\]/)
     if (!m)
       throw Error('failed to parse Switch bounds airplaneMode switch failed');
-    const [, x1, y1] = m; // , x2, y2
-    await this.tap(x1, y1);
+    const [, x1, y1, x2, y2] = m.map(Number);
+    const x = Math.floor((x1 + x2) / 2);
+    const y = Math.floor((y1 + y2) / 2);
+    await this.tap(x, y);
     if (twiceMs && checked === enable) {
       await Utils.delay(twiceMs);
-      await this.tap(x1, y1);
+      await this.tap(x, y);
     }
     return true;
   }

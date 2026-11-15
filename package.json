@@ -59,8 +59,6 @@
     "format": "eslint . --fix",
     "test": "mocha -r tsx --reporter spec --colors 'test/**/*.ts'",
     "test:integration": "tsx tasks/testNativeIntegration.ts",
-    "test2": "mocha -r tsx --reporter spec --colors 'test/adb/thirdparty/**/*.ts'",
-    "test3": "mocha -r tsx --reporter spec --colors test/adb/command/host-transport/serviceCall.ts",
     "typetest": "bunx @arethetypeswrong/cli --pack . --ignore-rules cjs-resolves-to-esm",
     "ncu": "bunx npm-check-updates -i",
     "coverage": "c8 --reporter=text --reporter=lcov mocha -r tsx 'test/**/*.ts'"

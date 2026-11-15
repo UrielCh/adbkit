@@ -24,7 +24,6 @@ export class YaWebAdbSocket extends Duplex implements AdbTransportSocket {
   private adbWriter?: ReturnType<AdbSocketLike['writable']['getWriter']>;
   private cleanupHooks: Array<() => void> = [];
   private remoteEnded = false;
-  private closedEmitted = false;
   private resumeReader?: () => void;
   private adbPort: number;
 
@@ -456,18 +455,15 @@ export class YaWebAdbSocket extends Duplex implements AdbTransportSocket {
     }
     this.endRemote();
     YaWebAdbManager.getInstance().unregisterSocket(this);
-    if (!this.closedEmitted) {
-      this.closedEmitted = true;
-      queueMicrotask(() => this.emit('close', false));
-    }
   }
 
-  public override end(cb?: () => void): this;
-  public override end(chunk: unknown, cb?: () => void): this;
-  public override end(chunk: unknown, encoding?: BufferEncoding, cb?: () => void): this;
-  public override end(...args: unknown[]): this {
-    this.cleanup();
-    return (Duplex.prototype.end as (...a: unknown[]) => this).apply(this, args);
+  public override _final(callback: (error?: Error | null) => void): void {
+    const writer = this.adbWriter;
+    if (!writer) {
+      callback();
+      return;
+    }
+    writer.close().then(() => callback(), (error: unknown) => callback(error instanceof Error ? error : new Error(String(error))));
   }
 
   public override _destroy(error: Error | null, callback: (error: Error | null) => void): void {

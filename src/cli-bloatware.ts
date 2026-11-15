@@ -20,7 +20,6 @@ async function removeBloatware(serials: string[]): Promise<void> {
       let cnt = 0;
       const bixby = pkgs.filter((a) => a.name.includes('bixby') || BixbySet.has(a.name));
       if (bixby.length) {
-        cnt++;
         console.log(`${bixby.length} bixby Packages`);
         for (const pkg of bixby) {
           console.log(`- ${pkg.name}`);
@@ -31,6 +30,7 @@ async function removeBloatware(serials: string[]): Promise<void> {
             console.log(`uninstalling ${p.name}`);
             try {
               await device.uninstall(p.name, { keep: true, user: 0, throwOnFailure: true });
+              cnt++;
               console.log('Success');
             } catch (err) {
               console.log(`Failed: ${err instanceof Error ? err.message : String(err)}`);
@@ -40,7 +40,7 @@ async function removeBloatware(serials: string[]): Promise<void> {
           console.log(`response: "${r}", Skip`);
         }
       }
-      if (!cnt) {
+      if (!bixby.length) {
         console.log('No bloatware, you may want to register some new bloatware in cli-bloatware.ts');
       } else {
         console.log(`${cnt} bloatware removed`);

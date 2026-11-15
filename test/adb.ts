@@ -16,6 +16,22 @@ describe('Adb', () => {
     });
 
     describe('@createClient(options)', () => {
+        it('resolves the port from options, environment, or default', () => {
+            const previous = process.env.ADB_PORT;
+            try {
+                process.env.ADB_PORT = '6123';
+                expect(Adb.createClient().port).to.equal(6123);
+                expect(Adb.createClient({ port: 7000 }).port).to.equal(7000);
+                process.env.ADB_PORT = 'invalid';
+                expect(Adb.createClient().port).to.equal(5037);
+                delete process.env.ADB_PORT;
+                expect(Adb.createClient().port).to.equal(5037);
+            } finally {
+                if (previous === undefined) delete process.env.ADB_PORT;
+                else process.env.ADB_PORT = previous;
+            }
+        });
+
         it('should return a Client instance', () => {
             expect(Adb.createClient()).to.be.an.instanceOf(Client);
         });

@@ -1,4 +1,5 @@
 import { expect, use } from 'chai';
+import sinon from 'sinon';
 import sinonChai from 'sinon-chai';
 import { Buffer } from 'node:buffer';
 import { EventEmitter } from 'node:events';
@@ -11,7 +12,7 @@ import Adb, {
   YaWebAdbModules,
   YaWebAdbSocket,
 } from '../../src/index.js';
-import { bridgeNetAndAdbSocket, createNetDaemonConnection } from '../../src/adb/yawebadb/tcpBridge.js';
+import { bridgeNetAndAdbSocket, connectTcpDevice, createNetDaemonConnection } from '../../src/adb/yawebadb/tcpBridge.js';
 import type { AdbModuleLike, AdbSocketLike, AdbTransportLike, WebUsbDeviceLike } from '../../src/adb/yawebadb/types.js';
 import { ensureUsbDeviceConnected } from '../../src/adb/yawebadb/usbConnector.js';
 
@@ -361,6 +362,46 @@ describe('ya-webadb integration', () => {
     expect(await device.listForwards()).to.deep.equal([]);
   });
 
+  it('flushes writes before half-closing and keeps the readable side open', async () => {
+    let releaseWrite!: () => void;
+    let wrote = false;
+    let writerClosed = false;
+    let closeSocket = false;
+    let sendReply!: (value: { done: boolean; value?: Uint8Array }) => void;
+    const adbSocket: AdbSocketLike = {
+      service: 'test', closed: Promise.resolve(undefined),
+      readable: { getReader: () => ({
+        read: () => new Promise(resolve => { sendReply = resolve; }),
+        releaseLock: () => {}, cancel: async () => {},
+      }) },
+      writable: new WritableStream<Uint8Array>({
+        write: async () => { await new Promise<void>(resolve => { releaseWrite = resolve; }); wrote = true; },
+        close: () => { writerClosed = true; },
+      }),
+      close: async () => { closeSocket = true; },
+    };
+    const socket = new YaWebAdbSocket();
+    const fakeAdb = { createSocket: async () => adbSocket } as unknown as Parameters<YaWebAdbSocket['handleTransportService']>[0];
+    await socket['handleTransportService'](fakeAdb, 'test');
+    socket.read(); // service OKAY
+    socket.end('request');
+    await new Promise<void>(resolve => setImmediate(resolve));
+    expect(writerClosed).to.equal(false);
+    expect(closeSocket).to.equal(false);
+    releaseWrite();
+    await new Promise<void>(resolve => socket.once('finish', resolve));
+    expect(wrote).to.equal(true);
+    expect(writerClosed).to.equal(true);
+    expect(closeSocket).to.equal(false);
+    sendReply({ done: false, value: Buffer.from('reply') });
+    await new Promise<void>(resolve => setImmediate(resolve));
+    expect(socket.read()?.toString()).to.equal('reply');
+    sendReply({ done: true });
+    socket.resume();
+    await new Promise<void>(resolve => socket.once('close', () => resolve()));
+    expect(closeSocket).to.equal(true);
+  });
+
   it('should pause device reads until a slow consumer drains the socket', async () => {
     let reads = 0;
     let released = false;
@@ -429,6 +470,57 @@ describe('ya-webadb integration', () => {
   });
 
   describe('tcpBridge', () => {
+    it('destroys the TCP socket when authentication fails', async () => {
+      const socket = new EventEmitter() as unknown as Net.Socket;
+      socket.setNoDelay = (() => socket) as Net.Socket['setNoDelay'];
+      const destroy = sinon.stub().returns(socket);
+      socket.destroy = destroy as Net.Socket['destroy'];
+      const connect = sinon.stub(Net, 'connect').callsFake((() => {
+        queueMicrotask(() => socket.emit('connect'));
+        return socket;
+      }) as typeof Net.connect);
+      const adbMod = {
+        AdbPacketSerializeStream: class {
+          readable = new ReadableStream();
+          writable = new WritableStream();
+        },
+        adbDaemonAuthenticate: async () => { throw new Error('auth failed'); },
+      } as unknown as AdbModuleLike;
+      try {
+        await connectTcpDevice({ host: 'localhost', port: 5555, adbMod, credentialManager: {} as never, transportId: '1', onDisconnected: () => {} });
+        expect.fail('expected authentication failure');
+      } catch (err) {
+        expect((err as Error).message).to.equal('auth failed');
+        expect(destroy.calledOnce).to.equal(true);
+      } finally {
+        connect.restore();
+      }
+    });
+
+    it('destroys the TCP socket when a serialized packet write fails', async () => {
+      const socket = new EventEmitter() as unknown as Net.Socket;
+      const destroy = sinon.stub().returns(socket);
+      socket.destroy = destroy as Net.Socket['destroy'];
+      socket.write = ((_chunk: Uint8Array, cb: (err?: Error | null) => void) => {
+        cb(new Error('write failed'));
+        return false;
+      }) as unknown as Net.Socket['write'];
+      let cancelled = false;
+      const adbMod = {
+        AdbPacketSerializeStream: class {
+          readable = new ReadableStream({
+            start(controller) { controller.enqueue(new Uint8Array([1])); },
+            cancel() { cancelled = true; },
+          });
+          writable = new WritableStream();
+        },
+      } as unknown as AdbModuleLike;
+      createNetDaemonConnection(socket, adbMod);
+      await new Promise<void>(resolve => setImmediate(resolve));
+      expect(destroy.calledOnce).to.equal(true);
+      expect(cancelled).to.equal(true);
+    });
+
     it('createNetDaemonConnection should reassemble fragmented and multi-chunk packets cleanly', async () => {
       const mockSocket = new EventEmitter() as unknown as Net.Socket;
       mockSocket.destroy = (() => mockSocket) as Net.Socket['destroy'];

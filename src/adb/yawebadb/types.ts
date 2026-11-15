@@ -107,6 +107,8 @@ export interface AdbPacketSerializeStreamLike {
   readonly readable: {
     getReader(): {
       read(): Promise<{ done: boolean; value?: Uint8Array | { value: Uint8Array } }>;
+      cancel(reason?: unknown): Promise<void>;
+      releaseLock(): void;
     };
   };
   readonly writable: unknown;

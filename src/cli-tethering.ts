@@ -1,7 +1,7 @@
 import { program } from 'commander';
 import DeviceClient from './adb/DeviceClient.js';
 import Utils from './adb/utils.js';
-import { getClientDevice } from './cli-common.js';
+import { forEachDevice, getClientDevice } from './cli-common.js';
 
 program
   .command('usb-tethering-off [serials...]')
@@ -17,7 +17,7 @@ program
         console.log(`[${device.serial}] failed or already disabled`);
       }
     }
-    await Promise.all(devices.map(process));
+    await forEachDevice(devices, process);
   });
 
 program
@@ -34,6 +34,6 @@ program
         console.log(`[${device.serial}] failed or already enabled`);
       }
     }
-    await Promise.all(devices.map(process));
+    await forEachDevice(devices, process);
   });
 

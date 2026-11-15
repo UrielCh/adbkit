@@ -5,7 +5,8 @@ import Auth from './adb/auth.js';
 import PacketReader from './adb/tcpusb/packetreader.js';
 import path from 'node:path';
 import Utils from './adb/utils.js';
-import { createCliClient, getClientDevice } from './cli-common.js';
+import { createCliClient, forEachDevice, getClientDevice } from './cli-common.js';
+import { YaWebAdbManager } from './adb/yawebadb/manager.js';
 
 import './cli-airplane.js';
 import './cli-connectivity.js';
@@ -19,6 +20,8 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
 const pkg: { version: string } = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'package.json'), { encoding: 'utf-8' }));
+
+type AdbOptionsForCli = { backend?: string };
 
 function parsePort(value: string): number {
   if (!/^\d+$/.test(value) || Number(value) < 1 || Number(value) > 65535) {
@@ -91,8 +94,7 @@ program
   .description('capture screen of one or many device as png.')
   .action(async (dest: string, serials: string[]) => {
     const devices = await getClientDevice(serials);
-    for (let i = 0; i < devices.length; i++) {
-      const device = devices[i];
+    await forEachDevice(devices, async (device) => {
       let out = dest;
       if (devices.length > 1) {
         out = path.join(path.dirname(out), device.serial + '-' + path.basename(out));
@@ -100,10 +102,17 @@ program
       const stream = await device.screencap();
       const capture = await Utils.readAll(stream);
       await fs.promises.writeFile(out, capture);
-    }
+    });
   });
 
 program.parseAsync(process.argv).catch((err: unknown) => {
+  console.error(err instanceof Error ? err.message : err);
+  process.exitCode = 1;
+}).finally(async () => {
+  if (program.opts<AdbOptionsForCli>().backend === 'ya-webadb' && program.args[0] !== 'usb-device-to-tcp') {
+    await YaWebAdbManager.getInstance().killAll();
+  }
+}).catch((err: unknown) => {
   console.error(err instanceof Error ? err.message : err);
   process.exitCode = 1;
 });

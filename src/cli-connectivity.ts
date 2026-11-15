@@ -1,6 +1,6 @@
 import { program } from 'commander';
 import DeviceClient from './adb/DeviceClient.js';
-import { getClientDevice } from './cli-common.js';
+import { forEachDevice, getClientDevice } from './cli-common.js';
 
 for (const type of ['bluetooth', 'data', 'wifi'] as const) {
   program
@@ -9,13 +9,14 @@ for (const type of ['bluetooth', 'data', 'wifi'] as const) {
     .action(async (serials: string[]) => {
       const devices = await getClientDevice(serials);
       const process = async (device: DeviceClient) => {
-        if (await device.extra.setSvc(type, false)) {
+        const output = await device.extra.setSvc(type, false);
+        if (!output.trim()) {
           console.log(`[${device.serial}] ${type} disabled`);
         } else {
-          console.log(`[${device.serial}] failed ${type} already disabled`);
+          throw new Error(output.trim());
         }
       }
-      await Promise.all(devices.map(process));
+      await forEachDevice(devices, process);
     });
 
   program
@@ -24,12 +25,13 @@ for (const type of ['bluetooth', 'data', 'wifi'] as const) {
     .action(async (serials: string[]) => {
       const devices = await getClientDevice(serials);
       const process = async (device: DeviceClient) => {
-        if (await device.extra.setSvc(type, true)) {
+        const output = await device.extra.setSvc(type, true);
+        if (!output.trim()) {
           console.log(`[${device.serial}] ${type} enabled`);
         } else {
-          console.log(`[${device.serial}] failed ${type} already enabled`);
+          throw new Error(output.trim());
         }
       }
-      await Promise.all(devices.map(process));
+      await forEachDevice(devices, process);
     });
 }

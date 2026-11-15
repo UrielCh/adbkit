@@ -164,7 +164,6 @@ export default class STFService extends EventEmitter {
    */
   public async uninstall(): Promise<boolean> {
     await this.client.uninstall(PKG);
-    await this.client.execOut('rm -f /data/local/tmp/minicap /data/local/tmp/minicap.so /data/local/tmp/minitouch /data/local/tmp/minirev');
     return true;
   }
 

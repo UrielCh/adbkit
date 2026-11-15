@@ -1,7 +1,7 @@
 import { program } from 'commander';
 import DeviceClient from './adb/DeviceClient.js';
 import Utils from './adb/utils.js';
-import { getClientDevice } from './cli-common.js';
+import { forEachDevice, getClientDevice } from './cli-common.js';
 
 program
   .command('airplane-mode-off [serials...]')
@@ -17,7 +17,7 @@ program
         console.log(`[${device.serial}] airplane failed or already disabled`);
       }
     }
-    await Promise.all(devices.map(process));
+    await forEachDevice(devices, process);
   });
 
 program
@@ -31,10 +31,10 @@ program
         await Utils.delay(100)
         await device.extra.back();
       } else {
-        console.log(`[${device.serial}] airplane or already enabled`);
+        console.log(`[${device.serial}] airplane on-off failed`);
       }
     }
-    await Promise.all(devices.map(process));
+    await forEachDevice(devices, process);
   });
 
 program
@@ -48,9 +48,9 @@ program
         await Utils.delay(100)
         await device.extra.back();
       } else {
-        console.log(`[${device.serial}] airplane or already enabled`);
+        console.log(`[${device.serial}] airplane failed or already enabled`);
       }
     }
-    await Promise.all(devices.map(process));
+    await forEachDevice(devices, process);
   });
 
