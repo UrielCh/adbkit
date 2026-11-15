@@ -13,7 +13,7 @@ import { CaptureOrientationMap, OrientationMap } from '../../../src/adb/thirdpar
 describe('Scrcpy 3.0 Support & Backwards Compatibility', () => {
   const dummyClient: any = {
     serial: 'dummy-serial',
-    openLocal2: async () => {},
+    openLocal: async () => new PassThrough(),
     shell: async () => {},
     push: async () => {},
     stat: async () => null,
@@ -674,7 +674,7 @@ describe('Scrcpy 3.0 Support & Backwards Compatibility', () => {
         stat: async (p: string) => (p === '/data/local/tmp' ? { isDirectory: () => true } : { size: pkgSize }),
         push: async () => ({}),
         shell: async () => shellStream,
-        openLocal2: async () => new PromiseDuplex(videoStream),
+        openLocal: async () => videoStream,
       };
     };
 

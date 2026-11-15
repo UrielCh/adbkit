@@ -9,7 +9,7 @@ program
   .action(async (serials: string[]) => {
     const devices = await getClientDevice(serials);
     const process = async (device: DeviceClient) => {
-      if (await device.extra.airPlainMode(false)) {
+      if (await device.extra.airplaneMode(false)) {
         console.log(`[${device.serial}] airplane disabled`);
         await Utils.delay(100)
         await device.extra.back();
@@ -26,7 +26,7 @@ program
   .action(async (serials: string[]) => {
     const devices = await getClientDevice(serials);
     const process = async (device: DeviceClient) => {
-      if (await device.extra.airPlainMode(false, 200)) {
+      if (await device.extra.airplaneMode(false, 200)) {
         console.log(`[${device.serial}] airplane on-off`);
         await Utils.delay(100)
         await device.extra.back();
@@ -43,7 +43,7 @@ program
   .action(async (serials: string[]) => {
     const devices = await getClientDevice(serials);
     const process = async (device: DeviceClient) => {
-      if (await device.extra.airPlainMode(true)) {
+      if (await device.extra.airplaneMode(true)) {
         console.log(`[${device.serial}] airplane enabled`);
         await Utils.delay(100)
         await device.extra.back();

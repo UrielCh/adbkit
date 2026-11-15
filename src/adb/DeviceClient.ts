@@ -1,6 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { Duplex } from 'node:stream';
-import { ReadStream } from 'node:fs';
+import { Duplex, Readable } from 'node:stream';
 import { Buffer } from 'node:buffer';
 import { DOMParser } from '@xmldom/xmldom';
 
@@ -49,7 +48,6 @@ import { RebootType } from './command/host-transport/reboot.js';
 import Minicap, { MinicapOptions } from './thirdparty/minicap/Minicap.js';
 import STFService, { STFServiceOptions } from './thirdparty/STFService/STFService.js';
 import PromiseDuplex from 'promise-duplex';
-import Protocol from './protocol.js';
 import { DeviceClientOptions } from '../models/DeviceClientOptions.js';
 import ServiceCallCommand, { ParcelReader, ServiceCallArg } from './command/host-transport/serviceCall.js';
 import DeviceClientExtra from './DeviceClientExtra.js';
@@ -252,7 +250,7 @@ export default class DeviceClient {
    * @returns The IP addresses as string[] starting with IPv4 then IPv6.
    */
   public async getIpAddress(iface = 'wlan0'): Promise<string[]> {
-    const ipData = await this.execOut(`ip addr show ${iface}`, 'utf-8');
+    const ipData = await this.execOut(['ip', 'addr', 'show', iface], 'utf-8');
     const ipV4 = [...ipData.matchAll(/inet ([\d]+\.[\d]+\.[\d]+\.[\d]+)\/\d+/g)].map(m => m[1])
     const ipV6 = [...ipData.matchAll(/inet6 ([0-9a-f:]+)\/\d+/g)].map(m => m[1])
     return [...ipV4, ...ipV6];
@@ -287,16 +285,20 @@ export default class DeviceClient {
    * @returns the used port
    */
   public async tryForwardTCP(remote: string, preferedPort?: number): Promise<number> {
-    const fwds = await this.listForwards()
-    // const usedPort = fwds.filter(a => a.local === local);
-    const usedPort = fwds.filter(a => a.remote === remote);
-    const prev = usedPort.filter(a => a.remote === remote && a.serial === this.serial);
-    if (prev.length) {
-      // already connected
-      return Number(prev[0].local.substring(4));
+    const fwds = await this.listForwards();
+    const serialFwds = fwds.filter((a) => a.serial === this.serial);
+    for (const fwd of serialFwds) {
+      if (fwd.remote === remote && fwd.local.startsWith('tcp:')) {
+        const port = Number(fwd.local.substring(4));
+        if (Number.isInteger(port) && port > 0) {
+          // already connected
+          return port;
+        }
+      }
     }
 
-    if (preferedPort && !usedPort.length)
+    const isPreferredPortInUse = preferedPort !== undefined && fwds.some((a) => a.local === `tcp:${preferedPort}`);
+    if (preferedPort && !isPreferredPortInUse)
       try {
         if (await this.forward(`tcp:${preferedPort}`, remote))
           return preferedPort;
@@ -304,7 +306,7 @@ export default class DeviceClient {
         // need a new port
       }
     const freePort = await getPort();
-    await this.forward(`tcp:${freePort}`, remote)
+    await this.forward(`tcp:${freePort}`, remote);
     return freePort;
   }
 
@@ -549,20 +551,10 @@ export default class DeviceClient {
   }
 
   /**
-   * Testing only
+   * @deprecated Use {@link openLocal} wrapped in `PromiseDuplex` instead.
    */
-  public async openLocal2(path: string, debugCtxt = ''): Promise<PromiseDuplex<Duplex>> {
-    const transport = await this.transport();
-    const data = path.includes(':') ? path : `localfilesystem:${path}`;
-    const duplex = new PromiseDuplex(transport.parser.raw());
-    await duplex.write(Protocol.encodeData(data));
-    await Utils.waitforReadable(duplex, 0, `openLocal2 ${data} - ${debugCtxt}`);
-    const code = await (duplex.read(4) as Promise<Buffer>);
-    if (!code.equals(Protocol.bOKAY as unknown as Uint8Array)) {
-      if (code.equals(Protocol.bFAIL as unknown as Uint8Array)) throw await transport.parser.readError();
-      throw transport.parser.unexpected(code.toString('ascii'), 'OKAY or FAIL');
-    }
-    return duplex;
+  public async openLocal2(path: string, _debugCtxt = ''): Promise<PromiseDuplex<Duplex>> {
+    return new PromiseDuplex(await this.openLocal(path));
   }
 
   /**
@@ -728,7 +720,7 @@ export default class DeviceClient {
    * };
    * ```
    */
-  public async install(apk: string | ReadStream): Promise<boolean> {
+  public async install(apk: string | Readable): Promise<boolean> {
     const temp = Sync.temp(typeof apk === 'string' ? apk : `_stream_${randomUUID()}.apk`);
     const transfer = await this.push(apk, temp);
     await transfer.waitForEnd();
@@ -1018,7 +1010,7 @@ export default class DeviceClient {
    * };
    * ```
    */
-  public async push(contents: string | ReadStream, path: string, mode?: number): Promise<PushTransfer> {
+  public async push(contents: string | Readable, path: string, mode?: number): Promise<PushTransfer> {
     const sync = await this.syncService();
     const transfert = await sync.push(contents, path, mode);
     void transfert

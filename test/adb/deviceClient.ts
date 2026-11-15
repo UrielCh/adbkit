@@ -1,8 +1,9 @@
 import { expect } from 'chai';
-import { PassThrough } from 'node:stream';
-import type { ReadStream } from 'node:fs';
+import { PassThrough, Readable } from 'node:stream';
+import PromiseDuplex from 'promise-duplex';
 import Sinon from 'sinon';
 import DeviceClient from '../../src/adb/DeviceClient.js';
+import DevicePackage from '../../src/adb/DevicePackage.js';
 import MockConnection from '../mock/connection.js';
 import Protocol from '../../src/adb/protocol.js';
 
@@ -217,8 +218,8 @@ describe('DeviceClient resource reliability', () => {
       return true;
     }) as any;
 
-    const s1 = new PassThrough() as unknown as ReadStream;
-    const s2 = new PassThrough() as unknown as ReadStream;
+    const s1 = new PassThrough();
+    const s2 = new PassThrough();
     await Promise.all([device.install(s1), device.install(s2)]);
 
     expect(pushedPaths).to.have.lengthOf(2);
@@ -226,5 +227,170 @@ describe('DeviceClient resource reliability', () => {
     expect(pushedPaths[0]).to.match(/^\/data\/local\/tmp\/_stream_[0-9a-f-]+\.apk$/);
     expect(pushedPaths[1]).to.match(/^\/data\/local\/tmp\/_stream_[0-9a-f-]+\.apk$/);
     expect(installedPaths).to.deep.equal(pushedPaths);
+  });
+
+  it('push should accept a generic Readable stream', async () => {
+    const conn = new MockConnection();
+    const writes: Buffer[] = [];
+    conn.getSocket().on('write', (chunk: Buffer) => {
+      writes.push(chunk);
+    });
+    setImmediate(() => {
+      const sock = conn.getSocket();
+      sock.causeRead(Protocol.OKAY);
+      setImmediate(() => {
+        sock.causeRead(Protocol.OKAY);
+        sock.causeRead(Buffer.alloc(4));
+        sock.causeEnd();
+      });
+    });
+
+    const device = new DeviceClient({} as any, 'dummy-serial');
+    device.transport = (async () => conn) as any;
+
+    const stream = Readable.from([Buffer.from('hello')]);
+    const transfer = await device.push(stream, '/data/local/tmp/hello.txt');
+    await transfer.waitForEnd();
+
+    expect(Buffer.concat(writes).toString()).to.include('hello');
+  });
+});
+
+describe('DeviceClient shell argument escaping', () => {
+  const createCaptureExecDevice = (response = '') => {
+    const sentCommands: string[] = [];
+    const device = new DeviceClient({} as any, 'dummy-serial');
+    device.transport = (async () => {
+      const conn = new MockConnection();
+      conn.getSocket().on('write', (chunk: Buffer) => {
+        sentCommands.push(chunk.toString());
+      });
+      setImmediate(() => {
+        const sock = conn.getSocket();
+        sock.causeRead(Protocol.OKAY);
+        if (response) {
+          sock.causeRead(response);
+        }
+        sock.causeEnd();
+      });
+      return conn;
+    }) as any;
+    return { device, sentCommands };
+  };
+
+  it('getIpAddress should escape iface argument', async () => {
+    const { device, sentCommands } = createCaptureExecDevice(
+      'inet 192.168.1.10/24 brd 192.168.1.255 scope global wlan0\ninet6 fe80::1/64 scope link\n',
+    );
+    const ips = await device.getIpAddress("wlan0; rm -rf / 'test'");
+    expect(ips).to.deep.equal(['192.168.1.10', 'fe80::1']);
+    expect(sentCommands[0]).to.equal(
+      Protocol.encodeData(`exec:'ip' 'addr' 'show' 'wlan0; rm -rf / '"'"'test'"'"''`).toString(),
+    );
+  });
+
+  it('DevicePackage.dump should escape package name argument', async () => {
+    const { device, sentCommands } = createCaptureExecDevice('Package [com.example]\n');
+    const pkg = new DevicePackage(device, "com.example; echo 'pwn'");
+    const output = await pkg.dump();
+    expect(output).to.equal('Package [com.example]\n');
+    expect(sentCommands[0]).to.equal(
+      Protocol.encodeData(`exec:'dumpsys' 'package' 'com.example; echo '"'"'pwn'"'"''`).toString(),
+    );
+  });
+
+  it('DeviceClientExtra.tap should escape tap coordinates', async () => {
+    const { device, sentCommands } = createCaptureExecDevice('');
+    await device.extra.tap("100; id", "200 'test'");
+    expect(sentCommands[0]).to.equal(
+      Protocol.encodeData(`exec:'input' 'tap' '100; id' '200 '"'"'test'"'"''`).toString(),
+    );
+  });
+});
+
+describe('DeviceClient.tryForwardTCP', () => {
+  it('should ignore localabstract forwards on this.serial and not return NaN', async () => {
+    const device = new DeviceClient({} as any, 'serial-1');
+    device.listForwards = async () => [
+      { serial: 'serial-1', local: 'localabstract:existing', remote: 'localabstract:scrcpy' },
+    ];
+    const forwarded: Array<[string, string]> = [];
+    device.forward = async (local: string, remote: string) => {
+      forwarded.push([local, remote]);
+      return true;
+    };
+
+    const port = await device.tryForwardTCP('localabstract:scrcpy', 27183);
+    expect(port).to.equal(27183);
+    expect(forwarded).to.deep.equal([['tcp:27183', 'localabstract:scrcpy']]);
+  });
+
+  it('should return existing tcp forward port on this.serial', async () => {
+    const device = new DeviceClient({} as any, 'serial-1');
+    device.listForwards = async () => [
+      { serial: 'serial-2', local: 'tcp:11111', remote: 'localabstract:scrcpy' },
+      { serial: 'serial-1', local: 'localabstract:other', remote: 'localabstract:scrcpy' },
+      { serial: 'serial-1', local: 'tcp:27185', remote: 'localabstract:scrcpy' },
+    ];
+    device.forward = async () => {
+      throw new Error('should not create a new forward');
+    };
+
+    const port = await device.tryForwardTCP('localabstract:scrcpy', 27183);
+    expect(port).to.equal(27185);
+  });
+
+  it('should allow preferedPort when another serial forwards to the same remote on a different port', async () => {
+    const device = new DeviceClient({} as any, 'serial-1');
+    device.listForwards = async () => [
+      { serial: 'serial-2', local: 'tcp:27184', remote: 'localabstract:scrcpy' },
+    ];
+    const forwarded: Array<[string, string]> = [];
+    device.forward = async (local: string, remote: string) => {
+      forwarded.push([local, remote]);
+      return true;
+    };
+
+    const port = await device.tryForwardTCP('localabstract:scrcpy', 27183);
+    expect(port).to.equal(27183);
+    expect(forwarded).to.deep.equal([['tcp:27183', 'localabstract:scrcpy']]);
+  });
+
+  it('should pick a free port if preferedPort is already bound', async () => {
+    const device = new DeviceClient({} as any, 'serial-1');
+    device.listForwards = async () => [
+      { serial: 'serial-2', local: 'tcp:27183', remote: 'localabstract:other' },
+    ];
+    const forwarded: Array<[string, string]> = [];
+    device.forward = async (local: string, remote: string) => {
+      forwarded.push([local, remote]);
+      return true;
+    };
+
+    const port = await device.tryForwardTCP('localabstract:scrcpy', 27183);
+    expect(port).to.be.a('number').and.not.equal(27183);
+    expect(forwarded).to.deep.equal([[`tcp:${port}`, 'localabstract:scrcpy']]);
+  });
+});
+
+describe('DeviceClient API cleanup & deprecated aliases', () => {
+  it('openLocal2 should delegate to openLocal and return a PromiseDuplex', async () => {
+    const device = new DeviceClient({} as any, 'dummy-serial');
+    const mockStream = new PassThrough();
+    const openLocalStub = Sinon.stub(device, 'openLocal').resolves(mockStream);
+
+    const duplex = await device.openLocal2('localabstract:test', 'ctx');
+    expect(openLocalStub.calledOnceWithExactly('localabstract:test')).to.equal(true);
+    expect(duplex).to.be.an.instanceOf(PromiseDuplex);
+    expect(duplex.stream).to.equal(mockStream);
+  });
+
+  it('DeviceClientExtra.airPlainMode should delegate to airplaneMode', async () => {
+    const device = new DeviceClient({} as any, 'dummy-serial');
+    const airplaneStub = Sinon.stub(device.extra, 'airplaneMode').resolves(true);
+
+    const res = await device.extra.airPlainMode(true, 150);
+    expect(res).to.equal(true);
+    expect(airplaneStub.calledOnceWithExactly(true, 150)).to.equal(true);
   });
 });

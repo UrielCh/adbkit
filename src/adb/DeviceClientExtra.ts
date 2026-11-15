@@ -42,17 +42,17 @@ export default class DeviceClientExtra {
     if (!m)
       throw Error('failed to parse Switch bounds');
     const [, x1, y1] = m; // , x2, y2
-    await this.deviceClient.exec('input tap ' + x1 + ' ' + y1);
+    await this.deviceClient.exec(['input', 'tap', x1, y1]);
     return true;
   }
 
   /**
-   * rootless version of enable air plain mode
-   * Depends of phone language will fail with non latin language.
-   * @param enable expected final stat for airplain mode
-   * @param twiceMs if > 0 will switch airplan mode 2 time to match expected state
+   * Rootless version of enabling or disabling airplane mode.
+   * Depends on phone language; will fail with non-latin languages.
+   * @param enable expected final state for airplane mode
+   * @param twiceMs if > 0 will switch airplane mode 2 times to match expected state
    */
-  async airPlainMode(enable: boolean, twiceMs?: number): Promise<boolean> {
+  async airplaneMode(enable: boolean, twiceMs?: number): Promise<boolean> {
     // wake screen
     await this.keyCode(KeyCodesMap.KEYCODE_WAKEUP);
     await this.deviceClient.startActivity({ action: 'android.settings.AIRPLANE_MODE_SETTINGS', wait: true });
@@ -79,20 +79,20 @@ export default class DeviceClientExtra {
       }
     }
     if (!theSwitch) {
-      throw Error('can not find mode labeled node "mode avion" airPlainMode switch failed');
+      throw Error('can not find mode labeled node "mode avion" airplaneMode switch failed');
     }
     // https://gist.github.com/LeCoupa/8c305ec8c713aad07b14
     // "Airplane mode"
     const checked = theSwitch.getAttribute('checked') === 'true';
     const bounds = theSwitch.getAttribute('bounds');
     if (!bounds)
-      throw Error('missing bounds attribut in switch');
+      throw Error('missing bounds attribute in switch');
     if (!twiceMs && checked === enable) {
       return false;
     }
     const m = bounds.match(/\[(\d+),(\d+)\]\[(\d+),(\d+)\]/)
     if (!m)
-      throw Error('failed to parse Switch bounds airPlainMode switch failed');
+      throw Error('failed to parse Switch bounds airplaneMode switch failed');
     const [, x1, y1] = m; // , x2, y2
     await this.tap(x1, y1);
     if (twiceMs && checked === enable) {
@@ -103,12 +103,19 @@ export default class DeviceClientExtra {
   }
 
   /**
+   * @deprecated Use {@link airplaneMode} instead.
+   */
+  async airPlainMode(enable: boolean, twiceMs?: number): Promise<boolean> {
+    return this.airplaneMode(enable, twiceMs);
+  }
+
+  /**
    * enable / disable 
    * type: bluetooth / data/ wifi
    */
   async setSvc(type: 'bluetooth' | 'data' | 'wifi', enable: boolean): Promise<string> {
     const action = enable ? 'enable' : 'disable';
-    return this.deviceClient.execOut(`svc ${type} ${action}`, 'utf8');
+    return this.deviceClient.execOut(['svc', type, action], 'utf8');
   }
 
   /**
@@ -117,8 +124,8 @@ export default class DeviceClientExtra {
    * @param y1 
    * @returns 
    */
-  async tap(x1: string, y1: string): Promise<string> {
-    return this.deviceClient.execOut(`input tap ${x1} ${y1}`, 'utf8');
+  async tap(x1: string | number, y1: string | number): Promise<string> {
+    return this.deviceClient.execOut(['input', 'tap', x1, y1], 'utf8');
   }
 
   /**
@@ -127,7 +134,7 @@ export default class DeviceClientExtra {
    * @returns 
    */
   async keyCode(key: KeyCodes): Promise<string> {
-    return this.deviceClient.execOut(`input keyevent ${key}`, 'utf8');
+    return this.deviceClient.execOut(['input', 'keyevent', key], 'utf8');
   }
 
   /**

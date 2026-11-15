@@ -604,7 +604,7 @@ export default class Scrcpy extends EventEmitter {
     for (let attempt = 0; attempt < 5; attempt++) {
       try {
         await Utils.delay(attempt === 0 ? 150 : 250);
-        this.videoSocket = await this.client.openLocal2(`localabstract:${SC_SOCKET_NAME}`, 'first connection to scrcpy for video');
+        this.videoSocket = new PromiseDuplex(await this.client.openLocal(`localabstract:${SC_SOCKET_NAME}`));
         break;
       } catch (err) {
         if (attempt === 4 || this.closed) {
@@ -626,7 +626,7 @@ export default class Scrcpy extends EventEmitter {
 
     if (this.major >= 2 && !this.config.noAudio) {
       // Connect audioSocket
-      this.audioSocket = await this.client.openLocal2(`localabstract:${SC_SOCKET_NAME}`, 'first connection to scrcpy for audio');
+      this.audioSocket = new PromiseDuplex(await this.client.openLocal(`localabstract:${SC_SOCKET_NAME}`));
       // Connect controlSocket
       if (this.closed) {
         this.stop();
@@ -634,7 +634,7 @@ export default class Scrcpy extends EventEmitter {
       }
     }
 
-    this.controlSocket = await this.client.openLocal2(`localabstract:${SC_SOCKET_NAME}`, 'second connection to scrcpy for control');
+    this.controlSocket = new PromiseDuplex(await this.client.openLocal(`localabstract:${SC_SOCKET_NAME}`));
     if (this.closed) {
       this.stop();
       return this;

@@ -60,7 +60,7 @@ export default class DevicePackage {
   }
 
   async dump(): Promise<string> {
-    return this.client.execOut(`dumpsys package ${this.#name}`, 'utf-8');
+    return this.client.execOut(['dumpsys', 'package', this.#name], 'utf-8');
   }
 
   async getInfo(): Promise<PackageInfo> {

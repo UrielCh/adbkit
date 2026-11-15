@@ -241,7 +241,7 @@ export default class Minicap extends EventEmitter {
     // Connect videoSocket
     if (!this.closed) {
       try {
-        this.videoSocket = await this.client.openLocal2('localabstract:minicap');
+        this.videoSocket = new PromiseDuplex(await this.client.openLocal('localabstract:minicap'));
       } catch (e) {
         debug(`Impossible to connect video Socket localabstract:minicap`, e);
         throw e;

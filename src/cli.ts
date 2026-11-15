@@ -11,7 +11,7 @@ import { getClientDevice } from './cli-common.js';
 import './cli-airplane.js';
 import './cli-connectivity.js';
 import './cli-tethering.js';
-import './cli-boatware.js'
+import './cli-bloatware.js';
 
 import { fileURLToPath } from 'node:url';
 import { dirname } from 'node:path';

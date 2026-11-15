@@ -1,4 +1,5 @@
 import EventEmitter from 'node:events';
+import { isIPv6 } from 'node:net';
 import Connection from './connection.js';
 
 import {
@@ -123,15 +124,38 @@ export default class Client extends EventEmitter {
    * };
    * ```
    */
-  public async connect(host: string, port = 5555): Promise<boolean> {
-    if (host.indexOf(':') !== -1) {
-      const [h, portString] = host.split(':', 2);
-      host = h;
-      const parsed = parseInt(portString, 10);
-      if (!isNaN(parsed)) {
-        port = parsed;
+  private static parseHostPort(host: string, defaultPort: number): { host: string; port: number } {
+    if (host.startsWith('[')) {
+      const closeIdx = host.indexOf(']');
+      if (closeIdx !== -1) {
+        const addr = host.slice(0, closeIdx + 1);
+        const rest = host.slice(closeIdx + 1);
+        if (rest.startsWith(':')) {
+          const parsed = Number.parseInt(rest.slice(1), 10);
+          if (!Number.isNaN(parsed)) {
+            return { host: addr, port: parsed };
+          }
+        }
+        return { host: addr, port: defaultPort };
       }
     }
+    if (isIPv6(host)) {
+      return { host: `[${host}]`, port: defaultPort };
+    }
+    const colonIdx = host.indexOf(':');
+    if (colonIdx !== -1 && host.indexOf(':', colonIdx + 1) === -1) {
+      const h = host.slice(0, colonIdx);
+      const parsed = Number.parseInt(host.slice(colonIdx + 1), 10);
+      return {
+        host: h,
+        port: Number.isNaN(parsed) ? defaultPort : parsed,
+      };
+    }
+    return { host, port: defaultPort };
+  }
+
+  public async connect(host: string, port = 5555): Promise<boolean> {
+    ({ host, port } = Client.parseHostPort(host, port));
     const conn = await this.connection();
     return new HostConnectCommand(conn).execute(host, port);
   }
@@ -143,14 +167,7 @@ export default class Client extends EventEmitter {
    * @returns The disconnected device ID. Will no longer be usable as a `serial` in other commands until you've connected again.
    */
   public async disconnect(host: string, port = 5555): Promise<DeviceClient> {
-    if (host.indexOf(':') !== -1) {
-      const [h, portString] = host.split(':', 2);
-      host = h;
-      const parsed = parseInt(portString, 10);
-      if (!isNaN(parsed)) {
-        port = parsed;
-      }
-    }
+    ({ host, port } = Client.parseHostPort(host, port));
     const conn = await this.connection();
     const deviceId = await new HostDisconnectCommand(conn).execute(host, port);
     return new DeviceClient(this, deviceId);

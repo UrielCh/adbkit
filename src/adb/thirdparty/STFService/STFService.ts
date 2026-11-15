@@ -181,7 +181,7 @@ export default class STFService extends EventEmitter {
     }
     await this.startService();
     await this.startAgent();
-    this.servicesSocket = await this.client.openLocal2('localabstract:stfservice');
+    this.servicesSocket = new PromiseDuplex(await this.client.openLocal('localabstract:stfservice'));
     this.servicesSocket.stream.once('close', () => this.stop());
     void this.startServiceStream().catch((e) => { console.log('Service failed', e); this.stop() });
     return this;
@@ -193,7 +193,7 @@ export default class STFService extends EventEmitter {
    */
   async getMinitouchSocket(): Promise<PromiseDuplex<Duplex>> {
     if (this._minitouchagent) return this._minitouchagent;
-    this._minitouchagent = this.client.openLocal2('localabstract:minitouchagent');
+    this._minitouchagent = this.client.openLocal('localabstract:minitouchagent').then((s) => new PromiseDuplex(s));
     const socket = await this._minitouchagent;
     socket.stream.once('close', () => {
       this._minitouchagent = undefined;
@@ -206,7 +206,7 @@ export default class STFService extends EventEmitter {
   private _agentSocket: Promise<PromiseDuplex<Duplex>> | undefined;
   async getAgentSocket(): Promise<PromiseDuplex<Duplex>> {
     if (this._agentSocket) return this._agentSocket;
-    this._agentSocket = this.client.openLocal2('localabstract:stfagent');
+    this._agentSocket = this.client.openLocal('localabstract:stfagent').then((s) => new PromiseDuplex(s));
     const socket = await this._agentSocket;
     socket.stream.once('close', () => {
       this._agentSocket = undefined;
