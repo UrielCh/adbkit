@@ -82,10 +82,13 @@ export default class Connection extends EventEmitter {
   }
 
   public async connect(): Promise<Connection> {
-    const shouldUseYaWebAdb =
-      this.options.useYaWebAdb === true ||
-      (this.options.useYaWebAdb !== false && this.isLocalHost(this.options.host));
-    if (shouldUseYaWebAdb && (await isYaWebAdbAvailable())) {
+    const backend = this.options.backend;
+    const shouldUseYaWebAdb = backend === 'ya-webadb' || (backend !== 'native' && this.isLocalHost(this.options.host));
+    const available = shouldUseYaWebAdb && await isYaWebAdbAvailable();
+    if (backend === 'ya-webadb' && !available) {
+      throw new Error('ya-webadb optional dependencies are not available');
+    }
+    if (available) {
       debug('Using ya-webadb backend instead of native adb');
       this.socket = new YaWebAdbSocket(this.options);
     } else {

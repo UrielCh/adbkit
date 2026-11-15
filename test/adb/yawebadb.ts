@@ -13,6 +13,7 @@ import Adb, {
 } from '../../src/index.js';
 import { bridgeNetAndAdbSocket, createNetDaemonConnection } from '../../src/adb/yawebadb/tcpBridge.js';
 import type { AdbModuleLike, AdbSocketLike, AdbTransportLike, WebUsbDeviceLike } from '../../src/adb/yawebadb/types.js';
+import { ensureUsbDeviceConnected } from '../../src/adb/yawebadb/usbConnector.js';
 
 use(sinonChai);
 
@@ -196,6 +197,70 @@ describe('ya-webadb integration', () => {
     expect(available).to.be.false;
   });
 
+  it('should fail explicit ya-webadb selection when dependencies are unavailable', async () => {
+    setYaWebAdbLoader(async () => null);
+    let error: unknown;
+    try {
+      await Adb.createClient({ backend: 'ya-webadb' }).connection();
+    } catch (err) {
+      error = err;
+    }
+    expect(error).to.be.instanceOf(Error).with.property('message', 'ya-webadb optional dependencies are not available');
+  });
+
+  it('should not stop the native server when USB is busy without opt-in', async () => {
+    const { modules, mockUsbDevices } = createMockYaWebAdbModules();
+    const busy = new Error('USB interface busy');
+    mockUsbDevices[0].connect = async () => { throw busy; };
+    const entry = {
+      serial: 'MOCK_SERIAL_1', state: 'offline' as const, path: '', product: '', model: '', device: '',
+      transportId: '1', isTcp: false, detached: false, usbDevice: mockUsbDevices[0],
+    };
+    let error: unknown;
+    try {
+      await ensureUsbDeviceConnected({
+        entry, port: 5037, waitForAuth: true,
+        getModules: async () => modules,
+        getCredentialManager: async () => ({}),
+        getDeviceManager: async () => { throw new Error('unexpected retry'); },
+        onStateChange: () => {},
+      });
+    } catch (err) {
+      error = err;
+    }
+    expect(error).to.equal(busy);
+  });
+
+  it('should stop the native server and retry busy USB only when opted in', async () => {
+    const { modules, mockUsbDevices } = createMockYaWebAdbModules();
+    const originalConnect = mockUsbDevices[0].connect;
+    let attempts = 0;
+    mockUsbDevices[0].connect = async () => {
+      if (++attempts === 1) throw new Error('USB interface busy');
+      return originalConnect();
+    };
+    let command = '';
+    const server = Net.createServer((socket) => socket.once('data', (data) => {
+      command = data.toString();
+      socket.end('OKAY');
+    }));
+    await new Promise<void>((resolve, reject) => {
+      server.once('error', reject);
+      server.listen(0, '127.0.0.1', resolve);
+    });
+    try {
+      const port = (server.address() as Net.AddressInfo).port;
+      setYaWebAdbLoader(async () => modules);
+      const client = Adb.createClient({ backend: 'ya-webadb', port, stopNativeAdbServerOnUsbBusy: true });
+      const devices = await client.listDevicesWithPaths();
+      expect(devices[0].type).to.equal('device');
+      expect(command).to.equal('0009host:kill');
+      expect(attempts).to.equal(2);
+    } finally {
+      await new Promise<void>((resolve) => server.close(() => resolve()));
+    }
+  });
+
   it('should use YaWebAdbSocket by default when ya-webadb is available', async () => {
     const { modules } = createMockYaWebAdbModules();
     setYaWebAdbLoader(async () => modules);
@@ -283,8 +348,70 @@ describe('ya-webadb integration', () => {
 
     expect(createdSockets.some((s) => s.service === 'localabstract:test_sock')).to.be.true;
 
+    await device.forward(`tcp:${port}`, 'localabstract:rebound');
+    expect((await device.listForwards())[0].remote).to.equal('localabstract:rebound');
+    await new Promise<void>((resolve, reject) => {
+      const sock = Net.connect({ host: '127.0.0.1', port }, () => sock.end());
+      sock.on('close', () => resolve());
+      sock.on('error', reject);
+    });
+    expect(createdSockets.some((s) => s.service === 'localabstract:rebound')).to.be.true;
+
     await device.removeForward(`tcp:${port}`);
     expect(await device.listForwards()).to.deep.equal([]);
+  });
+
+  it('should pause device reads until a slow consumer drains the socket', async () => {
+    let reads = 0;
+    let released = false;
+    const adbSocket: AdbSocketLike = {
+      service: 'test', closed: Promise.resolve(undefined),
+      readable: { getReader: () => ({
+        read: async () => {
+          reads++;
+          return reads === 1 ? { done: false, value: new Uint8Array(65536) } : { done: true };
+        },
+        releaseLock: () => { released = true; },
+        cancel: async () => {},
+      }) },
+      writable: new WritableStream<Uint8Array>(),
+      close: async () => {},
+    };
+    const socket = new YaWebAdbSocket();
+    const fakeAdb = { createSocket: async () => adbSocket } as unknown as Parameters<YaWebAdbSocket['handleTransportService']>[0];
+    await socket['handleTransportService'](fakeAdb, 'test');
+    await new Promise<void>((resolve) => setImmediate(resolve));
+    expect(reads).to.equal(1);
+    expect(socket.readableLength).to.be.greaterThan(0);
+    socket.resume();
+    await new Promise<void>((resolve) => socket.once('end', resolve));
+    expect(reads).to.equal(2);
+    expect(released).to.be.true;
+    socket.destroy();
+  });
+
+  it('should release a paused device reader when the socket is destroyed', async () => {
+    let reads = 0;
+    let released = false;
+    const adbSocket: AdbSocketLike = {
+      service: 'test', closed: Promise.resolve(undefined),
+      readable: { getReader: () => ({
+        read: async () => { reads++; return { done: false, value: new Uint8Array(65536) }; },
+        releaseLock: () => { released = true; },
+        cancel: async () => {},
+      }) },
+      writable: new WritableStream<Uint8Array>(),
+      close: async () => {},
+    };
+    const socket = new YaWebAdbSocket();
+    const fakeAdb = { createSocket: async () => adbSocket } as unknown as Parameters<YaWebAdbSocket['handleTransportService']>[0];
+    await socket['handleTransportService'](fakeAdb, 'test');
+    await new Promise<void>((resolve) => setImmediate(resolve));
+    expect(reads).to.equal(1);
+    socket.destroy();
+    await new Promise<void>((resolve) => setImmediate(resolve));
+    expect(reads).to.equal(1);
+    expect(released).to.be.true;
   });
 
   it('should support detach and attach via ya-webadb', async () => {

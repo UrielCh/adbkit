@@ -109,11 +109,12 @@ export class YaWebAdbManager {
     return entry;
   }
 
-  private ensureUsbConnected(entry: ManagedDeviceInfo, port = 5037, waitForAuth = true): Promise<AdbLike | null> {
+  private ensureUsbConnected(entry: ManagedDeviceInfo, port = 5037, waitForAuth = true, stopNativeAdbServerOnUsbBusy = false): Promise<AdbLike | null> {
     return ensureUsbDeviceConnected({
       entry,
       port,
       waitForAuth,
+      stopNativeAdbServerOnUsbBusy,
       getModules: () => this.getModules(),
       getCredentialManager: () => this.getCredentialManager(),
       getDeviceManager: () => this.getDeviceManager(),
@@ -121,7 +122,7 @@ export class YaWebAdbManager {
     });
   }
 
-  public async syncDevices(port = 5037, connectUsb = false): Promise<ManagedDeviceInfo[]> {
+  public async syncDevices(port = 5037, connectUsb = false, stopNativeAdbServerOnUsbBusy = false): Promise<ManagedDeviceInfo[]> {
     const devMgr = await this.getDeviceManager();
     const usbDevices = await devMgr.getDevices();
     const seenUsbSerials = new Set<string>();
@@ -131,7 +132,7 @@ export class YaWebAdbManager {
       seenUsbSerials.add(serial);
       const entry = this.upsertUsbDevice(usbDev);
       if (connectUsb && !entry.adb && !entry.detached) {
-        await this.ensureUsbConnected(entry, port, false);
+        await this.ensureUsbConnected(entry, port, false, stopNativeAdbServerOnUsbBusy);
       }
     }
 
@@ -144,7 +145,7 @@ export class YaWebAdbManager {
     return Array.from(this.devices.values());
   }
 
-  public async getDeviceAdb(serial: string, port = 5037): Promise<AdbLike> {
+  public async getDeviceAdb(serial: string, port = 5037, stopNativeAdbServerOnUsbBusy = false): Promise<AdbLike> {
     const entry = await this.getDeviceInfo(serial, port);
     if (entry.detached) {
       throw new Error(`device '${serial}' is detached`);
@@ -153,7 +154,7 @@ export class YaWebAdbManager {
       return entry.adb;
     }
     if (!entry.isTcp) {
-      const adb = await this.ensureUsbConnected(entry, port, true);
+      const adb = await this.ensureUsbConnected(entry, port, true, stopNativeAdbServerOnUsbBusy);
       if (!adb) {
         throw new Error(`device '${serial}' is ${entry.state}`);
       }
@@ -272,10 +273,10 @@ export class YaWebAdbManager {
     return true;
   }
 
-  public async attachDevice(serial: string, port = 5037): Promise<void> {
+  public async attachDevice(serial: string, port = 5037, stopNativeAdbServerOnUsbBusy = false): Promise<void> {
     const entry = await this.getDeviceInfo(serial, port);
     entry.detached = false;
-    await this.ensureUsbConnected(entry, port, true);
+    await this.ensureUsbConnected(entry, port, true, stopNativeAdbServerOnUsbBusy);
   }
 
   public async detachDevice(serial: string, port = 5037): Promise<void> {
@@ -286,9 +287,9 @@ export class YaWebAdbManager {
     this.notifyTrackers();
   }
 
-  public async addForward(serial: string, local: string, remote: string, adbPort = 5037): Promise<void> {
+  public async addForward(serial: string, local: string, remote: string, adbPort = 5037, stopNativeAdbServerOnUsbBusy = false): Promise<void> {
     await this.getDeviceInfo(serial, adbPort);
-    await this.forwardManager.addForward(serial, local, remote, () => this.getDeviceAdb(serial, adbPort));
+    await this.forwardManager.addForward(serial, local, remote, () => this.getDeviceAdb(serial, adbPort, stopNativeAdbServerOnUsbBusy));
   }
 
   public async killForward(serial: string, local: string): Promise<void> {

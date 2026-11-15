@@ -38,18 +38,21 @@ adbkit can use [ya-webadb](https://www.npmjs.com/package/@yume-chan/adb) in-proc
 npm install @yume-chan/adb@^3.0.0-beta.5 @yume-chan/adb-daemon-webusb@^3.0.0-beta.5 @yume-chan/adb-credential-nodejs@^3.0.0-beta.5 usb@^3.3.0
 ```
 
-When all four packages can be loaded, `createClient()` selects this backend by default. Use the same client API as in the sample below; no separate ya-webadb setup is needed. Enable USB debugging and authorize the computer on the device when prompted. USB access also requires appropriate operating system permissions. If a native ADB server holds a USB device, the backend may stop the local server to release it.
+In `auto` mode (the default), `createClient()` selects this backend for a local host when all four packages can be loaded; otherwise it uses the native server. Enable USB debugging and authorize the computer on the device when prompted. USB access also requires appropriate operating system permissions.
 
-You can check whether the packages loaded, or explicitly select the native server backend:
+You can check whether the packages loaded and explicitly select a backend:
 
 ```typescript
 import { createClient, isYaWebAdbAvailable } from '@u4/adbkit';
 
 console.log('ya-webadb available:', await isYaWebAdbAvailable());
-const client = createClient({ useYaWebAdb: false }); // Native ADB server
+const client = createClient({ backend: 'native' }); // Native ADB server
+// Or: createClient({ backend: 'ya-webadb' }); // Requires the optional packages
 ```
 
-If any optional package cannot be loaded, adbkit falls back to the native server backend. Availability only checks that the packages load; it does not check device access or authorization. To connect to a remote ADB server using `host` and `port`, set `useYaWebAdb: false`.
+`backend: 'ya-webadb'` fails if its optional packages cannot be loaded. Availability checks only package loading, not device access or authorization. In `auto` mode, a remote `host` uses the native server.
+
+The native ADB server can hold an exclusive USB device lock. By default, ya-webadb leaves that server running and a busy device cannot be opened. To allow adbkit to stop the local native server and retry, set `stopNativeAdbServerOnUsbBusy: true` when creating the client. This can interrupt other applications using that server.
 
 We use [debug][node-debug], and our debug namespace is `adb`. Some of the dependencies may provide debug output of their own. To see the debug output, set the `DEBUG` environment variable. For example, run your program with `DEBUG=adb:* node app.js`.
 
@@ -71,8 +74,13 @@ const main = async () => {
   // check all DeviceClient functions
   // print Hello Word in a shell and get the echo back
   const hello = await deviceClient.execOut('echo Hello Word', 'utf8');
-  console.log(hello)
+  console.log(hello);
 }
+
+main().catch((error) => {
+  console.error(error);
+  process.exitCode = 1;
+});
 ```
 
 [full documentaion is available here](https://urielch.github.io/adbkit/)
@@ -100,6 +108,10 @@ const main = async () => {
 ## Contributing
 
 See [CONTRIBUTING.md](CONTRIBUTING.md).
+
+The unit suite runs with `npm test`. To run the native-backend integration check, start one Android emulator or connect an authorized device, ensure `adb devices` lists it as `device`, then run `npm run test:integration`. If multiple devices are connected, set `ADB_SERIAL` to select one. The check creates and removes a temporary file under `/data/local/tmp` and a local TCP forward. A scheduled and manually triggered CI workflow runs it on an Android emulator.
+
+For USB backend changes, also test on a physical device: authorize a new computer, disconnect and reconnect the device, check an unauthorized device, and exercise transfers and forwarding. With the native server holding the device, verify the default leaves it running and that `stopNativeAdbServerOnUsbBusy: true` permits a retry. Repeat on the operating systems and Android versions relevant to the release.
 
 ## License
 

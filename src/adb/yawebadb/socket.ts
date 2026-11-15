@@ -24,6 +24,7 @@ export class YaWebAdbSocket extends Duplex implements AdbTransportSocket {
   private cleanupHooks: Array<() => void> = [];
   private remoteEnded = false;
   private closedEmitted = false;
+  private resumeReader?: () => void;
   private adbPort: number;
 
   constructor(public readonly options: ClientOptions = { port: 5037 }) {
@@ -50,7 +51,9 @@ export class YaWebAdbSocket extends Duplex implements AdbTransportSocket {
   }
 
   public override _read(_size: number): void {
-    // Data is pushed asynchronously by command handlers or adbSocket reader
+    const resume = this.resumeReader;
+    this.resumeReader = undefined;
+    resume?.();
   }
 
   public override _write(chunk: Buffer, _encoding: BufferEncoding, callback: (error?: Error | null) => void): void {
@@ -162,7 +165,7 @@ export class YaWebAdbSocket extends Duplex implements AdbTransportSocket {
       }
 
       if (cmd === 'host:devices-l') {
-        const devices = await manager.syncDevices(this.adbPort, true);
+        const devices = await manager.syncDevices(this.adbPort, true, this.options.stopNativeAdbServerOnUsbBusy);
         const lines = devices
           .filter((d) => !d.detached)
           .map(
@@ -228,7 +231,7 @@ export class YaWebAdbSocket extends Duplex implements AdbTransportSocket {
 
       if (cmd.startsWith('host:transport:')) {
         const serial = cmd.slice('host:transport:'.length);
-        const adb = await manager.getDeviceAdb(serial, this.adbPort);
+        const adb = await manager.getDeviceAdb(serial, this.adbPort, this.options.stopNativeAdbServerOnUsbBusy);
         this.targetSerial = serial;
         this.targetAdb = adb;
         this.sendOkay();
@@ -311,7 +314,7 @@ export class YaWebAdbSocket extends Duplex implements AdbTransportSocket {
     if (subCmd.startsWith('forward:') || subCmd.startsWith('killforward:')) {
       if (subCmd.startsWith('forward:')) {
         const [local, remote] = subCmd.replace(/^forward:(norebind:)?/, '').split(';');
-        await manager.addForward(serial, local, remote, this.adbPort);
+        await manager.addForward(serial, local, remote, this.adbPort, this.options.stopNativeAdbServerOnUsbBusy);
       } else {
         await manager.killForward(serial, subCmd.slice('killforward:'.length));
       }
@@ -329,7 +332,7 @@ export class YaWebAdbSocket extends Duplex implements AdbTransportSocket {
 
     if (subCmd === 'attach' || subCmd === 'detach') {
       await (subCmd === 'attach'
-        ? manager.attachDevice(serial, this.adbPort)
+        ? manager.attachDevice(serial, this.adbPort, this.options.stopNativeAdbServerOnUsbBusy)
         : manager.detachDevice(serial, this.adbPort));
       return done();
     }
@@ -378,11 +381,13 @@ export class YaWebAdbSocket extends Duplex implements AdbTransportSocket {
     const reader = adbSocket.readable.getReader();
     void (async () => {
       try {
-        for (; ;) {
+        while (!this.destroyed && !this.remoteEnded) {
           const { done, value } = await reader.read();
           if (done) break;
           if (value && !this.remoteEnded && !this.destroyed) {
-            this.push(Buffer.from(value.buffer, value.byteOffset, value.byteLength));
+            if (!this.push(Buffer.from(value.buffer, value.byteOffset, value.byteLength))) {
+              await new Promise<void>((resolve) => { this.resumeReader = resolve; });
+            }
           }
         }
       } catch (err) {
@@ -395,6 +400,8 @@ export class YaWebAdbSocket extends Duplex implements AdbTransportSocket {
   }
 
   private cleanup(): void {
+    this.resumeReader?.();
+    this.resumeReader = undefined;
     while (this.cleanupHooks.length > 0) {
       const fn = this.cleanupHooks.pop();
       try {

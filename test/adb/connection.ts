@@ -23,7 +23,7 @@ describe('Client & Connection reliability', () => {
       const port = (server.address() as Net.AddressInfo).port;
 
       try {
-        const client = Adb.createClient({ host: '127.0.0.1', port, useYaWebAdb: false });
+        const client = Adb.createClient({ host: '127.0.0.1', port, backend: 'native' });
         const conn = await client.connection();
         // Simulate an unhandled socket error when no Parser/write listener is attached
         const testErr = new Error('simulated idle socket failure');
@@ -43,7 +43,7 @@ describe('Client & Connection reliability', () => {
       const port = (server.address() as Net.AddressInfo).port;
 
       try {
-        const client = Adb.createClient({ host: '127.0.0.1', port, useYaWebAdb: false });
+        const client = Adb.createClient({ host: '127.0.0.1', port, backend: 'native' });
         const received: Error[] = [];
         client.on('error', (err) => received.push(err));
         const conn = await client.connection();
@@ -58,7 +58,7 @@ describe('Client & Connection reliability', () => {
   });
 
   describe('Connection.connect() ya-webadb host check & ECONNREFUSED cleanup', () => {
-    it('should not use YaWebAdbSocket when host points to a remote server and useYaWebAdb is omitted', async () => {
+    it('should not use YaWebAdbSocket when host points to a remote server in auto mode', async () => {
       setYaWebAdbLoader(async () => ({}) as never);
       const client = Adb.createClient({ host: '192.0.2.1', port: 5037 });
       const conn = new Connection(client);
@@ -93,7 +93,7 @@ describe('Client & Connection reliability', () => {
       const port = (server.address() as Net.AddressInfo).port;
       await new Promise<void>((resolve) => server.close(() => resolve()));
 
-      const client = Adb.createClient({ host: '127.0.0.1', port, useYaWebAdb: false });
+      const client = Adb.createClient({ host: '127.0.0.1', port, backend: 'native' });
       const conn = new Connection(client);
       const closeEvents: boolean[] = [];
       conn.on('close', (hadError) => closeEvents.push(hadError));
@@ -135,7 +135,7 @@ describe('Client & Connection reliability', () => {
 
   describe('Connection.write()', () => {
     it('should reject with explicit error when called before connect()', async () => {
-      const client = Adb.createClient({ useYaWebAdb: false });
+      const client = Adb.createClient({ backend: 'native' });
       const conn = new Connection(client);
 
       let caught: unknown;
@@ -150,7 +150,7 @@ describe('Client & Connection reliability', () => {
     });
 
     it('should reject if the socket closes before draining after write returns false', async () => {
-      const client = Adb.createClient({ useYaWebAdb: false });
+      const client = Adb.createClient({ backend: 'native' });
       const conn = new Connection(client);
       const mockSocket = new Duplex({
         highWaterMark: 4,
@@ -175,7 +175,7 @@ describe('Client & Connection reliability', () => {
     });
 
     it('should resolve with byte count when socket drains after write returns false', async () => {
-      const client = Adb.createClient({ useYaWebAdb: false });
+      const client = Adb.createClient({ backend: 'native' });
       const conn = new Connection(client);
       let releaseWrite!: () => void;
       const mockSocket = new Duplex({

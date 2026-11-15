@@ -6,8 +6,10 @@ export interface ClientOptions extends TcpNetConnectOpts {
    */
   bin?: string;
   /**
-   * When `true` (default), use `ya-webadb` (`@yume-chan/adb`) if available instead of the native `adb` server/binary.
-   * Set to `false` to force using the native `adb` server.
+   * Select the transport. `auto` uses ya-webadb for local hosts when available.
+   * `ya-webadb` requires the optional dependencies and fails if they are unavailable.
    */
-  useYaWebAdb?: boolean;
+  backend?: 'auto' | 'native' | 'ya-webadb';
+  /** Allow ya-webadb to stop the local native ADB server when USB is busy. Defaults to false. */
+  stopNativeAdbServerOnUsbBusy?: boolean;
 }

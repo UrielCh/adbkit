@@ -97,6 +97,7 @@ export interface UsbConnectContext {
   entry: ManagedDeviceInfo;
   port: number;
   waitForAuth: boolean;
+  stopNativeAdbServerOnUsbBusy?: boolean;
   getModules: () => Promise<YaWebAdbModules>;
   getCredentialManager: () => Promise<AdbCredentialManagerLike>;
   getDeviceManager: () => Promise<WebUsbDeviceManagerLike>;
@@ -134,7 +135,7 @@ export async function ensureUsbDeviceConnected(ctx: UsbConnectContext): Promise<
       try {
         connection = await usbDev.connect();
       } catch (err) {
-        if (!isUsbBusyError(err)) {
+        if (!isUsbBusyError(err) || !ctx.stopNativeAdbServerOnUsbBusy) {
           throw err;
         }
         debug('USB interface busy for %s, attempting to stop native ADB server on port %d', entry.serial, port);

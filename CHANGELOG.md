@@ -1,5 +1,12 @@
 # CHANGELOG
 
+## Unreleased
+* Add explicit `auto`, `native`, and `ya-webadb` backend selection.
+* Remove `useYaWebAdb`; select `backend: 'native'` or `backend: 'ya-webadb'` instead.
+* **Behavior change:** ya-webadb no longer stops the native ADB server on a busy USB device by default. Set `stopNativeAdbServerOnUsbBusy: true` to enable the previous retry behavior.
+* Fix ya-webadb forward rebinding and apply backpressure to device streams.
+* Add a native-backend emulator integration check and document physical USB testing.
+
 ## V5.2.0 (2026-11-09)
 * update scrcpy-server support up to v5.0.1 (including v3.0, v3.1, v3.2, v3.3, v3.3.4, v4.0, v4.1, v5.0, v5.0.1)
 * add VP8/VP9 codecs, scanFile control message, and ignoreVideoEncoderConstraints support

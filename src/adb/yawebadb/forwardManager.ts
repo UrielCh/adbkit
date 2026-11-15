@@ -36,14 +36,17 @@ export class YaWebAdbForwardManager {
       throw new Error(`Invalid local TCP port in forward: ${local}`);
     }
 
-    const server = Net.createServer((clientSocket) => {
+    const entry: ForwardEntry = { serial, local, remote, server: Net.createServer() };
+    const server = entry.server;
+    server.on('connection', (clientSocket) => {
+      const destination = entry.remote;
       void (async () => {
         try {
           const adb = await getDeviceAdb();
-          const adbSocket = await adb.createSocket(remote);
+          const adbSocket = await adb.createSocket(destination);
           bridgeNetAndAdbSocket(clientSocket, adbSocket);
         } catch (err) {
-          debug('Forward connection error (%s -> %s): %s', local, remote, (err as Error)?.message || err);
+          debug('Forward connection error (%s -> %s): %s', local, destination, (err as Error)?.message || err);
           clientSocket.destroy();
         }
       })();
@@ -60,12 +63,8 @@ export class YaWebAdbForwardManager {
     const address = server.address();
     const boundPort = typeof address === 'object' && address ? address.port : localPort;
     const normalizedLocal = `tcp:${boundPort}`;
-    this.forwards.set(`${serial}:${normalizedLocal}`, {
-      serial,
-      local: normalizedLocal,
-      remote,
-      server,
-    });
+    entry.local = normalizedLocal;
+    this.forwards.set(`${serial}:${normalizedLocal}`, entry);
   }
 
   public async killForward(serial: string, local: string): Promise<void> {

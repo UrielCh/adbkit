@@ -14,11 +14,10 @@ export interface AdbOptions {
    * As the sole exception, this option provides the path to the `adb` binary, used for starting the server locally if initial connection fails. Defaults to `'adb'`.
    */
   bin?: string;
-  /**
-   * When `true` (default), use `ya-webadb` (`@yume-chan/adb`) if available instead of the native `adb` server/binary.
-   * Set to `false` to force using the native `adb` server.
-   */
-  useYaWebAdb?: boolean;
+  /** Select the transport. Defaults to `auto`. */
+  backend?: ClientOptions['backend'];
+  /** Allow stopping the local native server when its USB interface is busy. Defaults to false. */
+  stopNativeAdbServerOnUsbBusy?: boolean;
 }
 
 /**
@@ -43,7 +42,8 @@ export function createClient(options: AdbOptions = { port: 5037 }): Client {
     bin: options.bin,
     host: options.host || process.env.ADB_HOST,
     port: options.port || 5037,
-    useYaWebAdb: options.useYaWebAdb,
+    backend: options.backend,
+    stopNativeAdbServerOnUsbBusy: options.stopNativeAdbServerOnUsbBusy,
   };
   if (!opts.port) {
     const port = parseInt(process.env.ADB_PORT || '5037', 10);
