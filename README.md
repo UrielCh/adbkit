@@ -17,9 +17,7 @@ With the native ADB backend, the target host (where the devices are connected) m
 
 When targeting a remote host, starting the server is entirely your responsibility.
 
-Alternatively, you may want to consider using the Chrome [ADB][chrome-adb] extension, as it includes the ADB server and can be started/stopped quite easily.
-
-For Linux users, adb need `plugdev` group acess, So you may need to add your current user to `plugdev` group.
+For Linux users, adb need `plugdev` group access, So you may need to add your current user to `plugdev` group.
 `sudo usermod -a -G plugdev $USER`
 
 ## Getting started
@@ -72,8 +70,8 @@ const main = async () => {
   const deviceClient = devices[0].getClient();
   // your device is ready to use
   // check all DeviceClient functions
-  // print Hello Word in a shell and get the echo back
-  const hello = await deviceClient.execOut('echo Hello Word', 'utf8');
+  // print Hello World in a shell and get the echo back
+  const hello = await deviceClient.execOut('echo Hello World', 'utf8');
   console.log(hello);
 }
 
@@ -83,7 +81,7 @@ main().catch((error) => {
 });
 ```
 
-[full documentaion is available here](https://urielch.github.io/adbkit/)
+[full documentation is available here](https://urielch.github.io/adbkit/)
 
 
 ## Incompatible changes in version 5.x
@@ -103,7 +101,6 @@ main().catch((error) => {
    *   [SERVICES.TXT][adb-services] (ADB socket protocol)
 *   [Android ADB Protocols][adb-protocols] (a blog post explaining the protocol)
 *   [adb.js][adb-js] (another Node.js ADB implementation)
-*   [ADB Chrome extension][chrome-adb]
 
 ## Contributing
 
@@ -130,8 +127,6 @@ See [LICENSE](LICENSE).
 [adb-protocols]: http://blogs.kgsoft.co.uk/2013_03_15_prg.htm
 
 [file_sync_service.h]: https://github.com/android/platform_system_core/blob/master/adb/file_sync_service.h
-
-[chrome-adb]: https://chrome.google.com/webstore/detail/adb/dpngiggdglpdnjdoaefidgiigpemgage
 
 [node-debug]: https://npmjs.org/package/debug
 

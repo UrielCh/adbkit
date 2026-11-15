@@ -47,7 +47,9 @@ jobs:
       run: bun run build
     - name: Lint
       run: bun run lint
-    - name: Test
-      run: bun run test
+    - name: Test and coverage
+      run: bun run coverage
+    - name: Documentation
+      run: bun run docs
     - name: Typetest
       run: bun run typetest

@@ -5,7 +5,7 @@ import { getClientDevice } from './cli-common.js';
 for (const type of ['bluetooth', 'data', 'wifi'] as const) {
   program
     .command(`${type}-off [serials...]`)
-    .description('Disable bluetooth.')
+    .description(`Disable ${type}.`)
     .action(async (serials: string[]) => {
       const devices = await getClientDevice(serials);
       const process = async (device: DeviceClient) => {
@@ -20,7 +20,7 @@ for (const type of ['bluetooth', 'data', 'wifi'] as const) {
 
   program
     .command(`${type}-on [serials...]`)
-    .description('Enable bluetooth.')
+    .description(`Enable ${type}.`)
     .action(async (serials: string[]) => {
       const devices = await getClientDevice(serials);
       const process = async (device: DeviceClient) => {

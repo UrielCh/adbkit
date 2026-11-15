@@ -14,7 +14,7 @@ program
         await Utils.delay(100)
         await device.extra.back();
       } else {
-        console.log(`[${device.serial}] airplane or already enabled`);
+        console.log(`[${device.serial}] airplane failed or already disabled`);
       }
     }
     await Promise.all(devices.map(process));

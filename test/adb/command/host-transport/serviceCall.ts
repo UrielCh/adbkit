@@ -6,7 +6,6 @@ import Tester from './Tester.js';
 const t = new Tester(ServiceCallCommand);
 
 describe('serviceCall', () => {
-    // it("should send ''", () => t.testTr('shell:ps'));
     it('should parse single line Parcel', async () => {
         const result: ParcelReader = await t.testPr(`Result: Parcel(00000000 00000002 00340032 00000000 '........2.4.....')`);
         expect(result.readType()).to.eql(0);

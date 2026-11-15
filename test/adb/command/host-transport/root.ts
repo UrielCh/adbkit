@@ -4,12 +4,9 @@ use(simonChai);
 import MockConnection from '../../../mock/connection.js';
 import Protocol from '../../../../src/adb/protocol.js';
 import RootCommand from '../../../../src/adb/command/host-transport/root.js';
-// import Tester from './Tester.js';
 
-// const t = new Tester(RootCommand);
 
 describe('RootCommand', () => {
-    // it("should send 'root:'", () => t.testTr('root:'));
     it("should send 'root:'", async () => {
         const conn = new MockConnection();
         const cmd = new RootCommand(conn);

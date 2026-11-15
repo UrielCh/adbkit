@@ -10,11 +10,11 @@ program
     const devices = await getClientDevice(serials);
     const process = async (device: DeviceClient) => {
       if (await device.extra.usbTethering(false)) {
-        console.log(`[${device.serial}] tethering enabled`);
+        console.log(`[${device.serial}] tethering disabled`);
         await Utils.delay(100)
         await device.extra.back();
       } else {
-        console.log(`[${device.serial}] failed or already enabled`);
+        console.log(`[${device.serial}] failed or already disabled`);
       }
     }
     await Promise.all(devices.map(process));

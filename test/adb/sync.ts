@@ -81,24 +81,10 @@ describe('Sync', () => {
         it('should call pushFile when contents is a String', async () => {
             const conn = new MockConnection();
             const sync = new Sync(conn);
-            // const stream = new Stream.PassThrough();
             Sinon.stub(sync, 'pushFile');
-            // __filename
             await sync.push(import.meta.url, 'foo');
             return expect(sync.pushFile).to.have.been.called;
         });
-        // now return a promise
-        // it('push > should return a PushTransfer instance', async () => {
-        //     const conn = new MockConnection();
-        //     const sync = new Sync(conn);
-        //     const stream = new Stream.PassThrough();
-        //     stream.write('AAA');
-        //     const transfer = await sync.push(stream, 'foo');
-        //     expect(transfer).to.be.an.instanceof(PushTransfer);
-        //     const ret = transfer.cancel();
-        //     console.log('cancel return ', ret);
-        //     return true;
-        // });
     });
     describe('pushFile(file, path[, mode])', () => {
         it('should preserve error code and cause when stat fails (e.g. ENOENT)', async () => {
@@ -141,17 +127,6 @@ describe('Sync', () => {
         });
     });
     describe('pushStream(stream, path[, mode])', () => {
-        // now return a promise
-        // it('pushStream > should return a PushTransfer instance', async () => {
-        //     const conn = new MockConnection();
-        //     const sync = new Sync(conn);
-        //     const stream = new Stream.PassThrough();
-        //     stream.write('AAA');
-        //     const transfer = await sync.pushStream(stream, 'foo');
-        //     expect(transfer).to.be.an.instanceof(PushTransfer);
-        //     transfer.cancel();
-        //     return true;
-        // });
         it('should return PushTransfer immediately and emit progress events asynchronously', async () => {
             const conn = new MockConnection();
             const sync = new Sync(conn);
@@ -425,11 +400,6 @@ describe('Sync', () => {
             }).finally(done);
         });
         describe('Stats', () => {
-            // Fs.Stats constructor is now private  and can not be instanciated
-            // it('should implement Fs.Stats', (done) => {
-            //     expect(new Stats(0, 0, 0)).to.be.an.instanceof(Fs.Stats);
-            //     done();
-            // });
             dt('should set the `.mode` property for isFile() etc', (done) => {
                 void forEachSyncDevice(async (sync) => {
                     const stats = await sync.stat(SURELY_EXISTING_FILE);

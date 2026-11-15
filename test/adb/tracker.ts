@@ -7,7 +7,6 @@ import Tracker from '../../src/adb/tracker.js';
 import Protocol from '../../src/adb/protocol.js';
 import HostTrackDevicesCommand from '../../src/adb/command/host/HostTrackDevicesCommand.js';
 import Connection from '../../src/adb/connection.js';
-//import Device from '../../models/Device.ts';
 import DeviceClient from '../../src/adb/DeviceClient.js';
 import Utils from '../../src/adb/utils.js';
 import { Device } from '../../src/index.js';
@@ -104,37 +103,6 @@ d\toffline`),
         );
         await Utils.delay(10)
         expect(spy).to.have.been.calledTwice;
-        // expect(spy).to.have.been.calledWith({
-        //     added: [device1, device2, device3],
-        //     changed: [],
-        //     removed: [],
-        // });
-        // expect(spy).to.have.been.calledWith({
-        //     added: [device4],
-        //     changed: [device3New],
-        //     removed: [device2],
-        // });
         return true;
     });
-    // broken test
-    // depend on bluebird
-    // return describe('end()', () => {
-    //     it('should close the connection', (done) => {
-    //         Sinon.spy(conn.parser, 'end');
-    //         tracker.on('end', () => {
-    //             expect(conn.parser.end).to.have.been.calledOnce;
-    //             done();
-    //         });
-    //         tracker.end();
-    //     });
-    //     it('should not cause an error to be emit', (done) => {
-    //         const spy = Sinon.spy();
-    //         tracker.on('error', spy);
-    //         tracker.on('end', () => {
-    //             expect(spy).to.not.have.been.called;
-    //             done();
-    //         });
-    //         tracker.end();
-    //     });
-    // });
 });

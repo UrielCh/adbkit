@@ -12,3 +12,5 @@ parcel.txt
 tasks/*encoder*/
 **/.DS_Store
 tasks/recordings/
+
+/coverage/

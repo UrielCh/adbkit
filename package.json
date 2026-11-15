@@ -50,7 +50,7 @@
     "servicemap": "tsx tasks/servicemap.ts",
     "download:scrcpy": "tsx tasks/downloadScrcpy.ts",
     "test:video": "tsx tasks/testVideo.ts",
-    "prepublishOnly": "bun run clean && bun run compile",
+    "prepublishOnly": "rimraf dist && tsc -p .",
     "docker-clean": "bunx modclean -r",
     "docs": "typedoc --entryPointStrategy expand",
     "compile": "tsc -p .",
@@ -62,7 +62,8 @@
     "test2": "mocha -r tsx --reporter spec --colors 'test/adb/thirdparty/**/*.ts'",
     "test3": "mocha -r tsx --reporter spec --colors test/adb/command/host-transport/serviceCall.ts",
     "typetest": "bunx @arethetypeswrong/cli --pack . --ignore-rules cjs-resolves-to-esm",
-    "ncu": "bunx npm-check-updates -i"
+    "ncu": "bunx npm-check-updates -i",
+    "coverage": "c8 --reporter=text --reporter=lcov mocha -r tsx 'test/**/*.ts'"
   },
   "dependencies": {
     "@u4/adbkit-logcat": "2.1.2",
@@ -87,11 +88,11 @@
     "@types/sinon-chai": "^4.0.1",
     "@typescript-eslint/eslint-plugin": "^8.72.1",
     "@typescript-eslint/parser": "^8.72.1",
+    "c8": "^12.0.0",
     "chai": "~6.3.0",
     "eslint": "^10.14.0",
     "mocha": "~12.0.3",
     "picocolors": "^1.1.1",
-    "prettier": "^3.9.10",
     "rimraf": "^6.1.4",
     "sinon": "~22.1.0",
     "sinon-chai": "~4.0.1",

@@ -1,12 +1,11 @@
 import fs from 'node:fs';
-import { program } from 'commander';
+import { InvalidArgumentError, Option, program } from 'commander';
 import forge from 'node-forge';
-import { createClient } from './adb.js';
 import Auth from './adb/auth.js';
 import PacketReader from './adb/tcpusb/packetreader.js';
 import path from 'node:path';
 import Utils from './adb/utils.js';
-import { getClientDevice } from './cli-common.js';
+import { createCliClient, getClientDevice } from './cli-common.js';
 
 import './cli-airplane.js';
 import './cli-connectivity.js';
@@ -21,7 +20,15 @@ const __dirname = dirname(__filename);
 
 const pkg: { version: string } = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'package.json'), { encoding: 'utf-8' }));
 
-program.version(pkg.version);
+program.version(pkg.version)
+  .option('--host <host>', 'ADB server host')
+  .option('--port <port>', 'ADB server port', (value: string) => {
+    if (!/^\d+$/.test(value) || Number(value) < 1 || Number(value) > 65535) {
+      throw new InvalidArgumentError('Port must be an integer between 1 and 65535.');
+    }
+    return Number(value);
+  })
+  .addOption(new Option('--backend <backend>', 'ADB backend').choices(['auto', 'native', 'ya-webadb']));
 
 program
   .command('pubkey-convert <file>')
@@ -53,7 +60,7 @@ program
   .option('-p, --port <port>', 'port number', (value: string) => String(value), '6174')
   .description('Provides an USB device over TCP using a translating proxy.')
   .action((serial: string, options: { port: string }) => {
-    const adb = createClient();
+    const adb = createCliClient();
     const server = adb
       .createTcpUsbBridge(serial, {
         auth: () => Promise.resolve(),
@@ -69,11 +76,15 @@ program
   .action((file: string) => {
     const reader = new PacketReader(fs.createReadStream(file));
     reader.on('packet', (packet) => console.log(packet.toString()));
+    reader.on('error', (err) => {
+      console.error(err.message);
+      process.exitCode = 1;
+    });
   });
 
 
 program
-  .command('capture dest [serials...]')
+  .command('capture <dest> [serials...]')
   .description('capture screen of one or many device as png.')
   .action(async (dest: string, serials: string[]) => {
     const devices = await getClientDevice(serials);
@@ -85,8 +96,11 @@ program
       }
       const stream = await device.screencap();
       const capture = await Utils.readAll(stream);
-      fs.writeFileSync(out, capture);
+      await fs.promises.writeFile(out, capture);
     }
   });
 
-program.parse(process.argv);
+program.parseAsync(process.argv).catch((err: unknown) => {
+  console.error(err instanceof Error ? err.message : err);
+  process.exitCode = 1;
+});

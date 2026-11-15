@@ -1,9 +1,14 @@
-import { createClient } from './adb.js';
+import { createClient, type AdbOptions } from './adb.js';
+import { program } from 'commander';
 import Device from './models/Device.js';
 import DeviceClient from './adb/DeviceClient.js';
 
+export function createCliClient() {
+  return createClient(program.opts<AdbOptions>());
+}
+
 export async function getClientDevice(serials: string[]): Promise<DeviceClient[]> {
-  const adb = createClient();
+  const adb = createCliClient();
   if (!serials || !serials.length) {
     const devices: Device[] = await adb.listDevices();
     if (devices.length == 0) {
@@ -14,7 +19,7 @@ export async function getClientDevice(serials: string[]): Promise<DeviceClient[]
     if (devices.length == 1) {
       return [devices[0].getClient()];
     }
-    console.error('Multiple devices avaliable provide a serial number to choose one');
+    console.error('Multiple devices available provide a serial number to choose one');
     console.error(devices.map(d => `- ${d.id}`).join('\n'));
     process.exit(1);
   }
