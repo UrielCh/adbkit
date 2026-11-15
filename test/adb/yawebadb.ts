@@ -368,14 +368,19 @@ describe('ya-webadb integration', () => {
     const attach = sinon.stub(manager, 'attachDevice').resolves();
     try {
       for (const [command, expected] of [
-        ['host-serial:serial:get-state', 'device'],
+        ['host-serial:serial:get-state', 'OKAY0006device'],
         ['host-serial:serial:attach', 'OKAY'],
-        ['host-serial:serial:unsupported', 'Unsupported host-serial command'],
+        ['host-serial:serial:unsupported', 'FAIL002CUnsupported host-serial command: unsupported'],
       ]) {
         const socket = new YaWebAdbSocket();
-        await socket['handleCommand'](command);
-        expect(socket.read().toString()).to.include(expected);
-        socket.destroy();
+        try {
+          const chunks: Buffer[] = [];
+          socket.write(`${Buffer.byteLength(command).toString(16).padStart(4, '0')}${command}`);
+          for await (const chunk of socket) chunks.push(chunk as Buffer);
+          expect(Buffer.concat(chunks).toString()).to.equal(expected);
+        } finally {
+          socket.destroy();
+        }
       }
       expect(state.calledOnceWithExactly('serial', 5037)).to.equal(true);
       expect(attach.calledOnce).to.equal(true);
