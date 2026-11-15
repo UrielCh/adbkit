@@ -209,7 +209,7 @@ export default class Socket extends EventEmitter {
           if (!this.signature) {
             throw new Socket.AuthError('Public key sent before signature');
           }
-          if (!packet.data || (packet.data as unknown as Uint8Array).length < 2) {
+          if (!packet.data || packet.data.length < 2) {
             throw new Socket.AuthError('Empty RSA public key');
           }
           debug(`Received RSA public key '${packet.data.toString('base64')}'`);
@@ -247,7 +247,7 @@ export default class Socket extends EventEmitter {
     }
     const remoteId = packet.arg0;
     const localId = this.remoteId.next();
-    if (!(packet.data && (packet.data as unknown as Uint8Array).length >= 2)) {
+    if (!(packet.data && packet.data.length >= 2)) {
       throw new Error('Empty service name');
     }
     const name = this._skipNull(packet.data);
@@ -289,7 +289,7 @@ export default class Socket extends EventEmitter {
     if (this.ended) {
       return false;
     }
-    return this.socket.write(chunk as unknown as Uint8Array);
+    return this.socket.write(chunk);
   }
 
   private _createToken(): Promise<Buffer> {

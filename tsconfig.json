@@ -1,6 +1,7 @@
 {
     "compilerOptions": {
-        "target": "ES2020",
+        "target": "ES2023",
+        "useDefineForClassFields": false,
         "module": "NodeNext",
         "moduleResolution": "NodeNext",
         "declaration": true,
@@ -18,7 +19,7 @@
         "resolveJsonModule": true,
         "isolatedModules": true,
         "types": ["node", "mocha"],
-        "lib": ["ES2022", "dom"]
+        "lib": ["ES2023"]
     },
     "include": [ "./src/**/*.ts" ],
     "typedocOptions": {

@@ -35,7 +35,7 @@ export default class LineTransform extends Stream.Transform {
     // bytes must be either 0x0a .. or 0x0d 0x0a. This causes a need to skip
     // either one or two bytes. The autodetection runs only once.
     if (this.autoDetect) {
-      if ((chunk as unknown as Uint8Array)[0] === 0x0a) {
+      if (chunk[0] === 0x0a) {
         this.transformNeeded = false;
         this.skipBytes = 1;
       } else {
@@ -47,11 +47,11 @@ export default class LineTransform extends Stream.Transform {
     // in two separate chunks. That's why the autodetect bytes are skipped
     // here, separately.
     if (this.skipBytes) {
-      const skip = Math.min((chunk as unknown as Uint8Array).length, this.skipBytes);
+      const skip = Math.min(chunk.length, this.skipBytes);
       chunk = chunk.slice(skip);
       this.skipBytes -= skip;
     }
-    if (!(chunk as unknown as Uint8Array).length) {
+    if (!chunk.length) {
       // It's possible that skipping bytes has created an empty chunk.
       return done();
     }
@@ -64,18 +64,18 @@ export default class LineTransform extends Stream.Transform {
     let lo = 0;
     let hi = 0;
     if (this.savedR) {
-      if ((chunk as unknown as Uint8Array)[0] !== 0x0a) {
+      if (chunk[0] !== 0x0a) {
         this.push(this.savedR);
       }
       this.savedR = undefined;
     }
-    const last = (chunk as unknown as Uint8Array).length - 1;
+    const last = chunk.length - 1;
     while (hi <= last) {
-      if ((chunk as unknown as Uint8Array)[hi] === 0x0d) {
+      if (chunk[hi] === 0x0d) {
         if (hi === last) {
           this.savedR = chunk.slice(last);
           break; // Stop hi from incrementing, we want to skip the last byte.
-        } else if ((chunk as unknown as Uint8Array)[hi + 1] === 0x0a) {
+        } else if (chunk[hi + 1] === 0x0a) {
           this.push(chunk.slice(lo, hi));
           lo = hi + 1;
         }

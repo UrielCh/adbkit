@@ -3,8 +3,9 @@ import Net from 'node:net';
 import { Buffer } from 'node:buffer';
 import Protocol from '../protocol.js';
 import Utils from '../utils.js';
-import { ClientOptions } from '../../models/ClientOptions.js';
-import { AdbLike, AdbSocketLike, ManagedDeviceInfo } from './types.js';
+import type { AdbTransportSocket } from '../connection.js';
+import type { ClientOptions } from '../../models/ClientOptions.js';
+import type { AdbLike, AdbSocketLike, ManagedDeviceInfo } from './types.js';
 import { YaWebAdbManager, bridgeNetAndAdbSocket } from './manager.js';
 
 const debug = Utils.debug('adb:yawebadb');
@@ -12,7 +13,7 @@ const debug = Utils.debug('adb:yawebadb');
 /**
  * In-process Socket replacement backed by `YaWebAdbManager` (`@yume-chan/adb`).
  */
-export class YaWebAdbSocket extends Duplex {
+export class YaWebAdbSocket extends Duplex implements AdbTransportSocket {
   private cmdBuffer: Buffer = Buffer.alloc(0);
   private streaming = false;
   private processingQueue: Promise<void> = Promise.resolve();
@@ -361,7 +362,7 @@ export class YaWebAdbSocket extends Duplex {
             const netSocket = Net.connect(sockPath);
             bridgeNetAndAdbSocket(netSocket, incomingAdbSocket);
           } else {
-            void Promise.resolve(incomingAdbSocket.close()).catch(() => {});
+            void Promise.resolve(incomingAdbSocket.close()).catch(() => { });
           }
         }, local);
         YaWebAdbManager.getInstance().markReverseTunnelAdded();
@@ -377,7 +378,7 @@ export class YaWebAdbSocket extends Duplex {
     const reader = adbSocket.readable.getReader();
     void (async () => {
       try {
-        for (;;) {
+        for (; ;) {
           const { done, value } = await reader.read();
           if (done) break;
           if (value && !this.remoteEnded && !this.destroyed) {
@@ -413,7 +414,7 @@ export class YaWebAdbSocket extends Duplex {
     if (this.adbSocket) {
       const sock = this.adbSocket;
       this.adbSocket = undefined;
-      void Promise.resolve(sock.close()).catch(() => {});
+      void Promise.resolve(sock.close()).catch(() => { });
     }
     this.endRemote();
     YaWebAdbManager.getInstance().unregisterSocket(this);

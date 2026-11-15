@@ -1,4 +1,5 @@
-import { Socket, connect } from 'node:net';
+import { connect } from 'node:net';
+import { Duplex } from 'node:stream';
 import { promisify } from 'node:util';
 import { ObjectEncodingOptions } from 'node:fs';
 import EventEmitter from 'node:events';
@@ -26,8 +27,17 @@ interface IEmissions {
   error: (error: Error) => void
 }
 
+/**
+ * Minimal socket interface shared between `net.Socket` and `YaWebAdbSocket`.
+ */
+export interface AdbTransportSocket extends Duplex {
+  setNoDelay(noDelay?: boolean): this;
+  readonly destroyed: boolean;
+  readonly writable: boolean;
+}
+
 export default class Connection extends EventEmitter {
-  public socket!: Socket;
+  public socket!: AdbTransportSocket;
   public parser!: Parser;
   private triedStarting: boolean;
   public options: ClientOptions;
@@ -56,7 +66,7 @@ export default class Connection extends EventEmitter {
     return normalized === '127.0.0.1' || normalized === 'localhost' || normalized === '::1' || normalized === '[::1]';
   }
 
-  private cleanupSocket(socket?: Socket): void {
+  private cleanupSocket(socket?: AdbTransportSocket): void {
     if (!socket) {
       return;
     }
@@ -77,7 +87,7 @@ export default class Connection extends EventEmitter {
       (this.options.useYaWebAdb !== false && this.isLocalHost(this.options.host));
     if (shouldUseYaWebAdb && (await isYaWebAdbAvailable())) {
       debug('Using ya-webadb backend instead of native adb');
-      this.socket = new YaWebAdbSocket(this.options) as unknown as Socket;
+      this.socket = new YaWebAdbSocket(this.options);
     } else {
       this.socket = connect(this.options);
     }
@@ -178,7 +188,7 @@ export default class Connection extends EventEmitter {
 
       socket.once("error", writeErrorHandler)
 
-      const canWrite = socket.write(enc as unknown as Uint8Array)
+      const canWrite = socket.write(enc)
 
       socket.removeListener("error", writeErrorHandler)
 
@@ -187,7 +197,7 @@ export default class Connection extends EventEmitter {
       }
 
       if (canWrite) {
-        resolve((data as unknown as Uint8Array).length)
+        resolve(data.length)
       } else {
         const errorHandler = (err: Error): void => {
           this._errored = undefined
@@ -197,7 +207,7 @@ export default class Connection extends EventEmitter {
 
         const drainHandler = (): void => {
           removeListeners()
-          resolve((data as unknown as Uint8Array).length)
+          resolve(data.length)
         }
 
         const closeHandler = (): void => {
@@ -209,7 +219,7 @@ export default class Connection extends EventEmitter {
 
         const finishHandler = (): void => {
           removeListeners()
-          resolve((data as unknown as Uint8Array).length)
+          resolve(data.length)
         }
 
         const removeListeners = () => {

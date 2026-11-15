@@ -7,7 +7,7 @@ use(simonChai);
 
 describe('util', () => {
     describe('readAll(stream)', () => {
-        it('should return a cancellable Bluebird Promise', (done) => {
+        it('should return a Promise', (done) => {
             const stream = new Stream.PassThrough();
             const promise = Utils.readAll(stream);
             expect(promise).to.be.an.instanceOf(Promise);

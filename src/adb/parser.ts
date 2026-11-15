@@ -98,7 +98,7 @@ export default class Parser {
         if (settled) return;
         settled = true;
         this.ended = true;
-        resolve(Buffer.concat(chunks as unknown as Uint8Array[]));
+        resolve(Buffer.concat(chunks));
       };
       tryRead = () => {
         let chunk: Buffer;
@@ -240,7 +240,7 @@ export default class Parser {
         // Try to get the exact amount we need first. If unsuccessful, take
         // whatever is available, which will be less than the needed amount.
         while (howMany > 0 && (chunk = stream.read(howMany) || stream.read())) {
-          const chunkLen = (chunk as unknown as Uint8Array).length;
+          const chunkLen = chunk.length;
           if (chunkLen > howMany) {
             const overflow = chunk.subarray(howMany);
             chunk = chunk.subarray(0, howMany);
@@ -372,7 +372,7 @@ export default class Parser {
               stream.unshift(remainder);
             }
             settled = true;
-            return resolve(Buffer.concat(chunks as unknown as Uint8Array[]));
+            return resolve(Buffer.concat(chunks));
           }
           chunks.push(chunk);
         }
@@ -421,8 +421,8 @@ export default class Parser {
     // read until \n
     const line = await this.readUntil(10);
     // drop tailing \r if present
-    const len = (line as unknown as Uint8Array).length; 
-    if ((line as unknown as Uint8Array)[len - 1] === 13) {
+    const len = line.length;
+    if (line[len - 1] === 13) {
       return line.slice(0, -1).toString(encoding);
     } else {
       return line.toString(encoding);

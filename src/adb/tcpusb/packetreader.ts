@@ -63,7 +63,7 @@ export default class PacketReader extends EventEmitter {
           if (!this.packet) {
             throw Error('invalid stat packet is missing');
           }
-          if (!((this.buffer as unknown as Uint8Array).length >= this.packet.length)) {
+          if (!(this.buffer.length >= this.packet.length)) {
             break;
           }
           this.packet.data = this._consume(this.packet.length);
@@ -74,7 +74,7 @@ export default class PacketReader extends EventEmitter {
           this.emit('packet', this.packet);
           this.inBody = false;
         } else {
-          if (!((this.buffer as unknown as Uint8Array).length >= 24)) {
+          if (!(this.buffer.length >= 24)) {
             break;
           }
           const header = this._consume(24);
@@ -118,7 +118,7 @@ export default class PacketReader extends EventEmitter {
     if (!this.buffer)
       return Buffer.from([]);
     const chunk = this.buffer.slice(0, length);
-    this.buffer = length === (this.buffer as unknown as Uint8Array).length ? undefined : this.buffer.slice(length);
+    this.buffer = length === this.buffer.length ? undefined : this.buffer.slice(length);
     return chunk;
   }
 }

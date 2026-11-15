@@ -35,7 +35,7 @@ export default class Auth {
   }
 
   private static readPublicKeyFromStruct(struct: Buffer, comment: string): ExtendedPublicKey {
-    if (!(struct as unknown as Uint8Array).length) {
+    if (!struct.length) {
       throw new Error('Invalid public key');
     }
     // Keep track of what we've read already
@@ -43,14 +43,14 @@ export default class Auth {
     // Get len
     const len = struct.readUInt32LE(offset) * 4;
     offset += 4;
-    if ((struct as unknown as Uint8Array).length !== 4 + 4 + len + len + 4) {
+    if (struct.length !== 4 + 4 + len + len + 4) {
       throw new Error('Invalid public key');
     }
     // Skip n0inv, we don't need it
     offset += 4;
     // Get n
     const n = Buffer.alloc(len);
-    struct.copy(n as unknown as Uint8Array, 0, offset, offset + len);
+    struct.copy(n, 0, offset, offset + len);
     [].reverse.call(n);
     offset += len;
     // Skip rr, we don't need it
@@ -61,10 +61,7 @@ export default class Auth {
       throw new Error(`Invalid exponent ${e}, only 3 and 65537 are supported`);
     }
 
-    // FIXME: bug in @types/node-forge
     const modulus = new BigInteger(n.toString('hex'), 16);
-
-    // FIXME: bug in @types/node-forge
     const exponent = new BigInteger(e.toString(), 10);
     // Restore the public key
     const key = forge.pki.rsa.setPublicKey(modulus, exponent);

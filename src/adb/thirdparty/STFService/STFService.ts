@@ -225,19 +225,19 @@ export default class STFService extends EventEmitter {
       const next = await this.servicesSocket.read() as Buffer;
       if (!next) continue;
       if (buffer) {
-        buffer = Buffer.concat([buffer as unknown as Uint8Array, next as unknown as Uint8Array]);
+        buffer = Buffer.concat([buffer, next]);
       } else {
         buffer = next;
       }
       while (buffer) {
-        const reader = protobufjs.Reader.create(buffer as unknown as Uint8Array);
+        const reader = protobufjs.Reader.create(buffer);
         const envelopLen = reader.uint32();
         const bufLen = envelopLen + reader.pos;
         // need mode data to complet envelop
-        if ((buffer as unknown as Uint8Array).length < envelopLen) break;
+        if (buffer.length < envelopLen) break;
 
         let chunk: Buffer;
-        if (bufLen === (buffer as unknown as Uint8Array).length) {
+        if (bufLen === buffer.length) {
           // chunk len match Envelop len should speedup parsing, depending on nodeJS internal Buffer implementation, need to check Buffer.subarray implementation
           chunk = buffer.subarray(reader.pos);
           buffer = null;
@@ -246,7 +246,7 @@ export default class STFService extends EventEmitter {
           buffer = buffer.subarray(bufLen);
         }
         try {
-          const eventObj = this.protoSrv.readEnvelope(chunk as unknown as Uint8Array);
+          const eventObj = this.protoSrv.readEnvelope(chunk);
           const { id, message } = eventObj;
           if (id) {
             const resolv = this.responseHook[id];
@@ -319,7 +319,7 @@ export default class STFService extends EventEmitter {
       await Utils.waitforReadable(socket);
       const chunk = await socket.read() as Buffer;
       if (chunk) {
-        console.log('agentSocket RCV chunk len:', (chunk as unknown as Uint8Array).length, chunk.toString('hex').substring(0, 80));
+        console.log('agentSocket RCV chunk len:', chunk.length, chunk.toString('hex').substring(0, 80));
       } else {
         return;
       }
@@ -343,7 +343,7 @@ export default class STFService extends EventEmitter {
   private async pushService<T>(type: STF.MessageType, message: Uint8Array | Buffer, requestReader?: null | ((req: Uint8Array) => T)): Promise<T | void> {
     const id = (this.reqCnt + 1) | 0xFFFFFF;
     this.reqCnt = id;
-    const envelope = { type, message: message as Uint8Array, id };
+    const envelope = { type, message, id };
     let pReject: (error: Error) => void;
     const promise = new Promise<T | void>((resolve, reject) => {
       pReject = reject;
@@ -375,7 +375,7 @@ export default class STFService extends EventEmitter {
    * Generic method to push message to agent
    */
   private async pushAgent(type: STF.MessageType, message: Uint8Array | Buffer): Promise<number> {
-    const envelope = { type, message: message as Uint8Array };
+    const envelope = { type, message };
     // const buf = this.protoAgent.write.Envelope(envelope)
     const buf = this.protoSrv.write.Envelope(envelope)
     const socket = await this.getAgentSocket();

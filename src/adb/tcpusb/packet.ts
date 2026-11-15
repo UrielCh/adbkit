@@ -27,15 +27,15 @@ export default class Packet {
 
   public static assemble(command: number, arg0: number, arg1: number, data?: Buffer): Buffer {
     if (data) {
-      const len = (data as unknown as Uint8Array).length;
+      const len = data.length;
       const chunk = Buffer.alloc(24 + len);
       chunk.writeUInt32LE(command, 0);
       chunk.writeUInt32LE(arg0, 4);
       chunk.writeUInt32LE(arg1, 8);
       chunk.writeUInt32LE(len, 12);
-      chunk.writeUInt32LE(Packet.checksum(data as unknown as Uint8Array), 16);
+      chunk.writeUInt32LE(Packet.checksum(data), 16);
       chunk.writeUInt32LE(Packet.magic(command), 20);
-      data.copy(chunk as unknown as Uint8Array, 24);
+      data.copy(chunk, 24);
       return chunk;
     } else {
       const chunk = Buffer.alloc(24);
@@ -67,7 +67,7 @@ export default class Packet {
 
   public verifyChecksum(): boolean {
     // see https://github.com/DeviceFarmer/adbkit/issues/42
-    return this.check === 0 || this.check === Packet.checksum((this.data as unknown as Uint8Array));
+    return this.check === 0 || this.check === Packet.checksum(this.data);
   }
 
   public verifyMagic(): boolean {

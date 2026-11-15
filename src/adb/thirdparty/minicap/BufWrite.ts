@@ -42,7 +42,7 @@ export class BufWrite {
 
   writeString(text: string) {
     const textData = Buffer.from(text, 'utf8');
-    const len = (textData as unknown as Uint8Array).length;
+    const len = textData.length;
     this.writeUint32BE(len);
     this.append(textData);
     this.pos += len;
@@ -54,10 +54,6 @@ export class BufWrite {
   }
 
   append(buf: Buffer) {
-    const bufs = [
-      this.buffer as unknown as Uint8Array,
-      buf as unknown as Uint8Array,
-    ];
-    this.buffer = Buffer.concat(bufs, bufs[0].length + bufs[1].length);
+    this.buffer = Buffer.concat([this.buffer, buf], this.buffer.length + buf.length);
   }
 }

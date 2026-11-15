@@ -1,34 +1,5 @@
 import DeviceClient from './DeviceClient.js';
 
-// export interface DevicePackageDump {
-//     'Activity Resolver Table': {
-//         'Full MIME Types': {[mime: string]: any};
-//         'Base MIME Types': {[mime: string]: any};
-//         'Schemes': any;
-//         'Non-Data Actions': {[action: string]: any};
-//         'MIME Typed Actions': {[action: string]: any};
-//     },
-//     'Receiver Resolver Table': {
-//         'Non-Data Actions': {[action: string]: any};
-//     }
-//     'Service Resolver Table': {
-//         'Non-Data Actions': {[action: string]: any};
-//     },
-//     'Provider Resolver Table': {
-//         'Non-Data Actions': {[action: string]: any};
-//     },
-//     'Preferred Activities User 0': {
-//         'Non-Data Actions': {[action: string]: any};
-//     },
-//     Permissions: Array<any>;
-//     'Registered ContentProviders': {[action: string]: any};
-//     'ContentProvider Authorities': {[action: string]: any};
-//     'Key Set Manager': {[action: string]: any};
-//     Packages: {
-//     }
-// }
-
-
 export interface PackageInfo {
     userId: number
     pkg: string;

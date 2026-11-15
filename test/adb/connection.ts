@@ -4,7 +4,7 @@ import { Duplex } from 'node:stream';
 import { Buffer } from 'node:buffer';
 import Sinon from 'sinon';
 import Adb, { setYaWebAdbLoader, YaWebAdbManager, YaWebAdbSocket } from '../../src/index.js';
-import Connection from '../../src/adb/connection.js';
+import Connection, { AdbTransportSocket } from '../../src/adb/connection.js';
 import Utils from '../../src/adb/utils.js';
 
 describe('Client & Connection reliability', () => {
@@ -159,7 +159,7 @@ describe('Client & Connection reliability', () => {
         },
         read() {},
       });
-      conn.socket = mockSocket as unknown as Net.Socket;
+      conn.socket = Object.assign(mockSocket, { setNoDelay: () => mockSocket }) as AdbTransportSocket;
 
       const writePromise = conn.write(Buffer.from('12345678'));
       await Utils.delay(10);
@@ -185,7 +185,7 @@ describe('Client & Connection reliability', () => {
         },
         read() {},
       });
-      conn.socket = mockSocket as unknown as Net.Socket;
+      conn.socket = Object.assign(mockSocket, { setNoDelay: () => mockSocket }) as AdbTransportSocket;
 
       const payload = Buffer.from('12345678');
       const writePromise = conn.write(payload);

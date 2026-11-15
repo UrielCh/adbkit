@@ -32,6 +32,7 @@ export { AdbUnexpectedDataError, AdbPrematureEOFError, AdbFailError, AdbError } 
 export { default as Client } from './adb/client.js';
 export { default as DeviceClient } from './adb/DeviceClient.js';
 export { default as Connection } from './adb/connection.js';
+export type { AdbTransportSocket } from './adb/connection.js';
 export { isYaWebAdbAvailable, loadYaWebAdb, setYaWebAdbLoader, YaWebAdbManager, YaWebAdbSocket } from './adb/yawebadb.js';
 export type { YaWebAdbModules, ManagedDeviceInfo } from './adb/yawebadb.js';
 export { default as TcpUsbServer } from './adb/tcpusb/server.js';
@@ -41,6 +42,8 @@ export { default as JdwpTracker } from './adb/jdwptracker.js';
 
 export { default as Sync } from './adb/sync.js';
 export { default as PullTransfer } from './adb/sync/pulltransfer.js';
+export { default as PushTransfer } from './adb/sync/pushtransfer.js';
+/** @deprecated Use {@link PushTransfer} instead. */
 export { default as Pushtransfer } from './adb/sync/pushtransfer.js';
 export { default as Entry64 } from './adb/sync/entry64.js';
 export { default as Entry } from './adb/sync/entry.js';

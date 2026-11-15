@@ -24,7 +24,7 @@ export default class PullTransfer extends Stream.PassThrough {
     encoding?: BufferEncoding | typeof callback,
     callback?: (error: Error | null | undefined) => void,
   ): boolean {
-    this.stats.bytesTransferred += (chunk as unknown as Uint8Array).length;
+    this.stats.bytesTransferred += chunk.length;
     this.emit('progress', this.stats);
     if (typeof encoding === 'function') {
       return super.write(chunk, encoding);
@@ -36,7 +36,7 @@ export default class PullTransfer extends Stream.PassThrough {
     chunk: Buffer,
     encoding?: BufferEncoding
   ): Promise<void> {
-    this.stats.bytesTransferred += (chunk as unknown as Uint8Array).length;
+    this.stats.bytesTransferred += chunk.length;
     this.emit('progress', this.stats);
     return new Promise<void>((accept, reject) => {
       super.write(chunk, encoding || "utf8", (err) => {
