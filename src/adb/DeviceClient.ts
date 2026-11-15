@@ -785,9 +785,8 @@ export default class DeviceClient {
       const transport = await this.transport();
       return await new hostCmd.StartActivityCommand(transport, this.options).execute(options);
     } catch (err) {
-      if (err instanceof NoUserOptionError) {
-        options.user = undefined;
-        return this.startActivity(options);
+      if (err instanceof Error && NoUserOptionError(err) && options.user !== undefined) {
+        return this.startActivity({ ...options, user: undefined });
       }
       throw err;
     }
@@ -798,16 +797,14 @@ export default class DeviceClient {
    * @param options The activity configuration.
    */
   public async startService(options: StartServiceOptions): Promise<boolean> {
+    const opts = options.user === undefined ? { ...options, user: 0 } : options;
     try {
       const transport = await this.transport();
-      if (!(options.user || options.user === null)) {
-        options.user = 0;
-      }
-      return await new hostCmd.StartServiceCommand(transport, this.options).execute(options);
+      return await new hostCmd.StartServiceCommand(transport, this.options).execute(opts);
     } catch (err) {
-      if (err instanceof NoUserOptionError) {
-        options.user = undefined;
-        return this.startService(options);
+      if (err instanceof Error && NoUserOptionError(err) && opts.user !== undefined && opts.user !== null) {
+        const transport = await this.transport();
+        return await new hostCmd.StartServiceCommand(transport, this.options).execute({ ...opts, user: undefined });
       }
       throw err;
     }

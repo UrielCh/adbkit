@@ -66,7 +66,7 @@ export class ParcelReader {
       dest.writeUint16LE(code2, dst);
       dest.writeUint16LE(code1, dst + 2);
     }
-    this.pos += pos + block * 4;
+    this.pos = pos + block * 4;
 
     if (chars & 1) {
       return dest.toString('utf16le', 0, (dest as unknown as Uint8Array).length - 1);

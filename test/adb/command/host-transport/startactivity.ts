@@ -35,6 +35,7 @@ describe('StartActivityCommand', () => {
         };
         cmd.execute(options).catch((err) => {
             expect(err).to.be.be.an.instanceOf(Error);
+            expect(err.message).to.equal('foo');
             done();
         });
     });

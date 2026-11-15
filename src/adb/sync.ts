@@ -278,6 +278,8 @@ export default class Sync extends EventEmitter {
     const transfer = new PushTransfer();
     let transferError: Error | null = null;
     let rejectError: ((err: Error) => void) | null = null;
+    let cancelled = false;
+    let resolveCancel: (() => void) | null = null;
 
     const fail = (err: Error) => {
       if (!transferError) {
@@ -296,8 +298,16 @@ export default class Sync extends EventEmitter {
       this.connection.end();
     };
 
+    const onCancel = () => {
+      cancelled = true;
+      stream.destroy();
+      this.connection.end();
+      resolveCancel?.();
+    };
+
     stream.once('error', onStreamError);
     this.connection.once('error', onConnectionError);
+    transfer.once('cancel', onCancel);
 
     const writeAll = async (): Promise<void> => {
       const errorPromise = new Promise<never>((_, reject) => {
@@ -308,15 +318,22 @@ export default class Sync extends EventEmitter {
       });
       errorPromise.catch(() => {});
 
+      const cancelPromise = new Promise<void>((resolve) => {
+        resolveCancel = resolve;
+        if (cancelled) {
+          resolve();
+        }
+      });
+
       const pump = async (): Promise<void> => {
         for (let i = 0; ; i++) {
-          if (stream.closed || transferError)
+          if (stream.closed || transferError || cancelled)
             break;
           const readable = await Utils.waitforReadable(stream, STREAM_READ_TIMEOUT);
-          if (!readable || transferError)
+          if (!readable || transferError || cancelled)
             break;
           let chunk: ReturnType<Readable['read']>;
-          while (!transferError && (chunk = (stream.read(DATA_MAX_LENGTH) || stream.read()))) {
+          while (!transferError && !cancelled && (chunk = (stream.read(DATA_MAX_LENGTH) || stream.read()))) {
             await this.sendCommandWithLength(Protocol.DATA, chunk.length);
             transfer.push(chunk.length);
             await this.connection.write(chunk);
@@ -326,20 +343,28 @@ export default class Sync extends EventEmitter {
         if (transferError) {
           throw transferError;
         }
+        if (cancelled) {
+          return;
+        }
         await this.sendCommandWithLength(Protocol.DONE, timeStamp);
         await this.parser.readCode(Protocol.OKAY);
       };
 
-      await Promise.race([pump(), errorPromise]);
+      const pumpPromise = pump();
+      pumpPromise.catch(() => {});
+      await Promise.race([pumpPromise, errorPromise, cancelPromise]);
     };
 
     writeAll()
       .catch((err: Error) => {
-        transfer.emit('error', err);
+        if (!cancelled) {
+          transfer.emit('error', err);
+        }
       })
       .finally(() => {
         stream.off('error', onStreamError);
         this.connection.off('error', onConnectionError);
+        transfer.off('cancel', onCancel);
         transfer.end();
       });
 
@@ -348,24 +373,56 @@ export default class Sync extends EventEmitter {
 
   private readData(): PullTransfer {
     const transfer = new PullTransfer();
+    let cancelled = false;
+    let resolveCancel: (() => void) | null = null;
+
+    const cancelPromise = new Promise<void>((resolve) => {
+      resolveCancel = resolve;
+    });
+
+    const onCancel = () => {
+      cancelled = true;
+      this.connection.end();
+      resolveCancel?.();
+    };
+
+    transfer.once('cancel', onCancel);
+
     const readAll = async (): Promise<boolean> => {
       for (; ;) {
+        if (cancelled) {
+          return false;
+        }
         const reply = await this.parser.readCode(Protocol.DATA, Protocol.DONE);
+        if (cancelled) {
+          return false;
+        }
         if (reply === Protocol.DONE) {
           await this.parser.readBytes(4)
           return true;
         }
         const lengthData = await this.parser.readBytes(4)
+        if (cancelled) {
+          return false;
+        }
         const length = lengthData.readUInt32LE(0);
         await this.parser.readByteFlow(length, transfer)
       }
     };
 
-    readAll().catch(err => {
-      transfer.emit('error', err as Error)
-    }).finally(() => {
-      return transfer.end();
-    });
+    const readPromise = readAll();
+    readPromise.catch(() => {});
+
+    Promise.race([readPromise, cancelPromise])
+      .catch((err: Error) => {
+        if (!cancelled) {
+          transfer.emit('error', err);
+        }
+      })
+      .finally(() => {
+        transfer.off('cancel', onCancel);
+        transfer.end();
+      });
     return transfer;
   }
 

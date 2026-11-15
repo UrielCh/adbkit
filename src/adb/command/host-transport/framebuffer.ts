@@ -31,6 +31,7 @@ export default class FrameBufferCommand extends Command<FramebufferStreamWithMet
 
   _convert(meta: FramebufferMeta, format: string, raw?: Readable): Readable {
     debug(`Converting raw framebuffer stream into ${format.toUpperCase()}`);
+    raw ??= this.parser.raw();
     switch (meta.format) {
       case 'rgb':
       case 'rgba':
@@ -41,13 +42,17 @@ export default class FrameBufferCommand extends Command<FramebufferStreamWithMet
         debug(`Silently transforming '${meta.format}' into 'rgb' for \`gm\``);
         const transform = new RgbTransform(meta);
         meta.format = 'rgb';
-        raw = this.parser.raw().pipe(transform);
+        raw = raw.pipe(transform);
       }
     }
     const proc = spawn('gm', ['convert', '-size', `${meta.width}x${meta.height}`, `${meta.format}:-`, `${format}:-`]);
-    if (raw) {
-      raw.pipe(proc.stdin);
-    }
+    proc.on('error', (err) => {
+      proc.stdout.destroy(err);
+    });
+    proc.stdin.on('error', () => {
+      // Ignore stdin write errors (e.g., EPIPE) when gm fails to spawn or exits early
+    });
+    raw.pipe(proc.stdin);
     return proc.stdout;
   }
 

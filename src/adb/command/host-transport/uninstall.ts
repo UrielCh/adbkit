@@ -8,7 +8,7 @@ export interface UninstallCommandOptions {
   /**
    * remove the app from the given user.
    */
-  user?: string | number;
+  user?: string | number | null;
   /**
    * only uninstall if the app has the given version code.
    */
@@ -26,10 +26,10 @@ export default class UninstallCommand extends Command<boolean> {
     let cmd = 'shell:pm uninstall';
     if (opts) {
       if (opts.keep) cmd += ' -k';
-      if (opts.user) cmd += ` --user ${opts.user}`;
-      if (opts.versionCode) cmd += ` --versionCode ${opts.versionCode}`;
+      if (opts.user !== undefined && opts.user !== null) cmd += ` --user ${this.escape(opts.user)}`;
+      if (opts.versionCode) cmd += ` --versionCode ${this.escape(opts.versionCode)}`;
     }
-    cmd += ` ${pkg}`
+    cmd += ` ${this.escape(pkg)}`;
     await this.sendCommand(cmd);
     await this.readOKAY();
     try {

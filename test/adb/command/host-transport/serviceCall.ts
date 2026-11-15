@@ -22,4 +22,24 @@ describe('serviceCall', () => {
         expect(result.readType()).to.eql(0);
         expect(result.readString()).to.eql('867958051317536');
     });
+
+    it('should read multiple consecutive strings without corrupting pos', () => {
+        // Two VAL_STRING (type 0) entries: "ab" (len 2, 1 block) and "cd" (len 2, 1 block)
+        const buf = Buffer.alloc(24);
+        let offset = 0;
+        // string 1: type=0, chars=2, 'b' (0x0062) then 'a' (0x0061) in big-endian 32-bit word
+        buf.writeInt32BE(0, offset); offset += 4;
+        buf.writeInt32BE(2, offset); offset += 4;
+        buf.writeUInt16BE(0x0062, offset); offset += 2;
+        buf.writeUInt16BE(0x0061, offset); offset += 2;
+        // string 2: type=0, chars=2, 'd' (0x0064) then 'c' (0x0063) in big-endian 32-bit word
+        buf.writeInt32BE(0, offset); offset += 4;
+        buf.writeInt32BE(2, offset); offset += 4;
+        buf.writeUInt16BE(0x0064, offset); offset += 2;
+        buf.writeUInt16BE(0x0063, offset);
+
+        const reader = new ParcelReader(buf);
+        expect(reader.read()).to.eql('ab');
+        expect(reader.read()).to.eql('cd');
+    });
 });

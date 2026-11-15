@@ -12,7 +12,7 @@ describe('UninstallCommand', () => {
         const conn = new MockConnection();
         const cmd = new UninstallCommand(conn);
         conn.getSocket().on('write', (chunk) => {
-            return expect(chunk.toString()).to.equal(Protocol.encodeData('shell:pm uninstall foo').toString());
+            return expect(chunk.toString()).to.equal(Protocol.encodeData("shell:pm uninstall 'foo'").toString());
         });
         setImmediate(() => {
             conn.getSocket().causeRead(Protocol.OKAY);
@@ -25,7 +25,7 @@ describe('UninstallCommand', () => {
         const conn = new MockConnection();
         const cmd = new UninstallCommand(conn);
         conn.getSocket().on('write', (chunk) => {
-            return expect(chunk.toString()).to.equal(Protocol.encodeData('shell:pm uninstall foo').toString());
+            return expect(chunk.toString()).to.equal(Protocol.encodeData("shell:pm uninstall 'foo'").toString());
         });
         setImmediate(() => {
             conn.getSocket().causeRead(Protocol.OKAY);
@@ -39,7 +39,7 @@ describe('UninstallCommand', () => {
         const conn = new MockConnection();
         const cmd = new UninstallCommand(conn);
         conn.getSocket().on('write', function (chunk) {
-            return expect(chunk.toString()).to.equal(Protocol.encodeData('shell:pm uninstall foo').toString());
+            return expect(chunk.toString()).to.equal(Protocol.encodeData("shell:pm uninstall 'foo'").toString());
         });
         setImmediate(function () {
             conn.getSocket().causeRead(Protocol.OKAY);
@@ -55,7 +55,7 @@ describe('UninstallCommand', () => {
         const conn = new MockConnection();
         const cmd = new UninstallCommand(conn);
         conn.getSocket().on('write', (chunk) => {
-            return expect(chunk.toString()).to.equal(Protocol.encodeData('shell:pm uninstall foo').toString());
+            return expect(chunk.toString()).to.equal(Protocol.encodeData("shell:pm uninstall 'foo'").toString());
         });
         setImmediate(() => {
             conn.getSocket().causeRead(Protocol.OKAY);
@@ -120,7 +120,7 @@ java.lang.IllegalArgumentException: Unknown package: foo
         const conn = new MockConnection();
         const cmd = new UninstallCommand(conn);
         conn.getSocket().on('write', (chunk) => {
-            return expect(chunk.toString()).to.equal(Protocol.encodeData('shell:pm uninstall foo').toString());
+            return expect(chunk.toString()).to.equal(Protocol.encodeData("shell:pm uninstall 'foo'").toString());
         });
         setImmediate(() => {
             conn.getSocket().causeRead(Protocol.OKAY);
@@ -129,5 +129,35 @@ java.lang.IllegalArgumentException: Unknown package: foo
             return conn.getSocket().causeEnd();
         });
         return cmd.execute('foo');
+    });
+    it('should include --user 0 and -k and escape arguments', () => {
+        const conn = new MockConnection();
+        const cmd = new UninstallCommand(conn);
+        conn.getSocket().on('write', (chunk) => {
+            return expect(chunk.toString()).to.equal(
+                Protocol.encodeData("shell:pm uninstall -k --user 0 --versionCode '42' 'com.example.app;rm -rf /'").toString(),
+            );
+        });
+        setImmediate(() => {
+            conn.getSocket().causeRead(Protocol.OKAY);
+            conn.getSocket().causeRead('Success\r\n');
+            return conn.getSocket().causeEnd();
+        });
+        return cmd.execute('com.example.app;rm -rf /', { keep: true, user: 0, versionCode: '42' });
+    });
+    it('should omit --user when user is null or undefined', async () => {
+        for (const user of [null, undefined]) {
+            const conn = new MockConnection();
+            const cmd = new UninstallCommand(conn);
+            conn.getSocket().on('write', (chunk) => {
+                return expect(chunk.toString()).to.equal(Protocol.encodeData("shell:pm uninstall 'foo'").toString());
+            });
+            setImmediate(() => {
+                conn.getSocket().causeRead(Protocol.OKAY);
+                conn.getSocket().causeRead('Success\r\n');
+                return conn.getSocket().causeEnd();
+            });
+            await cmd.execute('foo', { user });
+        }
     });
 });

@@ -40,11 +40,10 @@ export default class StartActivityCommand extends Command<boolean> {
     } catch (err) {
       if (err instanceof AdbPrematureEOFError)
         return true;
+      throw err;
     } finally {
       await this.parser.end();
     }
-    // may be incorrect.
-    throw await this.parser.readError();
   }
 
   protected _intentArgs(options: StartActivityOptions): Array<string | number> {

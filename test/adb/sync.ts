@@ -1,6 +1,5 @@
 import Fs from 'node:fs';
 import Stream from 'node:stream';
-import EventEmitter from 'node:events';
 import Sinon from 'sinon';
 import { use, expect, assert } from 'chai';
 import simonChai from 'sinon-chai';
@@ -146,8 +145,6 @@ describe('Sync', () => {
         });
         it('should emit error on PushTransfer when connection errors', async () => {
             const conn = new MockConnection();
-            // MockConnection overrides `on()` to a no-op; restore EventEmitter.on so `once('error', ...)` registers.
-            conn.on = EventEmitter.prototype.on;
             const sync = new Sync(conn);
             const stream = new Stream.PassThrough();
             const transfer = await sync.pushStream(stream, 'foo');
@@ -158,6 +155,41 @@ describe('Sync', () => {
             conn.emit('error', new Error('write boom'));
             const err = await errorPromise;
             expect(err.message).to.include('Target Error: write boom');
+        });
+        it('should abort pushStream, destroy source stream, and end connection when cancel() is called', async () => {
+            const conn = new MockConnection();
+            const sync = new Sync(conn);
+            const stream = new Stream.PassThrough();
+            let connEnded = false;
+            const origEnd = conn.end.bind(conn);
+            conn.end = () => {
+                connEnded = true;
+                return origEnd();
+            };
+
+            const transfer = await sync.pushStream(stream, 'foo');
+            transfer.cancel();
+            await transfer.waitForEnd();
+
+            expect(connEnded).to.equal(true);
+            expect(stream.destroyed).to.equal(true);
+        });
+        it('should abort pull and end connection when PullTransfer.cancel() is called', async () => {
+            const conn = new MockConnection();
+            const sync = new Sync(conn);
+            let connEnded = false;
+            const origEnd = conn.end.bind(conn);
+            conn.end = () => {
+                connEnded = true;
+                return origEnd();
+            };
+
+            const transfer = await sync.pull('/dev/zero');
+            transfer.resume();
+            transfer.cancel();
+            await transfer.waitForEnd();
+
+            expect(connEnded).to.equal(true);
         });
         dt('should be able to push >65536 byte chunks without error', async () => {
             await forEachSyncDevice((sync) => {
