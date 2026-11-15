@@ -23,7 +23,7 @@ export { default as SyncCommand } from './sync.js';
 export { default as TcpCommand } from './tcp.js';
 export { default as TcpIpCommand } from './tcpip.js';
 export { default as TrackJdwpCommand } from './trackjdwp.js';
-export { default as UninstallCommand, type UninstallCommandOptions } from './uninstall.js';
+export { default as UninstallCommand, UninstallError, type UninstallCommandOptions } from './uninstall.js';
 export { default as UsbCommand } from './usb.js';
 export { default as WaitBootCompleteCommand } from './waitbootcomplete.js';
 export { default as PsCommand, type PsEntry, type ProcessState } from './ps.js';

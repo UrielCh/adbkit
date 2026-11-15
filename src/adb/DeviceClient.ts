@@ -177,9 +177,9 @@ export default class DeviceClient {
    * -3: filter to only show third party packages
    * @returns An array of package names installed on the device.
    */
-  public async getPackages(flags?: string): Promise<string[]> {
+  public async getPackages(...flags: string[]): Promise<string[]> {
     const transport = await this.transport();
-    return new hostCmd.GetPackagesCommand(transport, this.options).execute(flags);
+    return new hostCmd.GetPackagesCommand(transport, this.options).execute(...flags);
   }
 
   /**
@@ -684,7 +684,8 @@ export default class DeviceClient {
    * Uninstalls the package from the device. This is roughly analogous to `adb uninstall <pkg>`.
    *
    * @param pkg The package name. This is NOT the APK.
-   * @returns true
+   * @param opts Optional uninstall flags and failure handling (`throwOnFailure`).
+   * @returns `true` on success, or `true` on non-`DELETE_FAILED_DEVICE_POLICY_MANAGER` failures unless `opts.throwOnFailure` is `true` (in which case `UninstallError` is thrown).
    */
   public async uninstall(pkg: string, opts?: hostCmd.UninstallCommandOptions): Promise<boolean> {
     const transport = await this.transport();
@@ -1027,13 +1028,7 @@ export default class DeviceClient {
    * @returns an array of DevicePackage
    */
   public async listPackages(options?: { thirdparty?: boolean }): Promise<DevicePackage[]> {
-    options = options || {};
-    let cmd = 'pm list packages';
-    if (options.thirdparty) {
-      cmd += ' -3';
-    }
-    const list = await this.execOut(cmd, 'utf-8');
-    const packages = [...list.matchAll(/package:([\w\d.]+)/g)];
-    return packages.map((m) => new DevicePackage(this, m[1]));
+    const packages = options?.thirdparty ? await this.getPackages('-3') : await this.getPackages();
+    return packages.map((name) => new DevicePackage(this, name));
   }
 }

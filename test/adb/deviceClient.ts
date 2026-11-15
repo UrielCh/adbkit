@@ -402,4 +402,23 @@ describe('DeviceClient API cleanup & deprecated aliases', () => {
     expect(res).to.equal(true);
     expect(airplaneStub.calledOnceWithExactly(true, 150)).to.equal(true);
   });
+
+  it('listPackages should delegate to getPackages and preserve hyphenated package names', async () => {
+    const device = new DeviceClient(mockClient, 'dummy-serial');
+    const getPackagesStub = Sinon.stub(device, 'getPackages').resolves([
+      'com.example.app',
+      'com.example.my-hyphenated-app',
+    ]);
+
+    const allPkgs = await device.listPackages();
+    expect(getPackagesStub.firstCall.args).to.deep.equal([]);
+    expect(allPkgs.every((p) => p instanceof DevicePackage)).to.equal(true);
+    expect(allPkgs.map((p) => p.name)).to.deep.equal([
+      'com.example.app',
+      'com.example.my-hyphenated-app',
+    ]);
+
+    await device.listPackages({ thirdparty: true });
+    expect(getPackagesStub.secondCall.args).to.deep.equal(['-3']);
+  });
 });

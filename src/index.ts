@@ -57,7 +57,7 @@ export type { KeyEventRequest } from './adb/thirdparty/STFService/STFServiceMode
 export { KeyCodesMap, type KeyCodes } from './adb/keycode.js';
 
 export type { RebootType, PsEntry, ProcessState, AdbServiceInfo } from './adb/command/host-transport/index.js';
-export { ShellCommand, IpRuleEntry, IpRouteEntry } from './adb/command/host-transport/index.js';
+export { ShellCommand, IpRuleEntry, IpRouteEntry, UninstallError, type UninstallCommandOptions } from './adb/command/host-transport/index.js';
 
 export type { ServiceCallArg, ServiceCallArgNumber, ServiceCallArgString, ServiceCallArgNull } from './adb/command/host-transport/serviceCall.js';
 export { default as ServiceCallCommand, ParcelReader } from './adb/command/host-transport/serviceCall.js';

@@ -4,7 +4,7 @@ import simonChai from 'sinon-chai';
 use(simonChai);
 import MockConnection from '../../../mock/connection.js';
 import Protocol from '../../../../src/adb/protocol.js';
-import { AdbPrematureEOFError } from '../../../../src/index.js';
+import { AdbPrematureEOFError, UninstallError } from '../../../../src/index.js';
 import UninstallCommand from '../../../../src/adb/command/host-transport/uninstall.js';
 
 describe('UninstallCommand', () => {
@@ -159,5 +159,61 @@ java.lang.IllegalArgumentException: Unknown package: foo
             });
             await cmd.execute('foo', { user });
         }
+    });
+    describe('with throwOnFailure: true', () => {
+        const runWithOutput = async (output: string) => {
+            const conn = new MockConnection();
+            const cmd = new UninstallCommand(conn);
+            setImmediate(() => {
+                conn.getSocket().causeRead(Protocol.OKAY);
+                conn.getSocket().causeRead(output);
+                return conn.getSocket().causeEnd();
+            });
+            return cmd.execute('foo', { throwOnFailure: true });
+        };
+
+        it('should return true on Success', async () => {
+            expect(await runWithOutput('Success\r\n')).to.equal(true);
+        });
+
+        it('should throw UninstallError with code and isNotInstalled=false on genuine failure', async () => {
+            let caught: unknown;
+            try {
+                await runWithOutput('Failure [DELETE_FAILED_INTERNAL_ERROR]\r\n');
+            } catch (err) {
+                caught = err;
+            }
+            expect(caught).to.be.an.instanceOf(UninstallError);
+            const err = caught as UninstallError;
+            expect(err.code).to.equal('DELETE_FAILED_INTERNAL_ERROR');
+            expect(err.reason).to.equal('Failure [DELETE_FAILED_INTERNAL_ERROR]');
+            expect(err.isNotInstalled).to.equal(false);
+        });
+
+        it('should throw UninstallError with isNotInstalled=false on bare Failure', async () => {
+            let caught: unknown;
+            try {
+                await runWithOutput('Failure\r\n');
+            } catch (err) {
+                caught = err;
+            }
+            expect(caught).to.be.an.instanceOf(UninstallError);
+            const err = caught as UninstallError;
+            expect(err.code).to.equal(undefined);
+            expect(err.isNotInstalled).to.equal(false);
+        });
+
+        it('should throw UninstallError with isNotInstalled=true when package is not installed', async () => {
+            for (const line of ['Failure - not installed for 0\r\n', 'java.lang.IllegalArgumentException: Unknown package: foo\r\n']) {
+                let caught: unknown;
+                try {
+                    await runWithOutput(line);
+                } catch (err) {
+                    caught = err;
+                }
+                expect(caught).to.be.an.instanceOf(UninstallError);
+                expect((caught as UninstallError).isNotInstalled).to.equal(true);
+            }
+        });
     });
 });

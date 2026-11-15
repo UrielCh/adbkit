@@ -29,8 +29,12 @@ async function removeBloatware(serials: string[]): Promise<void> {
         if (r.toLowerCase() == 'y' || r.toLowerCase() == 'yes') {
           for (const p of bixby) {
             console.log(`uninstalling ${p.name}`);
-            const res = await device.uninstall(p.name, { keep: true, user: 0 });
-            console.log(res ? 'Success' : 'Failed');
+            try {
+              await device.uninstall(p.name, { keep: true, user: 0, throwOnFailure: true });
+              console.log('Success');
+            } catch (err) {
+              console.log(`Failed: ${err instanceof Error ? err.message : String(err)}`);
+            }
           }
         } else {
           console.log(`response: "${r}", Skip`);

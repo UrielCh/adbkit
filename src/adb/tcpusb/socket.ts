@@ -65,17 +65,20 @@ export default class Socket extends EventEmitter {
   public version = 1;
   public maxPayload = 4096;
 
+  private readonly options: SocketOptions;
+
   constructor(
     private readonly client: Client,
     private readonly serial: string,
     private socket: Net.Socket,
-    private options: SocketOptions = {},
+    options: SocketOptions = {},
   ) {
     super();
 
-    const base: SocketOptions = this.options;
-    if (!base.auth)
-      base.auth = () => Promise.resolve(true);
+    this.options = {
+      ...options,
+      auth: options.auth ?? (() => Promise.resolve(true)),
+    };
     this.socket.setNoDelay(true);
     this.reader = new PacketReader(this.socket)
       .on('packet', this._handle.bind(this))

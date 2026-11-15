@@ -13,11 +13,24 @@ export interface UninstallCommandOptions {
    * only uninstall if the app has the given version code.
    */
   versionCode?: string;
+  /**
+   * throw an `UninstallError` on any uninstall failure instead of returning `true`
+   * (note: `DELETE_FAILED_DEVICE_POLICY_MANAGER` always throws regardless of this option).
+   */
+  throwOnFailure?: boolean;
 }
 
-class UninstallError extends Error {
-  constructor(message: string) {
+export class UninstallError extends Error {
+  public readonly reason: string;
+  public readonly code?: string;
+  public readonly isNotInstalled: boolean;
+
+  constructor(message: string, reason = '') {
     super(message);
+    this.name = 'UninstallError';
+    this.reason = reason;
+    this.code = /\[([^\]]+)\]/.exec(reason)?.[1];
+    this.isNotInstalled = /not installed|Unknown package:|DELETE_FAILED_NOT_INSTALLED/i.test(reason);
   }
 }
 
@@ -36,13 +49,13 @@ export default class UninstallCommand extends Command<boolean> {
       const match = await this.parser.searchLine(/^(Success|Failure.*|.*Unknown package:.*)$/);
       if (match[1] === 'Success') {
         return true;
-      } else if (match[1].includes('DELETE_FAILED_DEVICE_POLICY_MANAGER')) {
+      } else if (match[1].includes('DELETE_FAILED_DEVICE_POLICY_MANAGER') || opts?.throwOnFailure) {
         // @see https://github.com/DeviceFarmer/adbkit/pull/513
         const reason = match[1];
-        throw new UninstallError(`${pkg} could not be uninstalled [${reason}]`);
+        throw new UninstallError(`${pkg} could not be uninstalled [${reason}]`, reason);
       } else {
-        // Either way, the package was uninstalled or doesn't exist,
-        // which is good enough for us.
+        // Legacy default: either way, the package was uninstalled or doesn't exist,
+        // which is good enough unless `throwOnFailure` is requested.
         return true;
       }
     } finally {
