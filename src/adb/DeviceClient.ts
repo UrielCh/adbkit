@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import { Duplex } from 'node:stream';
 import { ReadStream } from 'node:fs';
 import { Buffer } from 'node:buffer';
@@ -529,6 +530,7 @@ export default class DeviceClient {
     try {
       return await new hostCmd.ScreencapCommand(transport, this.options).execute();
     } catch (err) {
+      transport.end();
       debug(`Emulating screencap command due to '${err}'`);
       return this.framebuffer('png');
     }
@@ -727,7 +729,7 @@ export default class DeviceClient {
    * ```
    */
   public async install(apk: string | ReadStream): Promise<boolean> {
-    const temp = Sync.temp(typeof apk === 'string' ? apk : '_stream.apk');
+    const temp = Sync.temp(typeof apk === 'string' ? apk : `_stream_${randomUUID()}.apk`);
     const transfer = await this.push(apk, temp);
     await transfer.waitForEnd();
     const value = await this.installRemote(temp);
@@ -744,10 +746,25 @@ export default class DeviceClient {
    */
   public async installRemote(apk: string): Promise<boolean> {
     const transport = await this.transport();
+    let installError: unknown;
+    let hasInstallError = false;
     try {
       await new hostCmd.InstallCommand(transport, this.options).execute(apk);
-    } finally {
+    } catch (err) {
+      installError = err;
+      hasInstallError = true;
+      transport.end();
+    }
+    try {
       await this.execOut(['rm', '-f', apk]);
+    } catch (cleanupErr) {
+      debug(`Failed to remove temporary APK '${apk}': ${cleanupErr}`);
+      if (!hasInstallError) {
+        throw cleanupErr;
+      }
+    }
+    if (hasInstallError) {
+      throw installError;
     }
     return true;
   }

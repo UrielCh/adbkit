@@ -48,8 +48,34 @@ export default class Connection extends EventEmitter {
     return this._parent;
   }
 
+  private isLocalHost(host?: string): boolean {
+    if (!host) {
+      return true;
+    }
+    const normalized = host.toLowerCase();
+    return normalized === '127.0.0.1' || normalized === 'localhost' || normalized === '::1' || normalized === '[::1]';
+  }
+
+  private cleanupSocket(socket?: Socket): void {
+    if (!socket) {
+      return;
+    }
+    socket.removeAllListeners();
+    // Prevent late asynchronous errors on the discarded socket from crashing Node.
+    socket.on('error', () => {
+      // ignore
+    });
+    socket.end();
+    if (typeof socket.destroy === 'function' && !socket.destroyed) {
+      socket.destroy();
+    }
+  }
+
   public async connect(): Promise<Connection> {
-    if (this.options.useYaWebAdb !== false && (await isYaWebAdbAvailable())) {
+    const shouldUseYaWebAdb =
+      this.options.useYaWebAdb === true ||
+      (this.options.useYaWebAdb !== false && this.isLocalHost(this.options.host));
+    if (shouldUseYaWebAdb && (await isYaWebAdbAvailable())) {
       debug('Using ya-webadb backend instead of native adb');
       this.socket = new YaWebAdbSocket(this.options) as unknown as Socket;
     } else {
@@ -80,6 +106,7 @@ export default class Connection extends EventEmitter {
       if ((err as { code: string }).code === 'ECONNREFUSED' && !this.triedStarting) {
         debug("Connection was refused, let's try starting the server once");
         this.triedStarting = true;
+        this.cleanupSocket(this.socket);
         await this.startServer();
         return this.connect();
       } else {
@@ -92,6 +119,7 @@ export default class Connection extends EventEmitter {
     // Without this, they would just crash node unavoidably.
     if (this.socket) {
       this.socket.on('error', (err) => {
+        this._errored = err;
         if (this.socket && this.socket.listenerCount('error') === 1) {
           this.emit('error', err);
         }
@@ -150,10 +178,12 @@ export default class Connection extends EventEmitter {
 
       socket.removeListener("error", writeErrorHandler)
 
+      if (rejected) {
+        return
+      }
+
       if (canWrite) {
-        if (!rejected) {
-          resolve((data as unknown as Uint8Array).length)
-        }
+        resolve((data as unknown as Uint8Array).length)
       } else {
         const errorHandler = (err: Error): void => {
           this._errored = undefined
@@ -168,7 +198,9 @@ export default class Connection extends EventEmitter {
 
         const closeHandler = (): void => {
           removeListeners()
-          resolve((data as unknown as Uint8Array).length)
+          const err = this._errored || new Error('Socket closed before write completed')
+          this._errored = undefined
+          reject(err)
         }
 
         const finishHandler = (): void => {

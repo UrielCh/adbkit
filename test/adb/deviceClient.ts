@@ -1,4 +1,7 @@
 import { expect } from 'chai';
+import { PassThrough } from 'node:stream';
+import type { ReadStream } from 'node:fs';
+import Sinon from 'sinon';
 import DeviceClient from '../../src/adb/DeviceClient.js';
 import MockConnection from '../mock/connection.js';
 import Protocol from '../../src/adb/protocol.js';
@@ -143,5 +146,85 @@ describe('DeviceClient.startActivity / startService', () => {
     }
     expect(caught).to.be.an.instanceOf(Error);
     expect((caught as Error).message).to.equal('Service not found');
+  });
+});
+
+describe('DeviceClient resource reliability', () => {
+  it('screencap should close the first transport when falling back to framebuffer', async () => {
+    const firstConn = new MockConnection();
+    const endSpy = Sinon.spy(firstConn, 'end');
+    firstConn.getSocket().on('write', () => {
+      setImmediate(() => {
+        const sock = firstConn.getSocket();
+        sock.causeRead(Protocol.OKAY);
+        sock.causeEnd(); // Triggers ScreencapCommand "No support for the screencap command"
+      });
+    });
+
+    const device = new DeviceClient({} as any, 'dummy-serial');
+    device.transport = (async () => firstConn) as any;
+    const fallbackStream = new PassThrough();
+    const framebufferStub = Sinon.stub(device, 'framebuffer').resolves(fallbackStream as any);
+
+    const res = await device.screencap();
+    expect(res).to.equal(fallbackStream);
+    expect(endSpy.calledOnce).to.equal(true);
+    expect(framebufferStub.calledOnceWithExactly('png')).to.equal(true);
+  });
+
+  it('installRemote should not mask the original install error when cleanup rm fails', async () => {
+    const conn = new MockConnection();
+    const endSpy = Sinon.spy(conn, 'end');
+    conn.getSocket().on('write', () => {
+      setImmediate(() => {
+        const sock = conn.getSocket();
+        sock.causeRead(Protocol.OKAY);
+        sock.causeRead('Failure [INSTALL_FAILED_INSUFFICIENT_STORAGE]\n');
+        sock.causeEnd();
+      });
+    });
+
+    const device = new DeviceClient({} as any, 'dummy-serial');
+    device.transport = (async () => conn) as any;
+    device.execOut = (async () => {
+      throw new Error('device offline during rm');
+    }) as any;
+
+    let caught: unknown;
+    try {
+      await device.installRemote('/data/local/tmp/app.apk');
+    } catch (err) {
+      caught = err;
+    }
+    expect(caught).to.be.an.instanceOf(Error);
+    expect((caught as Error).message).to.include('INSTALL_FAILED_INSUFFICIENT_STORAGE');
+    expect(endSpy.calledOnce).to.equal(true);
+  });
+
+  it('install should use distinct temp paths for concurrent stream installs', async () => {
+    const device = new DeviceClient({} as any, 'dummy-serial');
+    const pushedPaths: string[] = [];
+    const installedPaths: string[] = [];
+
+    device.push = (async (_stream: unknown, remotePath: string) => {
+      pushedPaths.push(remotePath);
+      return {
+        waitForEnd: async () => {},
+      };
+    }) as any;
+    device.installRemote = (async (remotePath: string) => {
+      installedPaths.push(remotePath);
+      return true;
+    }) as any;
+
+    const s1 = new PassThrough() as unknown as ReadStream;
+    const s2 = new PassThrough() as unknown as ReadStream;
+    await Promise.all([device.install(s1), device.install(s2)]);
+
+    expect(pushedPaths).to.have.lengthOf(2);
+    expect(pushedPaths[0]).to.not.equal(pushedPaths[1]);
+    expect(pushedPaths[0]).to.match(/^\/data\/local\/tmp\/_stream_[0-9a-f-]+\.apk$/);
+    expect(pushedPaths[1]).to.match(/^\/data\/local\/tmp\/_stream_[0-9a-f-]+\.apk$/);
+    expect(installedPaths).to.deep.equal(pushedPaths);
   });
 });

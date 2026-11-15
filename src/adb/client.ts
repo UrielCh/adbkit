@@ -65,9 +65,13 @@ export default class Client extends EventEmitter {
 
   public connection(): Promise<Connection> {
     const connection = new Connection(this);
-    // Reemit unhandled connection errors, so they can be handled externally.
-    // If not handled at all, these will crash node.
-    connection.on('error', (err) => this.emit('error', err));
+    // Reemit unhandled connection errors only when listeners exist on the client,
+    // avoiding an uncaught EventEmitter 'error' crash when callers rely solely on try/await.
+    connection.on('error', (err) => {
+      if (this.listenerCount('error') > 0) {
+        this.emit('error', err);
+      }
+    });
     return connection.connect();
   }
 

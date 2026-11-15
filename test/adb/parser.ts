@@ -111,6 +111,110 @@ describe('Parser', () => {
             await parser.readByteFlow(3, target);
             expect(target.read()).to.eql(Buffer.from('PIE'));
         });
+        it('should pause reading on targetStream backpressure and resume on drain', async () => {
+            const source = new Stream.PassThrough({ highWaterMark: 16 });
+            const parser = new Parser(source);
+            let writeCount = 0;
+            let releaseDrain!: () => void;
+            const chunks: Buffer[] = [];
+            const target = new Stream.Duplex({
+                highWaterMark: 8,
+                write(chunk: Buffer, _encoding, callback) {
+                    writeCount++;
+                    chunks.push(chunk);
+                    if (writeCount === 1) {
+                        // Hold back the first write callback so target.write() returns false (highWaterMark=8)
+                        releaseDrain = () => callback();
+                    } else {
+                        callback();
+                    }
+                },
+                read() {},
+            });
+
+            // Push 32 bytes in 8-byte chunks
+            source.write(Buffer.alloc(8, 'a'));
+            source.write(Buffer.alloc(8, 'b'));
+            source.write(Buffer.alloc(8, 'c'));
+            source.write(Buffer.alloc(8, 'd'));
+
+            let resolved = false;
+            const flowPromise = parser.readByteFlow(32, target).then(() => {
+                resolved = true;
+            });
+
+            await Utils.delay(20);
+            // Backpressure must have paused after the first write returned false
+            expect(writeCount).to.equal(1);
+            expect(resolved).to.equal(false);
+
+            releaseDrain();
+            await flowPromise;
+            expect(resolved).to.equal(true);
+            expect(Buffer.concat(chunks)).to.eql(
+                Buffer.concat([
+                    Buffer.alloc(8, 'a'),
+                    Buffer.alloc(8, 'b'),
+                    Buffer.alloc(8, 'c'),
+                    Buffer.alloc(8, 'd'),
+                ]),
+            );
+        });
+        it('should wait for drain when the final write triggers backpressure', async () => {
+            const source = new Stream.PassThrough();
+            const parser = new Parser(source);
+            let drained = false;
+            let finishWrite!: () => void;
+            const target = new Stream.Duplex({
+                highWaterMark: 4,
+                write(_chunk: Buffer, _encoding, callback) {
+                    finishWrite = () => {
+                        drained = true;
+                        callback();
+                    };
+                },
+                read() {},
+            });
+
+            source.write(Buffer.alloc(8, 'x'));
+            let resolved = false;
+            const flowPromise = parser.readByteFlow(8, target).then(() => {
+                resolved = true;
+            });
+
+            await Utils.delay(20);
+            expect(resolved).to.equal(false);
+            expect(drained).to.equal(false);
+
+            finishWrite();
+            await flowPromise;
+            expect(drained).to.equal(true);
+            expect(resolved).to.equal(true);
+        });
+        it('should reject if targetStream closes while waiting for drain', async () => {
+            const source = new Stream.PassThrough();
+            const parser = new Parser(source);
+            const target = new Stream.Duplex({
+                highWaterMark: 4,
+                write(_chunk: Buffer, _encoding, _callback) {
+                    // never invoke callback so target stays under backpressure
+                },
+                read() {},
+            });
+
+            source.write(Buffer.alloc(16, 'y'));
+            const flowPromise = parser.readByteFlow(16, target);
+            await Utils.delay(10);
+            target.destroy();
+
+            let caught: unknown;
+            try {
+                await flowPromise;
+            } catch (err) {
+                caught = err;
+            }
+            expect(caught).to.be.an.instanceOf(Error);
+        });
     });
     describe('readAscii(howMany)', () => {
         it('should read as many ascii characters as requested 1', async () => {
@@ -275,6 +379,76 @@ describe('Parser', () => {
             })
             stream.write('ho ho');
             stream.end();
+        });
+        it('should preserve unread remainder via unshift across multiple calls', async () => {
+            const stream = new Stream.PassThrough();
+            const parser = new Parser(stream);
+            stream.write('alpha:beta:gamma');
+            stream.end();
+            const first = await parser.readUntil(':'.charCodeAt(0));
+            const second = await parser.readUntil(':'.charCodeAt(0));
+            const rest = await parser.readAll();
+            expect(first.toString()).to.equal('alpha');
+            expect(second.toString()).to.equal('beta');
+            expect(rest.toString()).to.equal('gamma');
+        });
+        it('should handle delimiters at offset 0 and spanning multiple chunks', async () => {
+            const stream = new Stream.PassThrough();
+            const parser = new Parser(stream);
+            stream.write('\nhello ');
+            stream.write('world');
+            stream.write('\ntail');
+            const empty = await parser.readUntil(10);
+            const line = await parser.readUntil(10);
+            const tail = await parser.readBytes(4);
+            expect(empty.length).to.equal(0);
+            expect(line.toString()).to.equal('hello world');
+            expect(tail.toString()).to.equal('tail');
+        });
+    });
+    describe('already-ended stream handling', () => {
+        it('should not hang on readBytes/readAll/readUntil/end when stream ended after Parser construction', async () => {
+            const stream = new Stream.PassThrough();
+            const parser = new Parser(stream);
+            stream.resume();
+            stream.end();
+            await Utils.delay(10);
+
+            expect(await parser.readAll()).to.have.length(0);
+            expect(await parser.end()).to.equal(true);
+            let eofBytes: unknown;
+            try {
+                await parser.readBytes(1);
+            } catch (err) {
+                eofBytes = err;
+            }
+            expect(eofBytes).to.be.an.instanceOf(AdbPrematureEOFError);
+
+            let eofUntil: unknown;
+            try {
+                await parser.readUntil(10);
+            } catch (err) {
+                eofUntil = err;
+            }
+            expect(eofUntil).to.be.an.instanceOf(AdbPrematureEOFError);
+        });
+        it('should not hang when stream.readableEnded is already true before Parser construction', async () => {
+            const stream = new Stream.PassThrough();
+            stream.resume();
+            stream.end();
+            await Utils.delay(10);
+            expect(stream.readableEnded).to.equal(true);
+
+            const parser = new Parser(stream);
+            expect(await parser.readAll()).to.have.length(0);
+            expect(await parser.end()).to.equal(true);
+            let caught: unknown;
+            try {
+                await parser.readBytes(4);
+            } catch (err) {
+                caught = err;
+            }
+            expect(caught).to.be.an.instanceOf(AdbPrematureEOFError);
         });
     });
     describe('raw()', () => {

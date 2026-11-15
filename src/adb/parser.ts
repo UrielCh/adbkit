@@ -4,7 +4,7 @@ import { Duplex } from 'node:stream';
 import Protocol from './protocol.js';
 import { AdbFailError, AdbPrematureEOFError, AdbUnexpectedDataError } from './errors.js';
 import { AdbError } from './errors.js';
-import Utils, { BufferEncoding } from './utils.js';
+import { BufferEncoding } from './utils.js';
 
 /**
  * helper to read in Duplex stream
@@ -14,7 +14,20 @@ export default class Parser {
   public lastMessage = '';
 
   constructor(public stream: Duplex) {
-    // empty
+    if (stream.readableEnded) {
+      this.ended = true;
+    } else {
+      stream.once('end', () => {
+        this.ended = true;
+      });
+    }
+  }
+
+  private isEnded(): boolean {
+    if (!this.ended && this.stream.readableEnded) {
+      this.ended = true;
+    }
+    return this.ended;
   }
 
   /**
@@ -22,7 +35,7 @@ export default class Parser {
    * @returns 
    */
   public async end(): Promise<true> {
-    if (this.ended) {
+    if (this.isEnded()) {
       return true;
     }
     const stream = this.stream;
@@ -30,26 +43,39 @@ export default class Parser {
     let errorListener: (error: Error) => void;
     let endListener: () => void;
     return new Promise<true>((resolve, reject) => {
+      let settled = false;
+      const finish = () => {
+        if (settled) return;
+        settled = true;
+        this.ended = true;
+        resolve(true);
+      };
       tryRead = () => {
         while (stream.read()) {
           // read and drop
         }
+        if (this.isEnded()) {
+          finish();
+        }
       };
-      errorListener = (err) => reject(err);
-      endListener = () => {
-        this.ended = true;
-        return resolve(true);
+      errorListener = (err) => {
+        if (settled) return;
+        settled = true;
+        reject(err);
       };
+      endListener = finish;
       stream.on('readable', tryRead);
       stream.on('error', errorListener);
       stream.on('end', endListener);
-      stream.read(0);
-      stream.end();
+      tryRead();
+      if (!settled) {
+        stream.end();
+      }
     }).finally(() => {
       stream.removeListener('readable', tryRead);
       stream.removeListener('error', errorListener);
       stream.removeListener('end', endListener);
-    })
+    });
   }
   /**
    * @returns the internal Duplex
@@ -59,7 +85,7 @@ export default class Parser {
   }
 
   public async readAll(): Promise<Buffer> {
-    let all: Buffer = Buffer.alloc(0);
+    const chunks: Buffer[] = [];
     const stream = this.stream;
 
     let tryRead: () => void;
@@ -67,22 +93,28 @@ export default class Parser {
     let endListener: () => void;
 
     return new Promise<Buffer>((resolve, reject) => {
+      let settled = false;
+      const finish = () => {
+        if (settled) return;
+        settled = true;
+        this.ended = true;
+        resolve(Buffer.concat(chunks as unknown as Uint8Array[]));
+      };
       tryRead = () => {
         let chunk: Buffer;
         while ((chunk = stream.read())) {
-          all = Utils.concatBuffer([all, chunk]);
+          chunks.push(chunk);
         }
-        if (this.ended) {
-          resolve(all);
+        if (this.isEnded()) {
+          finish();
         }
       };
       errorListener = (err) => {
+        if (settled) return;
+        settled = true;
         reject(err);
       };
-      endListener = () => {
-        this.ended = true;
-        resolve(all);
-      };
+      endListener = finish;
       stream.on('readable', tryRead);
       stream.on('error', errorListener);
       stream.on('end', endListener);
@@ -91,7 +123,7 @@ export default class Parser {
       stream.removeListener('readable', tryRead);
       stream.removeListener('error', errorListener);
       stream.removeListener('end', endListener);
-    })
+    });
   }
 
   public async readAscii(howMany: number): Promise<string> {
@@ -115,34 +147,41 @@ export default class Parser {
   }
 
   public async readBytes(howMany: number): Promise<Buffer> {
+    if (!howMany) {
+      return Buffer.alloc(0);
+    }
     let tryRead: () => void;
     let errorListener: (error: Error) => void;
     let endListener: () => void;
     return new Promise<Buffer>((resolve, reject) => {
+      let settled = false;
       tryRead = () => {
-        if (howMany) {
-          const chunk = this.stream.read(howMany);
-          if (chunk) {
-            // If the stream ends while still having unread bytes, the read call
-            // will ignore the limit and just return what it's got.
-            howMany -= chunk.length;
-            if (howMany === 0) {
-              return resolve(chunk);
-            }
+        if (settled) return;
+        const chunk = this.stream.read(howMany);
+        if (chunk) {
+          // If the stream ends while still having unread bytes, the read call
+          // will ignore the limit and just return what it's got.
+          howMany -= chunk.length;
+          if (howMany === 0) {
+            settled = true;
+            return resolve(chunk);
           }
-          if (this.ended) {
-            return reject(new AdbPrematureEOFError(howMany, this.lastMessage));
-          }
-        } else {
-          return resolve(Buffer.alloc(0));
+        }
+        if (this.isEnded()) {
+          settled = true;
+          return reject(new AdbPrematureEOFError(howMany, this.lastMessage));
         }
       };
       endListener = () => {
         this.ended = true;
+        if (settled) return;
+        settled = true;
         return reject(new AdbPrematureEOFError(howMany, this.lastMessage));
       };
       errorListener = (err) => {
-        reject(err)
+        if (settled) return;
+        settled = true;
+        reject(err);
       };
       this.stream.on('readable', tryRead);
       this.stream.on('error', errorListener);
@@ -162,64 +201,114 @@ export default class Parser {
    * @returns Promise that resolves when all bytes are transferred
    */
   public async readByteFlow(howMany: number, targetStream: Duplex): Promise<void> {
+    if (!howMany) {
+      return;
+    }
+    const stream = this.stream;
     let tryRead: () => void;
     let errorListener: (error: Error) => void;
     let endListener: () => void;
-    const stream = this.stream;
-    // TODO add cancellable
-    // const controller = new AbortController();
+    let drainListener: () => void;
+    let targetErrorListener: (error: Error) => void;
+    let targetCloseListener: () => void;
 
-    const promise = new Promise<void>((resolve, reject) => {
+    return new Promise<void>((resolve, reject) => {
+      let settled = false;
+      let waitingForDrain = Boolean(targetStream.writableNeedDrain);
+
+      const fail = (err: Error) => {
+        if (settled) return;
+        settled = true;
+        reject(err);
+      };
+
+      const succeed = () => {
+        if (settled) return;
+        settled = true;
+        resolve();
+      };
+
+      if (targetStream.destroyed || !targetStream.writable) {
+        return fail(new Error('Target stream is not writable'));
+      }
+
       tryRead = () => {
-        if (howMany) {
-          let chunk: Buffer;
-          // Read timeout
-          // stream = addAbortSignal(controller.signal, this.stream);
-          // const tm = setTimeout(() => controller.abort(), 10_000); // set a timeout
-
-          // Try to get the exact amount we need first. If unsuccessful, take
-          // whatever is available, which will be less than the needed amount.
-          while ((chunk = stream.read(howMany) || stream.read())) {
-            howMany -= (chunk as unknown as Uint8Array).length;
-            // TODO fix missing backpressuring handling
-            targetStream.write(chunk);
-            if (howMany === 0) {
-              // clearTimeout(tm)
-              return resolve();
-            }
+        if (settled || waitingForDrain) {
+          return;
+        }
+        let chunk: Buffer;
+        // Try to get the exact amount we need first. If unsuccessful, take
+        // whatever is available, which will be less than the needed amount.
+        while (howMany > 0 && (chunk = stream.read(howMany) || stream.read())) {
+          const chunkLen = (chunk as unknown as Uint8Array).length;
+          if (chunkLen > howMany) {
+            const overflow = chunk.subarray(howMany);
+            chunk = chunk.subarray(0, howMany);
+            stream.unshift(overflow);
+            howMany = 0;
+          } else {
+            howMany -= chunkLen;
           }
-          if (this.ended) {
-            // TODO add cancellable
-            //clearTimeout(tm)
-            return reject(new AdbPrematureEOFError(howMany, this.lastMessage));
+          const canContinue = targetStream.write(chunk);
+          if (settled) {
+            return;
           }
-        } else {
-          // TODO add cancellable
-          // clearTimeout(tm)
-          return resolve();
+          if (!canContinue) {
+            waitingForDrain = true;
+            return;
+          }
+          if (howMany === 0) {
+            return succeed();
+          }
+        }
+        if (howMany === 0) {
+          return succeed();
+        }
+        if (this.isEnded()) {
+          return fail(new AdbPrematureEOFError(howMany, this.lastMessage));
         }
       };
+
+      drainListener = () => {
+        waitingForDrain = false;
+        if (howMany === 0) {
+          return succeed();
+        }
+        tryRead();
+      };
+
       endListener = () => {
         this.ended = true;
-        return reject(new AdbPrematureEOFError(howMany, this.lastMessage));
+        if (howMany > 0) {
+          fail(new AdbPrematureEOFError(howMany, this.lastMessage));
+        }
       };
-      errorListener = (err) => {
-        return reject(err);
+
+      errorListener = (err) => fail(err);
+      targetErrorListener = (err) => fail(err);
+      targetCloseListener = () => {
+        if (!settled) {
+          fail(new Error('Target stream closed before transfer completed'));
+        }
       };
+
       stream.on('readable', tryRead);
       stream.on('error', errorListener);
       stream.on('end', endListener);
-      tryRead();
+      targetStream.on('drain', drainListener);
+      targetStream.on('error', targetErrorListener);
+      targetStream.on('close', targetCloseListener);
+      if (!waitingForDrain) {
+        tryRead();
+      }
     }).finally(() => {
       stream.removeListener('readable', tryRead);
       stream.removeListener('error', errorListener);
       stream.removeListener('end', endListener);
+      targetStream.removeListener('drain', drainListener);
+      targetStream.removeListener('error', targetErrorListener);
+      targetStream.removeListener('close', targetCloseListener);
     });
-    // TODO add cancellable
-    // (promise as any).cancel = () => {
-    //   controller.abort();
-    // }
-    return promise;
   }
 
   public async readError(): Promise<AdbError> {
@@ -256,20 +345,62 @@ export default class Parser {
   }
 
   /**
-   * read stream byte per byte until a delimiter is found
+   * read stream until a delimiter is found
    * @param code delimiter
-   * @returns buffer wothout delimiter
+   * @returns buffer without delimiter
    */
   public async readUntil(code: number): Promise<Buffer> {
-    let skipped: Buffer = Buffer.alloc(0);
-    for (; ;) {
-      const chunk = await this.readBytes(1);
-      if ((chunk as unknown as Uint8Array)[0] === code) {
-        return skipped;
-      } else {
-        skipped = Utils.concatBuffer([skipped, chunk]);
-      }
-    }
+    const chunks: Buffer[] = [];
+    const stream = this.stream;
+    let tryRead: () => void;
+    let errorListener: (error: Error) => void;
+    let endListener: () => void;
+
+    return new Promise<Buffer>((resolve, reject) => {
+      let settled = false;
+      tryRead = () => {
+        if (settled) return;
+        let chunk: Buffer | null;
+        while ((chunk = stream.read())) {
+          const idx = chunk.indexOf(code);
+          if (idx !== -1) {
+            if (idx > 0) {
+              chunks.push(chunk.subarray(0, idx));
+            }
+            const remainder = chunk.subarray(idx + 1);
+            if (remainder.length > 0) {
+              stream.unshift(remainder);
+            }
+            settled = true;
+            return resolve(Buffer.concat(chunks as unknown as Uint8Array[]));
+          }
+          chunks.push(chunk);
+        }
+        if (this.isEnded()) {
+          settled = true;
+          return reject(new AdbPrematureEOFError(1, this.lastMessage));
+        }
+      };
+      endListener = () => {
+        this.ended = true;
+        if (settled) return;
+        settled = true;
+        return reject(new AdbPrematureEOFError(1, this.lastMessage));
+      };
+      errorListener = (err) => {
+        if (settled) return;
+        settled = true;
+        reject(err);
+      };
+      stream.on('readable', tryRead);
+      stream.on('error', errorListener);
+      stream.on('end', endListener);
+      tryRead();
+    }).finally(() => {
+      stream.removeListener('readable', tryRead);
+      stream.removeListener('error', errorListener);
+      stream.removeListener('end', endListener);
+    });
   }
 
   async searchLine(re: RegExp): Promise<RegExpExecArray> {
