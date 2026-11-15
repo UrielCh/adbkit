@@ -1,6 +1,6 @@
 # CHANGELOG
 
-## Unreleased
+## V5.3.0
 
 ### Breaking changes
 
@@ -16,18 +16,20 @@
 
 ### Fixed
 
-* Fix ya-webadb forward rebinding, stream backpressure, and USB connection cleanup.
+* Fix ya-webadb forward rebinding, socket half-close and TCP authentication cleanup, stream backpressure, and USB connection cleanup.
 * Improve connection and parser error propagation, fragmented stream handling, and IPv6 host and port parsing.
-* Improve sync transfers, including cancellation, large-payload chunking, resource cleanup, and error reporting; fix 64-bit stat birth times.
+* Improve sync transfers, including cancellation, large-payload chunking, resource cleanup, and error reporting; consume complete push acknowledgements and fix 64-bit stat birth times.
 * Preserve falsy intent extras, escape command arguments, and improve installation, uninstallation, and framebuffer error handling.
 * Improve scrcpy recording backpressure and error handling, startup failure handling, server download fallbacks, and H.264 SPS parsing.
+* Honor `ADB_PORT`, return complete matched text across stream chunks, and fix CLI connectivity reporting, bloatware counts, and empty device selection.
+* Improve airplane mode and USB tethering switch detection and tap positioning; keep STF service uninstallation scoped to its own package.
 * Write debug output to stderr without changing the global `console.log` binding.
 
 ### Development
 
 * Move the project lockfile and CI installation to Bun, update the Node.js test matrix, and remove unused Jest dependencies.
 * Refactor device, scrcpy, and ya-webadb internals; strengthen types, linting, and unit tests.
-* Add a scheduled and manually triggered native-backend emulator integration check and physical USB testing guidance.
+* Add a scheduled and manually triggered native-backend emulator integration check, physical USB testing guidance, and on-demand device and network test suites. The device suite covers sync, screenshots, forwarding, and scrcpy streaming and recording.
 
 ## V5.2.1
 
