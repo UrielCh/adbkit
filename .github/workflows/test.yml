@@ -35,10 +35,10 @@ jobs:
 
     steps:
     - run: sudo apt-get install -y android-tools-adb
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v7
     - uses: oven-sh/setup-bun@v2
     - name: Use Node.js ${{ matrix.node-version }}
-      uses: actions/setup-node@v4
+      uses: actions/setup-node@v7
       with:
         node-version: ${{ matrix.node-version }}
     - name: Install dependencies
