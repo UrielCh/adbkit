@@ -152,4 +152,4 @@ See [LICENSE](LICENSE).
 
 ### Tests
 
-Run `npm test` for the offline unit suite. Run `npm run test:device` with at least one Android device connected and authorized through the native `adb` server for the sync tests, and `npm run test:network` to check live scrcpy downloads. These live tests are excluded from the default test and coverage scripts.
+Run `npm test` for the offline unit suite. Run `npm run test:device` with at least one Android device connected and authorized through the native `adb` server for live sync, screenshot, forwarding, and scrcpy streaming and recording tests, and `npm run test:network` to check live scrcpy downloads. The device suite uses the bundled scrcpy 3.3.1 server and requires no download. These live tests are excluded from the default test and coverage scripts.

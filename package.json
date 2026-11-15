@@ -58,7 +58,7 @@
     "lint": "eslint src tasks test --max-warnings 0",
     "format": "eslint . --fix",
     "test": "mocha -r tsx --reporter spec --colors --grep '\\[(device|network)\\]' --invert 'test/**/*.ts'",
-    "test:device": "RUN_DEVICE_TESTS=1 mocha -r tsx --grep '\\[device\\]' test/adb/sync.ts",
+    "test:device": "RUN_DEVICE_TESTS=1 mocha -r tsx --grep '\\[device\\]' test/adb/sync.ts test/adb/device-live.ts",
     "test:network": "mocha -r tsx --grep '\\[network\\]' test/adb/thirdparty/scrcpy.ts",
     "test:integration": "tsx tasks/testNativeIntegration.ts",
     "typetest": "bunx @arethetypeswrong/cli --pack . --ignore-rules cjs-resolves-to-esm",
