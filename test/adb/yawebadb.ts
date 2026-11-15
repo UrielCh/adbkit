@@ -362,6 +362,48 @@ describe('ya-webadb integration', () => {
     expect(await device.listForwards()).to.deep.equal([]);
   });
 
+  it('handles host-serial state and attach operations through the manager', async () => {
+    const manager = YaWebAdbManager.getInstance();
+    const state = sinon.stub(manager, 'getDeviceInfo').resolves({ state: 'device' } as never);
+    const attach = sinon.stub(manager, 'attachDevice').resolves();
+    try {
+      for (const [command, expected] of [
+        ['host-serial:serial:get-state', 'device'],
+        ['host-serial:serial:attach', 'OKAY'],
+        ['host-serial:serial:unsupported', 'Unsupported host-serial command'],
+      ]) {
+        const socket = new YaWebAdbSocket();
+        await socket['handleCommand'](command);
+        expect(socket.read().toString()).to.include(expected);
+        socket.destroy();
+      }
+      expect(state.calledOnceWithExactly('serial', 5037)).to.equal(true);
+      expect(attach.calledOnce).to.equal(true);
+    } finally {
+      state.restore();
+      attach.restore();
+    }
+  });
+
+  it('returns protocol failures for malformed and unsupported host requests', async () => {
+    for (const [input, message] of [
+      ['zzzz', 'Invalid command length'],
+      ['000chost:unknown', 'Unsupported host command'],
+      ['0012host-serial:broken', 'Malformed host-serial command'],
+    ]) {
+      const socket = new YaWebAdbSocket();
+      const chunks: Buffer[] = [];
+      socket.on('data', chunk => chunks.push(chunk));
+      const ended = new Promise<void>(resolve => socket.once('end', resolve));
+      socket.write(input);
+      await ended;
+      const response = Buffer.concat(chunks).toString();
+      expect(response.startsWith('FAIL')).to.equal(true);
+      expect(response).to.include(message);
+      socket.destroy();
+    }
+  });
+
   it('flushes writes before half-closing and keeps the readable side open', async () => {
     let releaseWrite!: () => void;
     let wrote = false;
@@ -519,6 +561,28 @@ describe('ya-webadb integration', () => {
       await new Promise<void>(resolve => setImmediate(resolve));
       expect(destroy.calledOnce).to.equal(true);
       expect(cancelled).to.equal(true);
+    });
+
+    it('ends an incomplete packet and destroys the socket on cancellation', async () => {
+      const socket = new EventEmitter() as unknown as Net.Socket;
+      const destroy = sinon.stub().returns(socket);
+      socket.destroy = destroy as Net.Socket['destroy'];
+      const adbMod = { AdbPacketSerializeStream: class {
+        readable = new ReadableStream();
+        writable = new WritableStream();
+      } } as unknown as AdbModuleLike;
+      const conn = createNetDaemonConnection(socket, adbMod) as { readable: ReadableStream<unknown> };
+      const reader = conn.readable.getReader();
+      socket.emit('data', Buffer.alloc(8));
+      socket.emit('end');
+      expect((await reader.read()).done).to.equal(true);
+      reader.releaseLock();
+      const socket2 = new EventEmitter() as unknown as Net.Socket;
+      const destroy2 = sinon.stub().returns(socket2);
+      socket2.destroy = destroy2 as Net.Socket['destroy'];
+      const conn2 = createNetDaemonConnection(socket2, adbMod) as { readable: ReadableStream<unknown> };
+      await conn2.readable.cancel();
+      expect(destroy2.calledOnce).to.equal(true);
     });
 
     it('createNetDaemonConnection should reassemble fragmented and multi-chunk packets cleanly', async () => {

@@ -7,6 +7,9 @@ import DeviceClient from '../src/adb/DeviceClient.js';
 import { forEachDevice, getClientDevice } from '../src/cli-common.js';
 import '../src/cli-connectivity.js';
 import '../src/cli-bloatware.js';
+import '../src/cli-airplane.js';
+import '../src/cli-tethering.js';
+import Utils from '../src/adb/utils.js';
 
 describe('CLI device handling', () => {
   afterEach(() => sinon.restore());
@@ -70,6 +73,39 @@ describe('CLI device handling', () => {
     await program.parseAsync(['bloatware', 'serial'], { from: 'user' });
     expect(uninstall.callCount).to.equal(2);
     expect(log.calledWith('1 bloatware removed')).to.equal(true);
+  });
+
+  it('executes airplane commands and returns from settings after a successful change', async () => {
+    const device = new DeviceClient({} as Client, 'serial');
+    sinon.stub(Client.prototype, 'getDevice').returns(device);
+    const airplane = sinon.stub(device.extra, 'airplaneMode').resolves(true);
+    const back = sinon.stub(device.extra, 'back').resolves('');
+    sinon.stub(Utils, 'delay').resolves();
+    const log = sinon.stub(console, 'log');
+    await program.parseAsync(['airplane-mode-on-off', 'serial'], { from: 'user' });
+    expect(airplane.calledOnceWithExactly(false, 200)).to.equal(true);
+    expect(back.calledOnce).to.equal(true);
+    expect(log.calledWith('[serial] airplane on-off')).to.equal(true);
+    airplane.resolves(false);
+    await program.parseAsync(['airplane-mode-on', 'serial'], { from: 'user' });
+    expect(log.calledWith('[serial] airplane failed or already enabled')).to.equal(true);
+    expect(back.calledOnce).to.equal(true);
+  });
+
+  it('executes USB tethering commands for each selected device', async () => {
+    const device = new DeviceClient({} as Client, 'serial');
+    sinon.stub(Client.prototype, 'getDevice').returns(device);
+    const tether = sinon.stub(device.extra, 'usbTethering').resolves(true);
+    const back = sinon.stub(device.extra, 'back').resolves('');
+    sinon.stub(Utils, 'delay').resolves();
+    const log = sinon.stub(console, 'log');
+    await program.parseAsync(['usb-tethering-off', 'serial'], { from: 'user' });
+    expect(tether.calledOnceWithExactly(false)).to.equal(true);
+    expect(back.calledOnce).to.equal(true);
+    expect(log.calledWith('[serial] tethering disabled')).to.equal(true);
+    tether.resolves(false);
+    await program.parseAsync(['usb-tethering-on', 'serial'], { from: 'user' });
+    expect(log.calledWith('[serial] failed or already enabled')).to.equal(true);
   });
 
 });

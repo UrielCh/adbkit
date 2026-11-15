@@ -381,6 +381,8 @@ export default class Sync extends EventEmitter {
 
       await raceWithAbort(this.sendCommandWithLength(Protocol.DONE, timeStamp), signal);
       await raceWithAbort(this.parser.readCode(Protocol.OKAY), signal);
+      // Sync OKAY responses include a four-byte status field.
+      await raceWithAbort(this.parser.readBytes(4), signal);
     };
 
     pump()

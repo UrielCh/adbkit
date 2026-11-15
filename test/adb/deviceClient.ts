@@ -9,6 +9,7 @@ import PushTransfer from '../../src/adb/sync/pushtransfer.js';
 import FramebufferStreamWithMeta from '../../src/models/FramebufferStreamWithMeta.js';
 import MockConnection from '../mock/connection.js';
 import Protocol from '../../src/adb/protocol.js';
+import Utils from '../../src/adb/utils.js';
 
 const mockClient = {} as Client;
 
@@ -466,5 +467,47 @@ describe('DeviceClientExtra settings switches', () => {
     const exec = Sinon.stub(device, 'exec').resolves('');
     expect(await device.extra.usbTethering(true)).to.equal(true);
     expect(exec.calledWith(['input', 'tap', 20, 40])).to.equal(true);
+  });
+});
+
+describe('DeviceClientExtra switch validation', () => {
+  afterEach(() => Sinon.restore());
+
+  function setup(xml: string) {
+    const device = new DeviceClient(mockClient, 'serial');
+    Sinon.stub(device, 'startActivity').resolves();
+    const execOut = Sinon.stub(device, 'execOut').resolves('');
+    execOut.withArgs('uiautomator dump /dev/tty', 'utf8').resolves(xml);
+    const exec = Sinon.stub(device, 'exec').resolves('');
+    return { device, execOut, exec };
+  }
+
+  it('does not tap a switch already in the requested state', async () => {
+    const { device, execOut } = setup('<hierarchy><node class="android.widget.Switch" checked="true" bounds="[0,0][20,20]"/></hierarchy>');
+    expect(await device.extra.airplaneMode(true)).to.equal(false);
+    expect(execOut.calledWith(['input', 'tap', 10, 10], 'utf8')).to.equal(false);
+  });
+
+  it('toggles twice to restore the requested airplane state', async () => {
+    const { device, execOut } = setup('<hierarchy><node class="android.widget.Switch" checked="false" bounds="[0,0][20,20]"/></hierarchy>');
+    Sinon.stub(Utils, 'delay').resolves();
+    expect(await device.extra.airplaneMode(false, 10)).to.equal(true);
+    expect(execOut.getCalls().filter(call => Array.isArray(call.args[0]) && call.args[0][1] === 'tap')).to.have.length(2);
+  });
+
+  it('rejects ambiguous airplane switches and malformed bounds', async () => {
+    const ambiguous = setup('<hierarchy><node class="android.widget.Switch"/><node class="android.widget.Switch"/></hierarchy>');
+    try { await ambiguous.device.extra.airplaneMode(true); expect.fail('expected ambiguity'); }
+    catch (err) { expect((err as Error).message).to.include('uniquely identify'); }
+    Sinon.restore();
+    const malformed = setup('<hierarchy><node class="android.widget.Switch" checked="false" bounds="invalid"/></hierarchy>');
+    try { await malformed.device.extra.airplaneMode(true); expect.fail('expected bad bounds'); }
+    catch (err) { expect((err as Error).message).to.include('parse Switch bounds'); }
+  });
+
+  it('does not tap USB tethering when already enabled', async () => {
+    const { device, exec } = setup('<hierarchy><node><node><node text="USB tethering"/></node><node><node class="android.widget.Switch" checked="true" bounds="[0,0][20,20]"/></node></node></hierarchy>');
+    expect(await device.extra.usbTethering(true)).to.equal(false);
+    expect(exec.called).to.equal(false);
   });
 });

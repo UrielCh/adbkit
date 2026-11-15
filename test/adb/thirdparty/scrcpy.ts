@@ -187,7 +187,6 @@ describe('Scrcpy 3.0 Support & Backwards Compatibility', () => {
       }
     });
 
-    const nt = process.env.RUN_NETWORK_TESTS ? it : xit;
     const scrcpyVersions = ['5.0.1', '5.0', '4.1', '4.0', '3.3.4', '3.3', '3.2', '3.1', '3.0'];
 
     for (const version of scrcpyVersions) {
@@ -216,7 +215,7 @@ describe('Scrcpy 3.0 Support & Backwards Compatibility', () => {
         }
       });
 
-      nt(`should download scrcpy-server v${version} binary from live release URL`, async function (this: Mocha.Context) {
+      it(`[network] should download scrcpy-server v${version} binary from live release URL`, async function (this: Mocha.Context) {
         this.timeout(20000);
         const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), `scrcpy-test-${version}-`));
         try {

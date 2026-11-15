@@ -21,15 +21,11 @@ use(simonChai);
 // This test suite is a bit special in that it requires a connected Android
 // device (or many devices). All will be tested.
 describe('Sync', () => {
-    // By default, skip tests that require a device.
-    let dt = xit;
-    if (process.env.RUN_DEVICE_TESTS) {
-        dt = it;
-    }
-    const SURELY_EXISTING_FILE = '/system/build.prop';
+    const dt = (title: string, fn: Mocha.Func | Mocha.AsyncFunc) => it(`[device] ${title}`, fn);
+    const SURELY_WRITABLE_FILE = `/data/local/tmp/adbkit-sync-test-${process.pid}-${Date.now()}`;
+    const SURELY_EXISTING_FILE = `${SURELY_WRITABLE_FILE}-fixture`;
     const SURELY_EXISTING_PATH = '/';
-    const SURELY_NONEXISTING_PATH = '/non-existing-path';
-    const SURELY_WRITABLE_FILE = '/data/local/tmp/_sync.test';
+    const SURELY_NONEXISTING_PATH = `${SURELY_WRITABLE_FILE}-missing`;
     let client!: Client;
     let deviceList: Device[] | null = null;
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -53,9 +49,19 @@ describe('Sync', () => {
             return;
         }
         this.timeout(10000);
-        client = Adb.createClient();
+        client = Adb.createClient({ backend: 'native' });
         const devices = await client.listDevices();
         deviceList = devices;
+        assert(deviceList.length > 0, 'At least one connected Android device is required');
+        await Promise.all(deviceList.map(async device => {
+            const transfer = await device.getClient().push(Stream.Readable.from(['adbkit device test fixture\n']), SURELY_EXISTING_FILE);
+            await transfer.waitForEnd();
+        }));
+    });
+    after(async () => {
+        if (deviceList) {
+            await Promise.all(deviceList.map(device => device.getClient().execOut(['rm', '-f', SURELY_WRITABLE_FILE, SURELY_EXISTING_FILE])));
+        }
     });
     afterEach(() => {
         Sinon.restore();
@@ -150,6 +156,32 @@ describe('Sync', () => {
             stream.end();
             await transfer.waitForEnd();
             expect(progress).to.deep.equal([5]);
+        });
+        it('consumes the complete push acknowledgement before the next sync request', async () => {
+            const conn = new MockConnection();
+            const sync = new Sync(conn);
+            const payload = Buffer.from('hello');
+            conn.getSocket().on('write', (chunk: Buffer) => {
+                const command = chunk.subarray(0, 4).toString();
+                if (command === Protocol.DONE) {
+                    conn.getSocket().causeRead(Buffer.concat([Protocol.bOKAY, Buffer.alloc(4)]));
+                } else if (command === Protocol.RECV) {
+                    const header = Buffer.alloc(8);
+                    header.write(Protocol.DATA);
+                    header.writeUInt32LE(payload.length, 4);
+                    conn.getSocket().causeRead(Buffer.concat([header, payload, Buffer.from(Protocol.DONE), Buffer.alloc(4)]));
+                }
+            });
+            try {
+                const upload = await sync.pushStream(Stream.Readable.from([payload]), '/data/local/tmp/test');
+                await upload.waitForEnd();
+                const download = await sync.pull('/data/local/tmp/test');
+                const chunks: Buffer[] = [];
+                for await (const chunk of download) chunks.push(Buffer.from(chunk));
+                expect(Buffer.concat(chunks)).to.deep.equal(payload);
+            } finally {
+                sync.end();
+            }
         });
         it('should emit timeout error and not send DONE when slow stream times out before ending', async () => {
             const conn = new MockConnection();
@@ -301,47 +333,25 @@ describe('Sync', () => {
             expect(connEnded).to.equal(true);
         });
         dt('should be able to push >65536 byte chunks without error', async () => {
-            await forEachSyncDevice((sync) => {
-                return new Promise<void>(async (resolve, reject) => {
-                    const stream = new Stream.PassThrough();
-                    const content = Buffer.alloc(1000000);
-                    const transfer = await sync.pushStream(stream, SURELY_WRITABLE_FILE);
-                    transfer.on('error', reject);
-                    transfer.on('end', resolve);
-                    stream.write(content);
-                    return stream.end();
-                });
-            })
-            return true;
+            await forEachSyncDevice(async (sync) => {
+                const content = Buffer.alloc(1000000);
+                const transfer = await sync.pushStream(Stream.Readable.from([content]), SURELY_WRITABLE_FILE);
+                await transfer.waitForEnd();
+            });
         });
     });
     describe('pull(path)', () => {
         dt('should retrieve the same content pushStream() pushed', async () => {
-            await forEachSyncDevice((sync) => {
-                return new Promise<void>(async (resolve, reject) => {
-                    const stream = new Stream.PassThrough();
-                    const content = 'ABCDEFGHI' + Date.now();
-                    const transfer = await sync.pushStream(stream, SURELY_WRITABLE_FILE);
-                    expect(transfer).to.be.an.instanceof(PushTransfer);
-                    transfer.on('error', reject);
-                    transfer.on('end', async () => {
-                        const transfer = await sync.pull(SURELY_WRITABLE_FILE);
-                        expect(transfer).to.be.an.instanceof(PullTransfer);
-                        transfer.on('error', reject);
-                        return transfer.on('readable', () => {
-                            let chunk: Buffer;
-                            if ((chunk = transfer.read())) {
-                                expect(chunk).to.not.be.null;
-                                expect(chunk.toString()).to.equal(content);
-                                resolve();
-                            }
-                        });
-                    });
-                    stream.write(content);
-                    return stream.end();
-                });
-            })
-            return true;
+            await forEachSyncDevice(async (sync) => {
+                const content = `ABCDEFGHI${Date.now()}`;
+                const upload = await sync.pushStream(Stream.Readable.from([content]), SURELY_WRITABLE_FILE);
+                await upload.waitForEnd();
+                const download = await sync.pull(SURELY_WRITABLE_FILE);
+                expect(download).to.be.an.instanceof(PullTransfer);
+                const chunks: Buffer[] = [];
+                for await (const chunk of download) chunks.push(Buffer.from(chunk));
+                expect(Buffer.concat(chunks).toString()).to.equal(content);
+            });
         });
         dt('should emit error for non-existing files', (done) => {
             void forEachSyncDevice((sync) => {
@@ -349,14 +359,14 @@ describe('Sync', () => {
                     const transfer = await sync.pull(SURELY_NONEXISTING_PATH);
                     return transfer.on('error', resolve);
                 });
-            }).finally(done);
+            }).then(() => done(), done);
         });
         dt('should return a PullTransfer instance', (done) => {
             void forEachSyncDevice(async (sync) => {
                 const rval = await sync.pull(SURELY_EXISTING_FILE);
                 expect(rval).to.be.an.instanceof(PullTransfer);
                 return rval.cancel();
-            }).finally(done);
+            }).then(() => done(), done);
         });
         return describe('Stream', () => {
             dt("should emit 'end' when pull is done", (done) => {
@@ -367,7 +377,7 @@ describe('Sync', () => {
                         transfer.on('end', resolve);
                         return transfer.resume();
                     });
-                }).finally(done);
+                }).then(() => done(), done);
             });
         });
     });
@@ -377,7 +387,7 @@ describe('Sync', () => {
                 const rval = sync.stat(SURELY_EXISTING_PATH);
                 expect(rval).to.be.an.instanceof(Promise);
                 return rval;
-            }).finally(done);
+            }).then(() => done(), done);
         });
         dt('should call with an ENOENT error if the path does not exist', (done) => {
             void forEachSyncDevice(async (sync) => {
@@ -391,38 +401,38 @@ describe('Sync', () => {
                     expect(err.errno).to.equal(34);
                     return expect(err.path).to.equal(SURELY_NONEXISTING_PATH);
                 }
-            }).finally(done);
+            }).then(() => done(), done);
         });
-        dt('should call with an fs.Stats instance for an existing path', (done) => {
+        dt('should return an adbkit Stats instance for an existing path', (done) => {
             void forEachSyncDevice(async (sync) => {
                 const stats = await sync.stat(SURELY_EXISTING_PATH);
-                return expect(stats).to.be.an.instanceof(Fs.Stats);
-            }).finally(done);
+                return expect(stats).to.be.an.instanceof(Stats);
+            }).then(() => done(), done);
         });
         describe('Stats', () => {
             dt('should set the `.mode` property for isFile() etc', (done) => {
                 void forEachSyncDevice(async (sync) => {
                     const stats = await sync.stat(SURELY_EXISTING_FILE);
-                    expect(stats).to.be.an.instanceof(Fs.Stats);
+                    expect(stats).to.be.an.instanceof(Stats);
                     expect(stats.mode).to.be.above(0);
                     expect(stats.isFile()).to.be.true;
                     return expect(stats.isDirectory()).to.be.false;
-                }).finally(done);
+                }).then(() => done(), done);
             });
             dt('should set the `.size` property', (done) => {
                 void forEachSyncDevice(async (sync) => {
                     const stats = await sync.stat(SURELY_EXISTING_FILE);
-                    expect(stats).to.be.an.instanceof(Fs.Stats);
+                    expect(stats).to.be.an.instanceof(Stats);
                     expect(stats.isFile()).to.be.true;
                     return expect(stats.size).to.be.above(0);
-                }).finally(done);
+                }).then(() => done(), done);
             });
             dt('should set the `.mtime` property', (done) => {
                 void forEachSyncDevice(async (sync) => {
                     const stats = await sync.stat(SURELY_EXISTING_FILE);
-                    expect(stats).to.be.an.instanceof(Fs.Stats);
+                    expect(stats).to.be.an.instanceof(Stats);
                     return expect(stats.mtime).to.be.an.instanceof(Date);
-                }).finally(done);
+                }).then(() => done(), done);
             });
         });
         return describe('Entry', () => {
@@ -438,7 +448,7 @@ describe('Sync', () => {
                         expect(file.name).to.not.be.null;
                         return expect(file).to.be.an.instanceof(Entry);
                     });
-                }).finally(done);
+                }).then(() => done(), done);
             });
             dt('should set the Stats properties', (done) => {
                 void forEachSyncDevice(async (sync) => {
@@ -449,7 +459,7 @@ describe('Sync', () => {
                         expect(file.size).to.not.be.null;
                         return expect(file.mtime).to.not.be.null;
                     });
-                }).finally(done);
+                }).then(() => done(), done);
             });
         });
         describe('Stats64', () => {

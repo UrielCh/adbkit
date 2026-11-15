@@ -149,3 +149,7 @@ See [LICENSE](LICENSE).
 [adbkit-logcat]: https://npmjs.org/package/@u4/adbkit-logcat
 
 [adbkit-monkey]: https://npmjs.org/package/@u4/adbkit-monkey
+
+### Tests
+
+Run `npm test` for the offline unit suite. Run `npm run test:device` with at least one Android device connected and authorized through the native `adb` server for the sync tests, and `npm run test:network` to check live scrcpy downloads. These live tests are excluded from the default test and coverage scripts.
