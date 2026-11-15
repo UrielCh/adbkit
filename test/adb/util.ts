@@ -2,7 +2,7 @@ import Stream from 'node:stream';
 import { expect, use } from 'chai';
 import PromiseDuplex from 'promise-duplex';
 import simonChai from 'sinon-chai';
-import Utils from '../../src/adb/utils.ts';
+import Utils from '../../src/adb/utils.js';
 use(simonChai); 
 
 describe('util', () => {

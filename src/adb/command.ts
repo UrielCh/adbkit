@@ -9,7 +9,7 @@ const debug = Utils.debug('adb:command');
 const RE_SQUOT = /'/g;
 const RE_ESCAPE = /([$`\\!"])/g;
 
-export default abstract class Command<T> {
+export default abstract class Command<T, Args extends unknown[] = unknown[]> {
   public readonly options: Partial<DeviceClientOptions>;
   private lastCmd = '';
 
@@ -25,8 +25,7 @@ export default abstract class Command<T> {
     return this.connection.parser;
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  public abstract execute(...args: any[]): Promise<T>;
+  public abstract execute(...args: Args): Promise<T>;
 
   /**
    * encode message and send it to ADB socket

@@ -1,5 +1,5 @@
 import { spawn } from 'node:child_process';
-import { createClient } from '../../src/adb';
+import { createClient } from '../../src/adb.js';
 import { performance, PerformanceObserver } from 'perf_hooks';
 
 const deviceId = process.env.DEVICE_ID || '';

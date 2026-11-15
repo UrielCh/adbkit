@@ -1,5 +1,5 @@
 import https from 'node:https';
-import GitSource from './GitSource'
+import GitSource from './GitSource.js'
 
 // import strip from 'strip-comments';
 // import { parse, BaseJavaCstVisitor, LambdaExpressionCtx, BaseJavaCstVisitorWithDefaults } from "java-parser";

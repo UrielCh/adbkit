@@ -9,6 +9,8 @@ on:
       - "package.json"
       - "bun.lock"
       - "tsconfig.json"
+      - "tsconfig.eslint.json"
+      - "eslint.config.js"
       - ".github/workflows/test.yml"
   pull_request:
     branches: [ "master" ]
@@ -18,6 +20,8 @@ on:
       - "package.json"
       - "bun.lock"
       - "tsconfig.json"
+      - "tsconfig.eslint.json"
+      - "eslint.config.js"
       - ".github/workflows/test.yml"
 
 jobs:

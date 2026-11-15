@@ -10,7 +10,7 @@ Internally, we use this library to drive a multitude of Android devices from a v
 
 ## Requirements
 
-*   [Node.js][nodejs] >= 20.11.0
+*   [Node.js][nodejs] >= 22.0.0
 *   Either the optional ya-webadb dependencies described below, or the `adb` command line tool
 
 With the native ADB backend, the target host (where the devices are connected) must have the ADB server running (e.g. via `adb start-server`) or the `adb` binary available in `$PATH`. If the initial connection is refused, adbkit attempts to start the server locally.

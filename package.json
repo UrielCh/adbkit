@@ -101,7 +101,7 @@
     "why-is-node-running": "^3.2.3"
   },
   "engines": {
-    "node": ">= 20.11.0"
+    "node": ">= 22.0.0"
   },
   "files": [
     "dist",

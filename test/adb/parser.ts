@@ -1,9 +1,9 @@
 import Stream from 'node:stream';
 import { expect, use } from 'chai';
 import simonChai from 'sinon-chai';
-import Parser from '../../src/adb/parser';
-import { AdbFailError, AdbPrematureEOFError, AdbUnexpectedDataError } from '../../src/adb/errors';
-import Utils from '../../src/adb/utils';
+import Parser from '../../src/adb/parser.js';
+import { AdbFailError, AdbPrematureEOFError, AdbUnexpectedDataError } from '../../src/adb/errors.js';
+import Utils from '../../src/adb/utils.js';
 use(simonChai);
 
 describe('Parser', () => {
