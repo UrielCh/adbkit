@@ -62,6 +62,27 @@ interface IEmissions {
 }
 
 const STREAM_READ_TIMEOUT = 10000;
+const CANCEL_REASON = Symbol('SyncTransferCancelled');
+
+function raceWithAbort<T>(promise: Promise<T>, signal: AbortSignal): Promise<T> {
+  if (signal.aborted) {
+    return Promise.reject(signal.reason);
+  }
+  return new Promise<T>((resolve, reject) => {
+    const onAbort = () => reject(signal.reason);
+    signal.addEventListener('abort', onAbort, { once: true });
+    promise.then(
+      (value) => {
+        signal.removeEventListener('abort', onAbort);
+        resolve(value);
+      },
+      (err) => {
+        signal.removeEventListener('abort', onAbort);
+        reject(err);
+      },
+    );
+  });
+}
 
 export default class Sync extends EventEmitter {
   private parser: Parser;
@@ -287,21 +308,12 @@ export default class Sync extends EventEmitter {
 
   private _writeData(stream: Readable, timeStamp: number, streamName: string): PushTransfer {
     const transfer = new PushTransfer();
-    let transferError: Error | null = null;
-    let rejectError: ((err: Error) => void) | null = null;
-    let cancelled = false;
-    let resolveCancel: (() => void) | null = null;
+    const controller = new AbortController();
+    const { signal } = controller;
     let streamEnded = stream.readableEnded;
 
-    const fail = (err: Error) => {
-      if (!transferError) {
-        transferError = err;
-        rejectError?.(err);
-      }
-    };
-
     const onStreamError = (err: Error) => {
-      fail(new Error(`Source Error: ${err.message} while transfering ${streamName}`));
+      controller.abort(new Error(`Source Error: ${err.message} while transfering ${streamName}`));
     };
 
     const onStreamEnd = () => {
@@ -309,16 +321,15 @@ export default class Sync extends EventEmitter {
     };
 
     const onConnectionError = (err: Error) => {
-      fail(new Error(`Target Error: ${err.message} while transfering ${streamName}`));
+      controller.abort(new Error(`Target Error: ${err.message} while transfering ${streamName}`));
       stream.destroy();
       this.connection.end();
     };
 
     const onCancel = () => {
-      cancelled = true;
+      controller.abort(CANCEL_REASON);
       stream.destroy();
       this.connection.end();
-      resolveCancel?.();
     };
 
     stream.once('error', onStreamError);
@@ -326,75 +337,56 @@ export default class Sync extends EventEmitter {
     this.connection.once('error', onConnectionError);
     transfer.once('cancel', onCancel);
 
-    const writeAll = async (): Promise<void> => {
-      const errorPromise = new Promise<never>((_, reject) => {
-        rejectError = reject;
-        if (transferError) {
-          reject(transferError);
-        }
-      });
-      errorPromise.catch(() => {});
+    if (stream.errored) {
+      onStreamError(stream.errored);
+    }
 
-      const cancelPromise = new Promise<void>((resolve) => {
-        resolveCancel = resolve;
-        if (cancelled) {
-          resolve();
-        }
-      });
-
-      const pump = async (): Promise<void> => {
-        for (; ;) {
-          if (transferError || cancelled) {
-            break;
-          }
-          let chunk: ReturnType<Readable['read']>;
-          while (!transferError && !cancelled && (chunk = (stream.read(DATA_MAX_LENGTH) || stream.read()))) {
-            await this.sendCommandWithLength(Protocol.DATA, chunk.length);
-            transfer.push(chunk.length);
-            await this.connection.write(chunk);
+    const pump = async (): Promise<void> => {
+      for (;;) {
+        signal.throwIfAborted();
+        let rawChunk: ReturnType<Readable['read']>;
+        while (!signal.aborted && (rawChunk = (stream.read(DATA_MAX_LENGTH) || stream.read()))) {
+          const chunk = Buffer.isBuffer(rawChunk) ? rawChunk : Buffer.from(rawChunk);
+          for (let offset = 0; offset < chunk.length; offset += DATA_MAX_LENGTH) {
+            signal.throwIfAborted();
+            const slice = chunk.subarray(offset, offset + DATA_MAX_LENGTH);
+            await raceWithAbort(this.sendCommandWithLength(Protocol.DATA, slice.length), signal);
+            transfer.push(slice.length);
+            await raceWithAbort(this.connection.write(slice), signal);
             transfer.pop();
           }
-          if (transferError || cancelled || streamEnded || stream.readableEnded) {
+        }
+        signal.throwIfAborted();
+
+        if (streamEnded || stream.readableEnded) {
+          break;
+        }
+        if (stream.closed) {
+          throw new Error(`Source Error: stream closed before ending while transfering ${streamName}`);
+        }
+
+        const readable = await raceWithAbort(Utils.waitforReadable(stream, STREAM_READ_TIMEOUT), signal);
+        if (!readable) {
+          if (streamEnded || stream.readableEnded) {
             break;
           }
           if (stream.closed) {
             throw new Error(`Source Error: stream closed before ending while transfering ${streamName}`);
           }
-          const readable = await Utils.waitforReadable(stream, STREAM_READ_TIMEOUT);
-          if (transferError || cancelled) {
-            break;
-          }
-          if (!readable) {
-            if (streamEnded || stream.readableEnded) {
-              break;
-            }
-            if (stream.closed) {
-              throw new Error(`Source Error: stream closed before ending while transfering ${streamName}`);
-            }
-            stream.destroy();
-            this.connection.end();
-            throw new Error(`Source Timeout: stream read timed out after ${STREAM_READ_TIMEOUT}ms while transfering ${streamName}`);
-          }
+          stream.destroy();
+          this.connection.end();
+          throw new Error(`Source Timeout: stream read timed out after ${STREAM_READ_TIMEOUT}ms while transfering ${streamName}`);
         }
-        if (transferError) {
-          throw transferError;
-        }
-        if (cancelled) {
-          return;
-        }
-        await this.sendCommandWithLength(Protocol.DONE, timeStamp);
-        await this.parser.readCode(Protocol.OKAY);
-      };
+      }
 
-      const pumpPromise = pump();
-      pumpPromise.catch(() => {});
-      await Promise.race([pumpPromise, errorPromise, cancelPromise]);
+      await raceWithAbort(this.sendCommandWithLength(Protocol.DONE, timeStamp), signal);
+      await raceWithAbort(this.parser.readCode(Protocol.OKAY), signal);
     };
 
-    writeAll()
-      .catch((err: Error) => {
-        if (!cancelled) {
-          transfer.emit('error', err);
+    pump()
+      .catch((err: unknown) => {
+        if (err !== CANCEL_REASON && signal.reason !== CANCEL_REASON) {
+          transfer.emit('error', err instanceof Error ? err : new Error(String(err)));
         }
       })
       .finally(() => {

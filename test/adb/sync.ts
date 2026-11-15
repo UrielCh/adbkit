@@ -269,6 +269,45 @@ describe('Sync', () => {
             expect(connEnded).to.equal(true);
             expect(stream.destroyed).to.equal(true);
         });
+        it('should chunk payloads larger than DATA_MAX_LENGTH (65536 bytes)', async () => {
+            const conn = new MockConnection();
+            const sync = new Sync(conn);
+            const dataSizes: number[] = [];
+            const payload = Buffer.alloc(70000, 0x41);
+            const stream = Stream.Readable.from([payload]);
+            const progress: number[] = [];
+
+            conn.getSocket().on('write', (chunk: Buffer) => {
+                const tag = chunk.subarray(0, 4).toString();
+                if (tag === Protocol.DATA) {
+                    dataSizes.push(chunk.readUInt32LE(4));
+                } else if (tag === Protocol.DONE) {
+                    conn.getSocket().causeRead(Protocol.OKAY);
+                    conn.getSocket().causeRead(Buffer.alloc(4));
+                }
+            });
+
+            const transfer = await sync.pushStream(stream, 'big.bin');
+            transfer.on('progress', (stats) => {
+                progress.push(stats.bytesTransferred);
+            });
+            await transfer.waitForEnd();
+
+            expect(dataSizes).to.deep.equal([65536, 4464]);
+            expect(progress).to.deep.equal([65536, 70000]);
+        });
+        it('should abort promptly when cancelled while waiting for readable stream', async () => {
+            const conn = new MockConnection();
+            const sync = new Sync(conn);
+            const stream = new Stream.PassThrough();
+
+            const transfer = await sync.pushStream(stream, 'slow.bin');
+            await new Promise((resolve) => setTimeout(resolve, 10));
+            transfer.cancel();
+            await transfer.waitForEnd();
+
+            expect(stream.destroyed).to.equal(true);
+        });
         it('should abort pull and end connection when PullTransfer.cancel() is called', async () => {
             const conn = new MockConnection();
             const sync = new Sync(conn);

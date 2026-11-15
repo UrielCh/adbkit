@@ -1,4 +1,3 @@
-import { randomUUID } from 'node:crypto';
 import { Duplex, Readable } from 'node:stream';
 import { Buffer } from 'node:buffer';
 
@@ -51,16 +50,26 @@ import DeviceClientExtra from './DeviceClientExtra.js';
 import Stats64 from './sync/stats64.js';
 import Entry64 from './sync/entry64.js';
 import DevicePackage from './DevicePackage.js';
-import { parseMediaCodecsEncoders } from './DeviceMedia.js';
+import { listDeviceVideoEncoders, screencapWithFallback } from './DeviceMedia.js';
+import { installApk, installRemoteApk, listDevicePackages } from './DevicePackageHelper.js';
 import { syncPull, syncPush, withSync } from './DeviceSyncHelper.js';
 import {
   connectMonkeyStream,
   findOrCreateTcpForward,
-  isNoUserOptionError,
   parseIpAddresses,
+  startWithUserFallback,
 } from './DeviceHelpers.js';
 
 const debug = Utils.debug('adb:client');
+
+type TransportCommandCtor<T, Args extends unknown[]> = new (
+  connection: Connection,
+  options?: Partial<DeviceClientOptions>,
+) => { execute: (...args: Args) => Promise<T> };
+
+type SerialCommandCtor<T, Args extends unknown[]> = new (
+  connection: Connection,
+) => { execute: (serial: string, ...args: Args) => Promise<T> };
 
 export default class DeviceClient {
   private options: DeviceClientOptions;
@@ -78,14 +87,29 @@ export default class DeviceClient {
       return new DeviceClient(this.client, this.serial, { ...this.options, sudo: true });
   }
 
+  private async runCommand<T, Args extends unknown[]>(
+    CommandCtor: TransportCommandCtor<T, Args>,
+    ...args: Args
+  ): Promise<T> {
+    const transport = await this.transport();
+    return new CommandCtor(transport, this.options).execute(...args);
+  }
+
+  private async runSerialCommand<T, Args extends unknown[]>(
+    CommandCtor: SerialCommandCtor<T, Args>,
+    ...args: Args
+  ): Promise<T> {
+    const conn = await this.connection();
+    return new CommandCtor(conn).execute(this.serial, ...args);
+  }
+
   /**
    * Gets the serial number of the device identified by the given serial number. With our API this doesn't really make much sense, but it has been implemented for completeness. _FYI: in the raw ADB protocol you can specify a device in other ways, too._
    *
    * @returns The serial number of the device.
    */
-  public async getSerialNo(): Promise<string> {
-    const conn = await this.connection();
-    return new GetSerialNoCommand(conn).execute(this.serial);
+  public getSerialNo(): Promise<string> {
+    return this.runSerialCommand(GetSerialNoCommand);
   }
 
   /**
@@ -108,9 +132,8 @@ export default class DeviceClient {
    * }
    * ```
    */
-  public async getDevicePath(): Promise<DeviceWithPath['path']> {
-    const conn = await this.connection();
-    return new GetDevicePathCommand(conn).execute(this.serial);
+  public getDevicePath(): Promise<DeviceWithPath['path']> {
+    return this.runSerialCommand(GetDevicePathCommand);
   }
 
   /**
@@ -118,9 +141,8 @@ export default class DeviceClient {
    *
    * @returns The device state. This corresponds to the device type in `client.listDevices()`.
    */
-  public async getState(): Promise<DeviceType> {
-    const conn = await this.connection();
-    return new GetStateCommand(conn).execute(this.serial);
+  public getState(): Promise<DeviceType> {
+    return this.runSerialCommand(GetStateCommand);
   }
 
   /**
@@ -128,9 +150,8 @@ export default class DeviceClient {
    *
    * @returns An object of device properties. Each key corresponds to a device property. Convenient for accessing things like `'ro.product.model'`.
    */
-  public async getProperties(): Promise<Properties> {
-    const transport = await this.transport();
-    return new hostCmd.GetPropertiesCommand(transport, this.options).execute();
+  public getProperties(): Promise<Properties> {
+    return this.runCommand(hostCmd.GetPropertiesCommand);
   }
 
   /**
@@ -162,9 +183,8 @@ export default class DeviceClient {
    * };
    * ```
    */
-  public async getFeatures(): Promise<Features> {
-    const transport = await this.transport();
-    return new hostCmd.GetFeaturesCommand(transport, this.options).execute();
+  public getFeatures(): Promise<Features> {
+    return this.runCommand(hostCmd.GetFeaturesCommand);
   }
 
   /**
@@ -177,9 +197,8 @@ export default class DeviceClient {
    * -3: filter to only show third party packages
    * @returns An array of package names installed on the device.
    */
-  public async getPackages(...flags: string[]): Promise<string[]> {
-    const transport = await this.transport();
-    return new hostCmd.GetPackagesCommand(transport, this.options).execute(...flags);
+  public getPackages(...flags: string[]): Promise<string[]> {
+    return this.runCommand(hostCmd.GetPackagesCommand, ...flags);
   }
 
   /**
@@ -188,9 +207,8 @@ export default class DeviceClient {
    * @param flags Optional flags passed to `ps`.
    * @returns A `PsEntry` array.
    */
-  public async getPs(...flags: string[]): Promise<Array<Partial<hostCmd.PsEntry>>> {
-    const transport = await this.transport();
-    return new hostCmd.PsCommand(transport, this.options).execute(...flags);
+  public getPs(...flags: string[]): Promise<Array<Partial<hostCmd.PsEntry>>> {
+    return this.runCommand(hostCmd.PsCommand, ...flags);
   }
 
   /**
@@ -198,9 +216,8 @@ export default class DeviceClient {
    *
    * @returns An `IpRouteEntry` array.
    */
-  public async ipRoute(...args: string[]): Promise<Array<hostCmd.IpRouteEntry>> {
-    const transport = await this.transport();
-    return new hostCmd.IpRouteCommand(transport, this.options).execute(...args);
+  public ipRoute(...args: string[]): Promise<Array<hostCmd.IpRouteEntry>> {
+    return this.runCommand(hostCmd.IpRouteCommand, ...args);
   }
 
   /**
@@ -208,9 +225,8 @@ export default class DeviceClient {
    *
    * @returns An `IpRuleEntry` array.
    */
-  public async ipRule(...args: string[]): Promise<Array<hostCmd.IpRuleEntry>> {
-    const transport = await this.transport();
-    return new hostCmd.IpRuleCommand(transport, this.options).execute(...args);
+  public ipRule(...args: string[]): Promise<Array<hostCmd.IpRuleEntry>> {
+    return this.runCommand(hostCmd.IpRuleCommand, ...args);
   }
 
   /**
@@ -218,9 +234,8 @@ export default class DeviceClient {
    *
    * @returns An `AdbServiceInfo` array.
    */
-  public async getServices(): Promise<Array<hostCmd.AdbServiceInfo>> {
-    const transport = await this.transport();
-    return new hostCmd.ServicesListCommand(transport, this.options).execute();
+  public getServices(): Promise<Array<hostCmd.AdbServiceInfo>> {
+    return this.runCommand(hostCmd.ServicesListCommand);
   }
 
   /**
@@ -228,17 +243,15 @@ export default class DeviceClient {
    *
    * @returns `true` if the service is available.
    */
-  public async checkService(serviceName: hostCmd.KnownServices | string): Promise<boolean> {
-    const transport = await this.transport();
-    return new hostCmd.ServiceCheckCommand(transport, this.options).execute(serviceName);
+  public checkService(serviceName: hostCmd.KnownServices | string): Promise<boolean> {
+    return this.runCommand(hostCmd.ServiceCheckCommand, serviceName);
   }
 
   /**
    * Execute a `service call` command and return the Parcel response data as a `ParcelReader`.
    */
-  public async callServiceRaw(serviceName: hostCmd.KnownServices | string, code: number | string, ...args: Array<ServiceCallArg>): Promise<ParcelReader> {
-    const transport = await this.transport();
-    return new ServiceCallCommand(transport, this.options).execute(serviceName, code, args);
+  public callServiceRaw(serviceName: hostCmd.KnownServices | string, code: number | string, ...args: Array<ServiceCallArg>): Promise<ParcelReader> {
+    return this.runCommand(ServiceCallCommand, serviceName, code, args);
   }
 
   /**
@@ -267,9 +280,8 @@ export default class DeviceClient {
    *   `jdwp:<process pid>`
    * @returns true
    */
-  public async forward(local: string, remote: string): Promise<boolean> {
-    const conn = await this.connection();
-    return new ForwardCommand(conn).execute(this.serial, local, remote);
+  public forward(local: string, remote: string): Promise<boolean> {
+    return this.runSerialCommand(ForwardCommand, local, remote);
   }
 
   /**
@@ -279,7 +291,7 @@ export default class DeviceClient {
    * @param preferedPort the TCP port you would like to get.
    * @returns the used port
    */
-  public async tryForwardTCP(remote: string, preferedPort?: number): Promise<number> {
+  public tryForwardTCP(remote: string, preferedPort?: number): Promise<number> {
     return findOrCreateTcpForward({
       serial: this.serial,
       remote,
@@ -294,9 +306,8 @@ export default class DeviceClient {
    * @param local A string representing the local endpoint on the ADB host.
    * @returns true
    */
-  public async removeForward(local: string): Promise<boolean> {
-    const conn = await this.connection();
-    return new KillForwardCommand(conn).execute(this.serial, local);
+  public removeForward(local: string): Promise<boolean> {
+    return this.runSerialCommand(KillForwardCommand, local);
   }
 
   /**
@@ -304,9 +315,8 @@ export default class DeviceClient {
    *
    * @returns An array of forward objects with `serial`, `local`, and `remote`.
    */
-  public async listForwards(): Promise<Forward[]> {
-    const conn = await this.connection();
-    return new ListForwardsCommand(conn).execute(this.serial);
+  public listForwards(): Promise<Forward[]> {
+    return this.runSerialCommand(ListForwardsCommand);
   }
 
   /**
@@ -315,9 +325,8 @@ export default class DeviceClient {
    * @param local A string representing the local endpoint on the ADB host.
    * @return true
    */
-  public async reverse(remote: string, local: string): Promise<true> {
-    const transport = await this.transport();
-    return new hostCmd.ReverseCommand(transport).execute(remote, local);
+  public reverse(remote: string, local: string): Promise<true> {
+    return this.runCommand(hostCmd.ReverseCommand, remote, local);
   }
 
   /**
@@ -325,9 +334,8 @@ export default class DeviceClient {
    *
    * @returns An array of `Reverse` objects with `remote` and `local`.
    */
-  public async listReverses(): Promise<Reverse[]> {
-    const transport = await this.transport();
-    return new hostCmd.ListReversesCommand(transport).execute();
+  public listReverses(): Promise<Reverse[]> {
+    return this.runCommand(hostCmd.ListReversesCommand);
   }
 
   /**
@@ -400,14 +408,12 @@ export default class DeviceClient {
    * console.log('Done.');
    * ```
    */
-  public async shell(command: string | ArrayLike<WithToString>): Promise<Duplex> {
-    const transport = await this.transport();
-    return new hostCmd.ShellCommand(transport, this.options).execute(command);
+  public shell(command: string | ArrayLike<WithToString>): Promise<Duplex> {
+    return this.runCommand(hostCmd.ShellCommand, command);
   }
 
-  public async exec(command: string | ArrayLike<WithToString>): Promise<Duplex> {
-    const transport = await this.transport();
-    return new hostCmd.ExecCommand(transport, this.options).execute(command);
+  public exec(command: string | ArrayLike<WithToString>): Promise<Duplex> {
+    return this.runCommand(hostCmd.ExecCommand, command);
   }
 
   /**
@@ -429,9 +435,8 @@ export default class DeviceClient {
    *
    * @return true
    */
-  public async reboot(type?: RebootType): Promise<boolean> {
-    const transport = await this.transport();
-    return new hostCmd.RebootCommand(transport, this.options).execute(type);
+  public reboot(type?: RebootType): Promise<boolean> {
+    return this.runCommand(hostCmd.RebootCommand, type);
   }
 
   /**
@@ -439,9 +444,8 @@ export default class DeviceClient {
    *
    * @returns true
    */
-  public async remount(): Promise<boolean> {
-    const transport = await this.transport();
-    return new hostCmd.RemountCommand(transport, this.options).execute();
+  public remount(): Promise<boolean> {
+    return this.runCommand(hostCmd.RemountCommand);
   }
 
   /**
@@ -449,9 +453,8 @@ export default class DeviceClient {
    *
    * @return true
    */
-  public async root(): Promise<boolean> {
-    const transport = await this.transport();
-    return new hostCmd.RootCommand(transport, this.options).execute();
+  public root(): Promise<boolean> {
+    return this.runCommand(hostCmd.RootCommand);
   }
 
   /**
@@ -461,9 +464,8 @@ export default class DeviceClient {
    *
    * @returns The JDWP tracker (`EventEmitter`).
    */
-  public async trackJdwp(): Promise<JdwpTracker> {
-    const transport = await this.transport();
-    return new hostCmd.TrackJdwpCommand(transport, this.options).execute();
+  public trackJdwp(): Promise<JdwpTracker> {
+    return this.runCommand(hostCmd.TrackJdwpCommand);
   }
 
   /**
@@ -473,9 +475,8 @@ export default class DeviceClient {
    *
    * @returns The possibly converted framebuffer stream. The stream also has a `meta` property.
    */
-  public async framebuffer(format = 'raw'): Promise<FramebufferStreamWithMeta> {
-    const transport = await this.transport();
-    return new hostCmd.FrameBufferCommand(transport, this.options).execute(format);
+  public framebuffer(format = 'raw'): Promise<FramebufferStreamWithMeta> {
+    return this.runCommand(hostCmd.FrameBufferCommand, format);
   }
 
   /**
@@ -483,15 +484,13 @@ export default class DeviceClient {
    *
    * @return The PNG stream.
    */
-  public async screencap(): Promise<Duplex> {
-    const transport = await this.transport();
-    try {
-      return await new hostCmd.ScreencapCommand(transport, this.options).execute();
-    } catch (err) {
-      transport.end();
-      debug(`Emulating screencap command due to '${err}'`);
-      return this.framebuffer('png');
-    }
+  public screencap(): Promise<Duplex> {
+    return screencapWithFallback({
+      getTransport: () => this.transport(),
+      options: this.options,
+      fallback: () => this.framebuffer('png'),
+      debug: (msg) => debug(msg),
+    });
   }
 
   /**
@@ -501,9 +500,8 @@ export default class DeviceClient {
    *
    * @returns The connection (`Duplex`). Call `conn.end()` to end the connection.
    */
-  public async openLocal(path: string): Promise<Duplex> {
-    const transport = await this.transport();
-    return new hostCmd.LocalCommand(transport, this.options).execute(path);
+  public openLocal(path: string): Promise<Duplex> {
+    return this.runCommand(hostCmd.LocalCommand, path);
   }
 
   /**
@@ -520,9 +518,8 @@ export default class DeviceClient {
    *
    * @returns The binary log stream. Call `log.end()` when you wish to stop receiving data.
    */
-  public async openLog(name: string): Promise<Duplex> {
-    const transport = await this.transport();
-    return new hostCmd.LogCommand(transport, this.options).execute(name);
+  public openLog(name: string): Promise<Duplex> {
+    return this.runCommand(hostCmd.LogCommand, name);
   }
 
   /**
@@ -533,9 +530,8 @@ export default class DeviceClient {
    *
    * @returns The TCP connection (`Duplex`). Call `conn.end()` to end the connection.
    */
-  public async openTcp(port: number, host?: string): Promise<Duplex> {
-    const transport = await this.transport();
-    return new hostCmd.TcpCommand(transport, this.options).execute(port, host);
+  public openTcp(port: number, host?: string): Promise<Duplex> {
+    return this.runCommand(hostCmd.TcpCommand, port, host);
   }
 
   /**
@@ -545,7 +541,7 @@ export default class DeviceClient {
    *
    * @returns The Monkey client.
    */
-  public async openMonkey(port = 1080): Promise<ReturnType<typeof adbkitMonkey.Monkey.connectStream>> {
+  public openMonkey(port = 1080): Promise<ReturnType<typeof adbkitMonkey.Monkey.connectStream>> {
     return connectMonkeyStream({
       port,
       openTcp: (p) => this.openTcp(p),
@@ -565,8 +561,7 @@ export default class DeviceClient {
    * @returns The Logcat client.
    */
   public async openLogcat(options: { clear?: boolean } = {}): Promise<Logcat> {
-    const transport = await this.transport();
-    const stream = await new hostCmd.LogcatCommand(transport, this.options).execute(options);
+    const stream = await this.runCommand(hostCmd.LogcatCommand, options);
     return Logcat.readStream(stream, { fixLineFeeds: false });
   }
 
@@ -587,9 +582,8 @@ export default class DeviceClient {
    *
    * @returns true
    */
-  public async clear(pkg: string): Promise<boolean> {
-    const transport = await this.transport();
-    return new hostCmd.ClearCommand(transport, this.options).execute(pkg);
+  public clear(pkg: string): Promise<boolean> {
+    return this.runCommand(hostCmd.ClearCommand, pkg);
   }
 
   /**
@@ -640,11 +634,12 @@ export default class DeviceClient {
    * };
    * ```
    */
-  public async install(apk: string | Readable): Promise<boolean> {
-    const temp = Sync.temp(typeof apk === 'string' ? apk : `_stream_${randomUUID()}.apk`);
-    const transfer = await this.push(apk, temp);
-    await transfer.waitForEnd();
-    return this.installRemote(temp);
+  public install(apk: string | Readable): Promise<boolean> {
+    return installApk({
+      apk,
+      push: (contents, path) => this.push(contents, path),
+      installRemote: (remotePath) => this.installRemote(remotePath),
+    });
   }
 
   /**
@@ -655,29 +650,14 @@ export default class DeviceClient {
    * @param apk The path to the APK file on the device. The file will be removed when the command completes.
    * @returns true
    */
-  public async installRemote(apk: string): Promise<boolean> {
-    const transport = await this.transport();
-    let installError: unknown;
-    let hasInstallError = false;
-    try {
-      await new hostCmd.InstallCommand(transport, this.options).execute(apk);
-    } catch (err) {
-      installError = err;
-      hasInstallError = true;
-      transport.end();
-    }
-    try {
-      await this.execOut(['rm', '-f', apk]);
-    } catch (cleanupErr) {
-      debug(`Failed to remove temporary APK '${apk}': ${cleanupErr}`);
-      if (!hasInstallError) {
-        throw cleanupErr;
-      }
-    }
-    if (hasInstallError) {
-      throw installError;
-    }
-    return true;
+  public installRemote(apk: string): Promise<boolean> {
+    return installRemoteApk({
+      apk,
+      getTransport: () => this.transport(),
+      options: this.options,
+      execOut: (cmd) => this.execOut(cmd),
+      debug: (msg) => debug(msg),
+    });
   }
 
   /**
@@ -687,9 +667,8 @@ export default class DeviceClient {
    * @param opts Optional uninstall flags and failure handling (`throwOnFailure`).
    * @returns `true` on success, or `true` on non-`DELETE_FAILED_DEVICE_POLICY_MANAGER` failures unless `opts.throwOnFailure` is `true` (in which case `UninstallError` is thrown).
    */
-  public async uninstall(pkg: string, opts?: hostCmd.UninstallCommandOptions): Promise<boolean> {
-    const transport = await this.transport();
-    return new hostCmd.UninstallCommand(transport, this.options).execute(pkg, opts);
+  public uninstall(pkg: string, opts?: hostCmd.UninstallCommandOptions): Promise<boolean> {
+    return this.runCommand(hostCmd.UninstallCommand, pkg, opts);
   }
 
   /**
@@ -699,9 +678,8 @@ export default class DeviceClient {
    *
    * @returns `true` if the package is installed, `false` otherwise.
    */
-  public async isInstalled(pkg: string): Promise<boolean> {
-    const transport = await this.transport();
-    return new hostCmd.IsInstalledCommand(transport, this.options).execute(pkg);
+  public isInstalled(pkg: string): Promise<boolean> {
+    return this.runCommand(hostCmd.IsInstalledCommand, pkg);
   }
 
   /**
@@ -709,34 +687,16 @@ export default class DeviceClient {
    *
    * @param options The activity configuration.
    */
-  public async startActivity(options: StartActivityOptions): Promise<boolean> {
-    try {
-      const transport = await this.transport();
-      return await new hostCmd.StartActivityCommand(transport, this.options).execute(options);
-    } catch (err) {
-      if (isNoUserOptionError(err) && options.user !== undefined) {
-        return this.startActivity({ ...options, user: undefined });
-      }
-      throw err;
-    }
+  public startActivity(options: StartActivityOptions): Promise<boolean> {
+    return startWithUserFallback(options, undefined, (opts) => this.runCommand(hostCmd.StartActivityCommand, opts));
   }
 
   /**
    * Starts the configured service on the device. Roughly analogous to `adb shell am startservice <options>`.
    * @param options The service configuration.
    */
-  public async startService(options: StartServiceOptions): Promise<boolean> {
-    const opts = options.user === undefined ? { ...options, user: 0 } : options;
-    try {
-      const transport = await this.transport();
-      return await new hostCmd.StartServiceCommand(transport, this.options).execute(opts);
-    } catch (err) {
-      if (isNoUserOptionError(err) && opts.user !== undefined && opts.user !== null) {
-        const transport = await this.transport();
-        return await new hostCmd.StartServiceCommand(transport, this.options).execute({ ...opts, user: undefined });
-      }
-      throw err;
-    }
+  public startService(options: StartServiceOptions): Promise<boolean> {
+    return startWithUserFallback(options, 0, (opts) => this.runCommand(hostCmd.StartServiceCommand, opts));
   }
 
   /**
@@ -744,9 +704,8 @@ export default class DeviceClient {
    *
    * @returns The Sync client. Call `sync.end()` when done.
    */
-  public async syncService(): Promise<Sync> {
-    const transport = await this.transport();
-    return new hostCmd.SyncCommand(transport, this.options).execute();
+  public syncService(): Promise<Sync> {
+    return this.runCommand(hostCmd.SyncCommand);
   }
 
   /**
@@ -756,7 +715,7 @@ export default class DeviceClient {
    *
    * @returns A `Stats` instance (`mode`, `size`, `mtime`).
    */
-  public async stat(path: string): Promise<Stats> {
+  public stat(path: string): Promise<Stats> {
     return withSync(() => this.syncService(), (sync) => sync.stat(path));
   }
 
@@ -767,7 +726,7 @@ export default class DeviceClient {
    *
    * @returns A `Stats64` instance.
    */
-  public async stat64(path: string): Promise<Stats64> {
+  public stat64(path: string): Promise<Stats64> {
     return withSync(() => this.syncService(), (sync) => sync.stat64(path));
   }
 
@@ -800,7 +759,7 @@ export default class DeviceClient {
    * };
    * ```
    */
-  public async readdir(path: string): Promise<Entry[]> {
+  public readdir(path: string): Promise<Entry[]> {
     return withSync(() => this.syncService(), (sync) => sync.readdir(path));
   }
 
@@ -810,7 +769,7 @@ export default class DeviceClient {
    * @param path See `sync.readdir64()` for details.
    * @returns File entries list
    */
-  public async readdir64(path: string): Promise<Entry64[]> {
+  public readdir64(path: string): Promise<Entry64[]> {
     return withSync(() => this.syncService(), (sync) => sync.readdir64(path));
   }
 
@@ -853,7 +812,7 @@ export default class DeviceClient {
    * };
    * ```
    */
-  public async pull(path: string): Promise<PullTransfer> {
+  public pull(path: string): Promise<PullTransfer> {
     return syncPull(() => this.syncService(), path);
   }
 
@@ -893,7 +852,7 @@ export default class DeviceClient {
    * };
    * ```
    */
-  public async push(contents: string | Readable, path: string, mode?: number): Promise<PushTransfer> {
+  public push(contents: string | Readable, path: string, mode?: number): Promise<PushTransfer> {
     return syncPush(() => this.syncService(), contents, path, mode);
   }
 
@@ -903,9 +862,8 @@ export default class DeviceClient {
    * @param port Optional. The port the device should listen on. Defaults to `5555`.
    * @returns The port the device started listening on.
    */
-  public async tcpip(port = 5555): Promise<number> {
-    const transport = await this.transport();
-    return new hostCmd.TcpIpCommand(transport, this.options).execute(port);
+  public tcpip(port = 5555): Promise<number> {
+    return this.runCommand(hostCmd.TcpIpCommand, port);
   }
 
   /**
@@ -913,9 +871,8 @@ export default class DeviceClient {
    *
    * @returns true
    */
-  public async usb(): Promise<boolean> {
-    const transport = await this.transport();
-    return new hostCmd.UsbCommand(transport, this.options).execute();
+  public usb(): Promise<boolean> {
+    return this.runCommand(hostCmd.UsbCommand);
   }
 
   /**
@@ -923,9 +880,8 @@ export default class DeviceClient {
    *
    * @returns true
    */
-  public async waitBootComplete(): Promise<boolean> {
-    const transport = await this.transport();
-    return new hostCmd.WaitBootCompleteCommand(transport, this.options).execute();
+  public waitBootComplete(): Promise<boolean> {
+    return this.runCommand(hostCmd.WaitBootCompleteCommand);
   }
 
   /**
@@ -933,9 +889,8 @@ export default class DeviceClient {
    *
    * @returns The device ID. Can be useful for chaining.
    */
-  public async waitForDevice(): Promise<string> {
-    const conn = await this.connection();
-    return new WaitForDeviceCommand(conn).execute(this.serial);
+  public waitForDevice(): Promise<string> {
+    return this.runSerialCommand(WaitForDeviceCommand);
   }
 
   /**
@@ -943,9 +898,8 @@ export default class DeviceClient {
    *
    * @returns true
    */
-  public async attach(): Promise<boolean> {
-    const conn = await this.connection();
-    return new AttachCommand(conn).execute(this.serial);
+  public attach(): Promise<boolean> {
+    return this.runSerialCommand(AttachCommand);
   }
 
   /**
@@ -953,9 +907,8 @@ export default class DeviceClient {
    *
    * @returns true
    */
-  public async detach(): Promise<boolean> {
-    const conn = await this.connection();
-    return new DetachCommand(conn).execute(this.serial);
+  public detach(): Promise<boolean> {
+    return this.runSerialCommand(DetachCommand);
   }
 
   /**
@@ -972,7 +925,7 @@ export default class DeviceClient {
    * @param scrcpyOptions Scrcpy server configuration (videoCodec, maxFps, maxSize, etc.)
    * @param recordOptions Recording control (durationMs, maxFrames, remuxMp4, signal, onProgress)
    */
-  public async recordScreen(
+  public recordScreen(
     filePath: string,
     scrcpyOptions?: Partial<ScrcpyOptions>,
     recordOptions?: VideoRecordOptions,
@@ -984,16 +937,8 @@ export default class DeviceClient {
    * List available video encoders on this device.
    * Parses Android's media_codecs configurations.
    */
-  public async listVideoEncoders(): Promise<VideoEncoderInfo[]> {
-    try {
-      const output = await this.execOut(
-        'cat /vendor/etc/media_codecs*.xml /system/etc/media_codecs*.xml /etc/media_codecs*.xml 2>/dev/null',
-        'utf8',
-      );
-      return parseMediaCodecsEncoders(output);
-    } catch {
-      return [];
-    }
+  public listVideoEncoders(): Promise<VideoEncoderInfo[]> {
+    return listDeviceVideoEncoders((cmd, encoding) => this.execOut(cmd, encoding));
   }
 
   /**
@@ -1027,8 +972,7 @@ export default class DeviceClient {
    * @param options list all or only third-party apps
    * @returns an array of DevicePackage
    */
-  public async listPackages(options?: { thirdparty?: boolean }): Promise<DevicePackage[]> {
-    const packages = options?.thirdparty ? await this.getPackages('-3') : await this.getPackages();
-    return packages.map((name) => new DevicePackage(this, name));
+  public listPackages(options?: { thirdparty?: boolean }): Promise<DevicePackage[]> {
+    return listDevicePackages(this, (...flags) => this.getPackages(...flags), options);
   }
 }

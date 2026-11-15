@@ -177,6 +177,16 @@ export interface H264Configuration {
     croppedWidth: number;
     croppedHeight: number;
 
+    aspectRatio?: { width: number; height: number };
+    frameRate?: number;
+    colorimetry?: {
+        videoFormat: number;
+        fullRange: boolean;
+        colourPrimaries?: number;
+        transferCharacteristics?: number;
+        matrixCoefficients?: number;
+    };
+
     data: Uint8Array; // the original data use to p[opulate this structure]
 }
 

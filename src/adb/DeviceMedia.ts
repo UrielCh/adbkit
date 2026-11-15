@@ -1,4 +1,8 @@
+import { Duplex } from 'node:stream';
 import { DOMParser } from '@xmldom/xmldom';
+import type { DeviceClientOptions } from '../models/DeviceClientOptions.js';
+import Connection from './connection.js';
+import ScreencapCommand from './command/host-transport/screencap.js';
 import type { VideoEncoderInfo } from './thirdparty/scrcpy/ScrcpyModels.js';
 
 /**
@@ -54,4 +58,42 @@ export function parseMediaCodecsEncoders(xmlOutput: string): VideoEncoderInfo[] 
     }
   }
   return encoders;
+}
+
+/**
+ * Capture a PNG screenshot via `screencap`, closing the failed transport and falling back to `framebuffer('png')`
+ * on older devices that do not support `screencap`.
+ */
+export async function screencapWithFallback(params: {
+  getTransport: () => Promise<Connection>;
+  options: DeviceClientOptions;
+  fallback: () => Promise<Duplex>;
+  debug: (msg: string) => void;
+}): Promise<Duplex> {
+  const { getTransport, options, fallback, debug } = params;
+  const transport = await getTransport();
+  try {
+    return await new ScreencapCommand(transport, options).execute();
+  } catch (err) {
+    transport.end();
+    debug(`Emulating screencap command due to '${err}'`);
+    return fallback();
+  }
+}
+
+/**
+ * Query Android `media_codecs*.xml` files and return parsed video encoders, or `[]` if unavailable.
+ */
+export async function listDeviceVideoEncoders(
+  execOut: (command: string, encoding: 'utf8') => Promise<string>,
+): Promise<VideoEncoderInfo[]> {
+  try {
+    const output = await execOut(
+      'cat /vendor/etc/media_codecs*.xml /system/etc/media_codecs*.xml /etc/media_codecs*.xml 2>/dev/null',
+      'utf8',
+    );
+    return parseMediaCodecsEncoders(output);
+  } catch {
+    return [];
+  }
 }

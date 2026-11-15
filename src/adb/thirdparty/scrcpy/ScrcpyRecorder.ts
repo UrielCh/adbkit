@@ -100,6 +100,7 @@ export async function recordScrcpyToFile(
   let frameCount = 0;
   let keyframeCount = 0;
   let totalBytes = 0;
+  let detectedFps: number | undefined;
   const startTime = Date.now();
 
   let stopTimer: NodeJS.Timeout | undefined;
@@ -157,6 +158,9 @@ export async function recordScrcpyToFile(
   }
 
   const onConfig = (conf: H264Configuration) => {
+    if (conf && conf.frameRate && conf.frameRate > 0) {
+      detectedFps = conf.frameRate;
+    }
     if (conf && conf.data && conf.data.length > 0) {
       writeToFile(conf.data);
       totalBytes += conf.data.length;
@@ -242,7 +246,7 @@ export async function recordScrcpyToFile(
 
   if (shouldRemux) {
     const mp4Target = isMp4 ? resolvedPath : resolvedPath.replace(/\.[^.]+$/, '.mp4');
-    const fps = options.framerate || host.configSnapshot.maxFps || 30;
+    const fps = options.framerate || host.configSnapshot.maxFps || detectedFps || 30;
     try {
       await remuxRawToMp4(rawPath, mp4Target, fps);
       finalFilePath = mp4Target;

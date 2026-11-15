@@ -3,7 +3,7 @@ import { Duplex } from 'node:stream';
 import PromiseDuplex from 'promise-duplex';
 import Utils from '../../utils.js';
 import { codexMap } from './ScrcpyConst.js';
-import { parse_sequence_parameter_set } from './sps.js';
+import { getVuiColorimetry, getVuiFrameRate, getVuiSampleAspectRatio, parse_sequence_parameter_set } from './sps.js';
 import type { H264Configuration, VideoStreamFramePacket } from './ScrcpyModels.js';
 
 const CODEC_NAME_BY_ID: ReadonlyMap<number, string> = new Map<number, string>([
@@ -80,6 +80,9 @@ export function parseVideoConfigPacket(
     const cropRight = sps.frame_crop_right_offset * 2;
     const cropTop = sps.frame_crop_top_offset * 2;
     const cropBottom = sps.frame_crop_bottom_offset * 2;
+    const aspectRatio = sps.vui_parameters ? getVuiSampleAspectRatio(sps.vui_parameters) : undefined;
+    const frameRate = sps.vui_parameters ? getVuiFrameRate(sps.vui_parameters) : undefined;
+    const colorimetry = sps.vui_parameters ? getVuiColorimetry(sps.vui_parameters) : undefined;
     return {
       profileIndex: sps.profile_idc,
       constraintSet: sps.constraint_set,
@@ -92,6 +95,9 @@ export function parseVideoConfigPacket(
       cropBottom,
       croppedWidth: encodedWidth - cropLeft - cropRight,
       croppedHeight: encodedHeight - cropTop - cropBottom,
+      ...(aspectRatio ? { aspectRatio } : {}),
+      ...(frameRate !== undefined ? { frameRate } : {}),
+      ...(colorimetry ? { colorimetry } : {}),
       data: streamChunk,
     };
   } catch {

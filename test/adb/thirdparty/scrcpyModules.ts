@@ -317,6 +317,155 @@ describe('Scrcpy decomposed modules', () => {
       expect(sps.profile_idc).to.equal(244);
       expect(sps.pic_width_in_mbs_minus1).to.equal(79);
       expect(sps.pic_height_in_map_units_minus1).to.equal(44);
+      expect(sps.vui_parameters_present_flag).to.equal(false);
+    });
+
+    it('should parse VUI parameters (SAR, colorimetry, timing_info, HRD, and bitstream restriction)', () => {
+      const w = new SpsBitWriter();
+      // NALU header: forbidden=0, nal_ref_idc=3, nal_unit_type=7 (SPS)
+      w.writeBit(0);
+      w.writeBits(3, 2);
+      w.writeBits(7, 5);
+      // Baseline profile (66), constraint_set=0, level=31
+      w.writeBits(66, 8);
+      w.writeBits(0, 8);
+      w.writeBits(31, 8);
+      w.writeUE(0); // seq_parameter_set_id
+      w.writeUE(0); // log2_max_frame_num_minus4
+      w.writeUE(0); // pic_order_cnt_type
+      w.writeUE(0); // log2_max_pic_order_cnt_lsb_minus4
+      w.writeUE(1); // max_num_ref_frames
+      w.writeBit(0); // gaps_in_frame_num_value_allowed_flag
+      w.writeUE(79); // pic_width_in_mbs_minus1 -> 1280
+      w.writeUE(44); // pic_height_in_map_units_minus1 -> 720
+      w.writeBit(1); // frame_mbs_only_flag
+      w.writeBit(1); // direct_8x8_inference_flag
+      w.writeBit(0); // frame_cropping_flag
+      w.writeBit(1); // vui_parameters_present_flag = 1
+
+      // aspect_ratio_info_present_flag = 1, Extended_SAR (255), 16:9
+      w.writeBit(1);
+      w.writeBits(255, 8);
+      w.writeBits(16, 16);
+      w.writeBits(9, 16);
+      // overscan_info_present_flag = 1, overscan_appropriate_flag = 0
+      w.writeBit(1);
+      w.writeBit(0);
+      // video_signal_type_present_flag = 1, format=5 (unspecified), full_range=1, colour_description=1 (BT.709: 1,1,1)
+      w.writeBit(1);
+      w.writeBits(5, 3);
+      w.writeBit(1);
+      w.writeBit(1);
+      w.writeBits(1, 8);
+      w.writeBits(1, 8);
+      w.writeBits(1, 8);
+      // chroma_loc_info_present_flag = 1 (top=0, bottom=0)
+      w.writeBit(1);
+      w.writeUE(0);
+      w.writeUE(0);
+      // timing_info_present_flag = 1: num_units_in_tick=1001, time_scale=60000, fixed_frame_rate_flag=1 (~29.97 fps)
+      w.writeBit(1);
+      w.writeBits(1001, 32);
+      w.writeBits(60000, 32);
+      w.writeBit(1);
+      // nal_hrd_parameters_present_flag = 1 (cpb_cnt_minus1 = 0 -> 1 entry)
+      w.writeBit(1);
+      w.writeUE(0);
+      w.writeBits(4, 4); // bit_rate_scale
+      w.writeBits(4, 4); // cpb_size_scale
+      w.writeUE(100); // bit_rate_value_minus1
+      w.writeUE(200); // cpb_size_value_minus1
+      w.writeBit(1); // cbr_flag
+      w.writeBits(23, 5); // initial_cpb_removal_delay_length_minus1
+      w.writeBits(23, 5); // cpb_removal_delay_length_minus1
+      w.writeBits(23, 5); // dpb_output_delay_length_minus1
+      w.writeBits(24, 5); // time_offset_length
+      // vcl_hrd_parameters_present_flag = 0
+      w.writeBit(0);
+      // low_delay_hrd_flag = 0 (present because nal_hrd=1)
+      w.writeBit(0);
+      // pic_struct_present_flag = 1
+      w.writeBit(1);
+      // bitstream_restriction_flag = 1
+      w.writeBit(1);
+      w.writeBit(1); // motion_vectors_over_pic_boundaries_flag
+      w.writeUE(0); // max_bytes_per_pic_denom
+      w.writeUE(0); // max_bits_per_mb_denom
+      w.writeUE(11); // log2_max_mv_length_horizontal
+      w.writeUE(11); // log2_max_mv_length_vertical
+      w.writeUE(0); // max_num_reorder_frames
+      w.writeUE(1); // max_dec_frame_buffering
+
+      const nalu = w.toAnnexBNalu();
+      const sps = parse_sequence_parameter_set(nalu, 'H264');
+      expect(sps.vui_parameters_present_flag).to.equal(true);
+      expect(sps.vui_parameters?.aspect_ratio_idc).to.equal(255);
+      expect(sps.vui_parameters?.sar_width).to.equal(16);
+      expect(sps.vui_parameters?.sar_height).to.equal(9);
+      expect(sps.vui_parameters?.colour_primaries).to.equal(1);
+      expect(sps.vui_parameters?.num_units_in_tick).to.equal(1001);
+      expect(sps.vui_parameters?.time_scale).to.equal(60000);
+      expect(sps.vui_parameters?.fixed_frame_rate_flag).to.equal(true);
+      expect(sps.vui_parameters?.nal_hrd_parameters?.sched_sel).to.have.lengthOf(1);
+      expect(sps.vui_parameters?.max_dec_frame_buffering).to.equal(1);
+
+      const conf = parseVideoConfigPacket(nalu, 'H264', 0, 0);
+      expect(conf.aspectRatio).to.deep.equal({ width: 16, height: 9 });
+      expect(conf.frameRate).to.be.closeTo(60000 / 2002, 0.0001);
+      expect(conf.colorimetry).to.deep.equal({
+        videoFormat: 5,
+        fullRange: true,
+        colourPrimaries: 1,
+        transferCharacteristics: 1,
+        matrixCoefficients: 1,
+      });
+    });
+
+    it('should parse unsigned 32-bit VUI timing values with MSB set and Table E-1 SAR', () => {
+      const w = new SpsBitWriter();
+      w.writeBit(0);
+      w.writeBits(3, 2);
+      w.writeBits(7, 5);
+      w.writeBits(66, 8);
+      w.writeBits(0, 8);
+      w.writeBits(31, 8);
+      w.writeUE(0);
+      w.writeUE(0);
+      w.writeUE(0);
+      w.writeUE(0);
+      w.writeUE(1);
+      w.writeBit(0);
+      w.writeUE(39);
+      w.writeUE(29);
+      w.writeBit(1);
+      w.writeBit(1);
+      w.writeBit(0);
+      w.writeBit(1); // vui_parameters_present_flag = 1
+
+      // aspect_ratio_info_present_flag = 1, idc = 14 (4:3)
+      w.writeBit(1);
+      w.writeBits(14, 8);
+      // overscan, video_signal_type, chroma_loc = 0
+      w.writeBit(0);
+      w.writeBit(0);
+      w.writeBit(0);
+      // timing_info_present_flag = 1 with MSB=1 in time_scale (0x80000000)
+      w.writeBit(1);
+      w.writeBits(1, 32);
+      w.writeBits(0x80000000, 32);
+      w.writeBit(0);
+      // nal_hrd, vcl_hrd, pic_struct, bitstream_restriction = 0
+      w.writeBit(0);
+      w.writeBit(0);
+      w.writeBit(0);
+      w.writeBit(0);
+
+      const nalu = w.toAnnexBNalu();
+      const sps = parse_sequence_parameter_set(nalu, 'H264');
+      expect(sps.vui_parameters?.time_scale).to.equal(0x80000000);
+      const conf = parseVideoConfigPacket(nalu, 'H264', 0, 0);
+      expect(conf.aspectRatio).to.deep.equal({ width: 4, height: 3 });
+      expect(conf.frameRate).to.equal(0x80000000 / 2);
     });
   });
 });

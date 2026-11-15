@@ -92,3 +92,25 @@ export async function connectMonkeyStream(params: {
 export function isNoUserOptionError(err: unknown): boolean {
   return err instanceof Error && err.message.indexOf('--user') !== -1;
 }
+
+/**
+ * Execute an ActivityManager command (`am start` / `am startservice`) and retry without `--user`
+ * if the device rejects `--user`. Does not mutate `options`.
+ */
+export async function startWithUserFallback<T extends { user?: number | null }>(
+  options: T,
+  defaultUser: number | undefined,
+  execute: (opts: T) => Promise<boolean>,
+): Promise<boolean> {
+  const opts: T = defaultUser !== undefined && options.user === undefined
+    ? { ...options, user: defaultUser }
+    : options;
+  try {
+    return await execute(opts);
+  } catch (err) {
+    if (isNoUserOptionError(err) && opts.user !== undefined && opts.user !== null) {
+      return await execute({ ...opts, user: undefined });
+    }
+    throw err;
+  }
+}
