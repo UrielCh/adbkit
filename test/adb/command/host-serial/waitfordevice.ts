@@ -5,12 +5,11 @@ use(simonChai);
 import MockConnection from '../../../mock/connection.js';
 import Protocol from '../../../../src/adb/protocol.js';
 import { WaitForDeviceCommand } from '../../../../src/adb/command/host-serial/index.js';
-import Connection from '../../../../src/adb/connection.js';
 
 describe('WaitForDeviceCommand', () => {
     it("should send 'host-serial:<serial>:wait-for-any-device'", () => {
         const conn = new MockConnection();
-        const cmd = new WaitForDeviceCommand(conn as any as Connection);
+        const cmd = new WaitForDeviceCommand(conn);
         conn.getSocket().on('write', (chunk) => {
             return expect(chunk.toString()).to.equal(Protocol.encodeData('host-serial:abba:wait-for-any-device').toString());
         });
@@ -23,7 +22,7 @@ describe('WaitForDeviceCommand', () => {
     });
     it('should resolve with id when the device is connected', async () => {
         const conn = new MockConnection();
-        const cmd = new WaitForDeviceCommand(conn as any as Connection);
+        const cmd = new WaitForDeviceCommand(conn);
         setImmediate(() => {
             conn.getSocket().causeRead(Protocol.OKAY);
             conn.getSocket().causeRead(Protocol.OKAY);
@@ -35,7 +34,7 @@ describe('WaitForDeviceCommand', () => {
     });
     it('should reject with error if unable to connect', async () => {
         const conn = new MockConnection();
-        const cmd = new WaitForDeviceCommand(conn as any as Connection);
+        const cmd = new WaitForDeviceCommand(conn);
         setImmediate(() => {
             conn.getSocket().causeRead(Protocol.OKAY);
             conn.getSocket().causeRead(Protocol.FAIL);

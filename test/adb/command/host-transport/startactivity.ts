@@ -22,7 +22,7 @@ describe('StartActivityCommand', () => {
         };
         return cmd.execute(options);
     });
-    it("should fail when 'Error' returned", (done) => {
+    it("should fail when 'Error' returned", async () => {
         const conn = new MockConnection();
         const cmd = new StartActivityCommand(conn);
         setImmediate(() => {
@@ -33,11 +33,14 @@ describe('StartActivityCommand', () => {
         const options = {
             component: 'com.dummy.component/.Main',
         };
-        cmd.execute(options).catch((err) => {
-            expect(err).to.be.be.an.instanceOf(Error);
-            expect(err.message).to.equal('foo');
-            done();
-        });
+        let caught: unknown;
+        try {
+            await cmd.execute(options);
+        } catch (err) {
+            caught = err;
+        }
+        expect(caught).to.be.an.instanceOf(Error);
+        expect((caught as Error).message).to.equal('foo');
     });
     it("should send 'am start -n <pkg>'", () => {
         const conn = new MockConnection();
@@ -347,7 +350,7 @@ describe('StartActivityCommand', () => {
         };
         return cmd.execute(options);
     });
-    it('should throw when calling with an unknown extra type', (done) => {
+    it('should throw when calling with an unknown extra type', () => {
         const conn = new MockConnection();
         const cmd = new StartActivityCommand(conn);
         const options = {
@@ -362,8 +365,7 @@ describe('StartActivityCommand', () => {
         } as unknown;
         expect(() => {
             void cmd.execute(options as StartActivityOptions);
-        }).to.throw;
-        done();
+        }).to.throw(Error, "Unsupported type 'nonexisting' for extra 'key1'");
     });
     it('should accept mixed types of extras', () => {
         const conn = new MockConnection();

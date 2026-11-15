@@ -2,15 +2,24 @@ import { expect } from 'chai';
 import { PassThrough, Readable } from 'node:stream';
 import PromiseDuplex from 'promise-duplex';
 import Sinon from 'sinon';
+import Client from '../../src/adb/client.js';
 import DeviceClient from '../../src/adb/DeviceClient.js';
 import DevicePackage from '../../src/adb/DevicePackage.js';
+import PushTransfer from '../../src/adb/sync/pushtransfer.js';
+import FramebufferStreamWithMeta from '../../src/models/FramebufferStreamWithMeta.js';
 import MockConnection from '../mock/connection.js';
 import Protocol from '../../src/adb/protocol.js';
 
+const mockClient = {} as Client;
+
+const setExecOut = (device: DeviceClient, fn: () => Promise<string>): void => {
+  (device as unknown as { execOut: () => Promise<string> }).execOut = fn;
+};
+
 describe('DeviceClient.listVideoEncoders', () => {
   const createClientWithXml = (xmlOutput: string): DeviceClient => {
-    const client = new DeviceClient({} as any, 'dummy-serial');
-    client.execOut = (async () => xmlOutput) as any;
+    const client = new DeviceClient(mockClient, 'dummy-serial');
+    setExecOut(client, async () => xmlOutput);
     return client;
   };
 
@@ -56,10 +65,10 @@ describe('DeviceClient.listVideoEncoders', () => {
   });
 
   it('should return an empty array if execOut throws', async () => {
-    const client = new DeviceClient({} as any, 'dummy-serial');
-    client.execOut = (async () => {
+    const client = new DeviceClient(mockClient, 'dummy-serial');
+    setExecOut(client, async () => {
       throw new Error('adb failure');
-    }) as any;
+    });
 
     const encoders = await client.listVideoEncoders();
     expect(encoders).to.deep.equal([]);
@@ -69,8 +78,8 @@ describe('DeviceClient.listVideoEncoders', () => {
 describe('DeviceClient.startActivity / startService', () => {
   const createDeviceClient = (responses: Array<{ expectedCmd?: string; lines: string[] }>) => {
     let callIndex = 0;
-    const device = new DeviceClient({} as any, 'dummy-serial');
-    device.transport = (async () => {
+    const device = new DeviceClient(mockClient, 'dummy-serial');
+    device.transport = async () => {
       const conn = new MockConnection();
       const spec = responses[callIndex++];
       conn.getSocket().on('write', (chunk: Buffer) => {
@@ -87,7 +96,7 @@ describe('DeviceClient.startActivity / startService', () => {
         socket.causeEnd();
       });
       return conn;
-    }) as any;
+    };
     return device;
   };
 
@@ -162,10 +171,10 @@ describe('DeviceClient resource reliability', () => {
       });
     });
 
-    const device = new DeviceClient({} as any, 'dummy-serial');
-    device.transport = (async () => firstConn) as any;
-    const fallbackStream = new PassThrough();
-    const framebufferStub = Sinon.stub(device, 'framebuffer').resolves(fallbackStream as any);
+    const device = new DeviceClient(mockClient, 'dummy-serial');
+    device.transport = async () => firstConn;
+    const fallbackStream = new PassThrough() as unknown as FramebufferStreamWithMeta;
+    const framebufferStub = Sinon.stub(device, 'framebuffer').resolves(fallbackStream);
 
     const res = await device.screencap();
     expect(res).to.equal(fallbackStream);
@@ -185,11 +194,11 @@ describe('DeviceClient resource reliability', () => {
       });
     });
 
-    const device = new DeviceClient({} as any, 'dummy-serial');
-    device.transport = (async () => conn) as any;
-    device.execOut = (async () => {
+    const device = new DeviceClient(mockClient, 'dummy-serial');
+    device.transport = async () => conn;
+    setExecOut(device, async () => {
       throw new Error('device offline during rm');
-    }) as any;
+    });
 
     let caught: unknown;
     try {
@@ -203,20 +212,20 @@ describe('DeviceClient resource reliability', () => {
   });
 
   it('install should use distinct temp paths for concurrent stream installs', async () => {
-    const device = new DeviceClient({} as any, 'dummy-serial');
+    const device = new DeviceClient(mockClient, 'dummy-serial');
     const pushedPaths: string[] = [];
     const installedPaths: string[] = [];
 
-    device.push = (async (_stream: unknown, remotePath: string) => {
+    device.push = async (_stream: string | Readable, remotePath: string) => {
       pushedPaths.push(remotePath);
       return {
         waitForEnd: async () => {},
-      };
-    }) as any;
-    device.installRemote = (async (remotePath: string) => {
+      } as unknown as PushTransfer;
+    };
+    device.installRemote = async (remotePath: string) => {
       installedPaths.push(remotePath);
       return true;
-    }) as any;
+    };
 
     const s1 = new PassThrough();
     const s2 = new PassThrough();
@@ -245,8 +254,8 @@ describe('DeviceClient resource reliability', () => {
       });
     });
 
-    const device = new DeviceClient({} as any, 'dummy-serial');
-    device.transport = (async () => conn) as any;
+    const device = new DeviceClient(mockClient, 'dummy-serial');
+    device.transport = async () => conn;
 
     const stream = Readable.from([Buffer.from('hello')]);
     const transfer = await device.push(stream, '/data/local/tmp/hello.txt');
@@ -259,8 +268,8 @@ describe('DeviceClient resource reliability', () => {
 describe('DeviceClient shell argument escaping', () => {
   const createCaptureExecDevice = (response = '') => {
     const sentCommands: string[] = [];
-    const device = new DeviceClient({} as any, 'dummy-serial');
-    device.transport = (async () => {
+    const device = new DeviceClient(mockClient, 'dummy-serial');
+    device.transport = async () => {
       const conn = new MockConnection();
       conn.getSocket().on('write', (chunk: Buffer) => {
         sentCommands.push(chunk.toString());
@@ -274,7 +283,7 @@ describe('DeviceClient shell argument escaping', () => {
         sock.causeEnd();
       });
       return conn;
-    }) as any;
+    };
     return { device, sentCommands };
   };
 
@@ -310,7 +319,7 @@ describe('DeviceClient shell argument escaping', () => {
 
 describe('DeviceClient.tryForwardTCP', () => {
   it('should ignore localabstract forwards on this.serial and not return NaN', async () => {
-    const device = new DeviceClient({} as any, 'serial-1');
+    const device = new DeviceClient(mockClient, 'serial-1');
     device.listForwards = async () => [
       { serial: 'serial-1', local: 'localabstract:existing', remote: 'localabstract:scrcpy' },
     ];
@@ -326,7 +335,7 @@ describe('DeviceClient.tryForwardTCP', () => {
   });
 
   it('should return existing tcp forward port on this.serial', async () => {
-    const device = new DeviceClient({} as any, 'serial-1');
+    const device = new DeviceClient(mockClient, 'serial-1');
     device.listForwards = async () => [
       { serial: 'serial-2', local: 'tcp:11111', remote: 'localabstract:scrcpy' },
       { serial: 'serial-1', local: 'localabstract:other', remote: 'localabstract:scrcpy' },
@@ -341,7 +350,7 @@ describe('DeviceClient.tryForwardTCP', () => {
   });
 
   it('should allow preferedPort when another serial forwards to the same remote on a different port', async () => {
-    const device = new DeviceClient({} as any, 'serial-1');
+    const device = new DeviceClient(mockClient, 'serial-1');
     device.listForwards = async () => [
       { serial: 'serial-2', local: 'tcp:27184', remote: 'localabstract:scrcpy' },
     ];
@@ -357,7 +366,7 @@ describe('DeviceClient.tryForwardTCP', () => {
   });
 
   it('should pick a free port if preferedPort is already bound', async () => {
-    const device = new DeviceClient({} as any, 'serial-1');
+    const device = new DeviceClient(mockClient, 'serial-1');
     device.listForwards = async () => [
       { serial: 'serial-2', local: 'tcp:27183', remote: 'localabstract:other' },
     ];
@@ -375,7 +384,7 @@ describe('DeviceClient.tryForwardTCP', () => {
 
 describe('DeviceClient API cleanup & deprecated aliases', () => {
   it('openLocal2 should delegate to openLocal and return a PromiseDuplex', async () => {
-    const device = new DeviceClient({} as any, 'dummy-serial');
+    const device = new DeviceClient(mockClient, 'dummy-serial');
     const mockStream = new PassThrough();
     const openLocalStub = Sinon.stub(device, 'openLocal').resolves(mockStream);
 
@@ -386,7 +395,7 @@ describe('DeviceClient API cleanup & deprecated aliases', () => {
   });
 
   it('DeviceClientExtra.airPlainMode should delegate to airplaneMode', async () => {
-    const device = new DeviceClient({} as any, 'dummy-serial');
+    const device = new DeviceClient(mockClient, 'dummy-serial');
     const airplaneStub = Sinon.stub(device.extra, 'airplaneMode').resolves(true);
 
     const res = await device.extra.airPlainMode(true, 150);

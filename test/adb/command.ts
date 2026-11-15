@@ -1,5 +1,6 @@
 import { expect } from 'chai';
 import Command from '../../src/adb/command.js';
+import Connection from '../../src/adb/connection.js';
 
 class TestCommand extends Command<string> {
   public async execute(data: string): Promise<string> {
@@ -10,13 +11,13 @@ class TestCommand extends Command<string> {
 describe('Command.sendCommand', () => {
   const createCommand = (sudo: boolean): { cmd: TestCommand; sent: string[] } => {
     const sent: string[] = [];
-    const mockConn: any = {
+    const mockConn = {
       parser: { lastMessage: '' },
       write: async (buf: Buffer) => {
         sent.push(buf.toString('utf8'));
         return buf.length;
       },
-    };
+    } as unknown as Connection;
     return {
       cmd: new TestCommand(mockConn, { sudo }),
       sent,

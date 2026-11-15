@@ -7,31 +7,16 @@ import Command from '../../../../src/adb/command.js';
 import Connection from '../../../../src/adb/connection.js';
 import { DeviceClientOptions } from '../../../../src/models/DeviceClientOptions.js';
 
-interface CommandConstructor<T extends Command<U>, U> {
-    new(connection: Connection, options?: Partial<DeviceClientOptions>): T;
+interface ExecutableCommand<TResult, TArgs extends unknown[]> extends Command<TResult> {
+    execute(...args: TArgs): Promise<TResult>;
 }
 
-/**
- * check under the hood sent data
- */
-// function test(cmdClass: CommandConstructor<any, any>, data: {write?: string | string[], read?: string | string[]}, ...args: string[]) {
-//    const conn = new MockConnection();
-//    const cmd = new cmdClass(conn);
-//    const write = data.write ? (typeof data.write === 'string' || data.write instanceof String) ? [data.write as string]: data.write as string[]: [];
-//    const read = data.read ? (typeof data.write === 'string' || data.read instanceof String) ? [data.read as string]: data.read as string[]: [];
-//    if (expectWrite)
-//        conn.getSocket().on('write', (chunk) => {
-//            return expect(chunk.toString()).to.equal(Protocol.encodeData(expectWrite).toString());
-//        });
-//    setImmediate(() => {
-//        conn.getSocket().causeRead(Protocol.OKAY);
-//        conn.getSocket().causeEnd();
-//    });
-//    return cmd.execute(...args);
-//}
+interface CommandConstructor<TResult, TArgs extends unknown[]> {
+    new(connection: Connection, options?: Partial<DeviceClientOptions>): ExecutableCommand<TResult, TArgs>;
+}
 
-export default class Tester {
-    constructor(private cmdClass: CommandConstructor<any, any>) {
+export default class Tester<TResult = unknown, TArgs extends unknown[] = unknown[]> {
+    constructor(private cmdClass: CommandConstructor<TResult, TArgs>) {
     }
 
     // enable su sudo next command
@@ -54,7 +39,7 @@ export default class Tester {
      * check under the hood sent data
      * should send 'xxxxxx'
      */
-    testTr(expectWrite: string, ...args: string[]): Promise<any> {
+    testTr(expectWrite: string, ...args: TArgs | []): Promise<TResult> {
         const conn = new MockConnection();
         const cmd = new this.cmdClass(conn, this.consumeSudo());
         if (expectWrite)
@@ -65,13 +50,13 @@ export default class Tester {
             conn.getSocket().causeRead(Protocol.OKAY);
             conn.getSocket().causeEnd();
         });
-        return cmd.execute(...args);
+        return cmd.execute(...(args as TArgs));
     }
 
     /**
      * check under the hood sent data
      */
-    testTr2(expectWrite: string, causeRead?: string, ...args: string[]): Promise<any> {
+    testTr2(expectWrite: string, causeRead?: string, ...args: TArgs | []): Promise<TResult> {
         const conn = new MockConnection();
         const cmd = new this.cmdClass(conn, this.consumeSudo());
         if (expectWrite)
@@ -84,13 +69,13 @@ export default class Tester {
                 conn.getSocket().causeRead(causeRead);
             conn.getSocket().causeEnd();
         });
-        return cmd.execute(...args);
+        return cmd.execute(...(args as TArgs));
     }
 
     /**
      * check command parser
      */
-    testPr(readData?: string | string[], ...args: string[]): Promise<any> {
+    testPr(readData?: string | string[], ...args: TArgs | []): Promise<TResult> {
         const conn = new MockConnection();
         const cmd = new this.cmdClass(conn, this.consumeSudo());
         setImmediate(() => {
@@ -104,6 +89,6 @@ export default class Tester {
             }
             conn.getSocket().causeEnd();
         });
-        return cmd.execute(...args);
+        return cmd.execute(...(args as TArgs));
     }
 }

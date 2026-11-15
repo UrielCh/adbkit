@@ -19,7 +19,7 @@ describe('StartServiceCommand', () => {
         };
         return cmd.execute(options);
     });
-    it("should fail when 'Error' returned", (done) => {
+    it("should fail when 'Error' returned", async () => {
         const conn = new MockConnection();
         const cmd = new StartServiceCommand(conn);
         setImmediate(() => {
@@ -30,10 +30,14 @@ describe('StartServiceCommand', () => {
         const options = {
             component: 'com.dummy.component/.Main',
         };
-        cmd.execute(options).catch((err) => {
-            expect(err).to.be.be.an.instanceOf(Error);
-            done();
-        });
+        let caught: unknown;
+        try {
+            await cmd.execute(options);
+        } catch (err) {
+            caught = err;
+        }
+        expect(caught).to.be.an.instanceOf(Error);
+        expect((caught as Error).message).to.equal('foo');
     });
     it("should send 'am startservice --user 0 -n <pkg>'", () => {
         const conn = new MockConnection();

@@ -3,21 +3,32 @@ import { EventEmitter } from 'node:events';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { PassThrough, Writable } from 'node:stream';
+import { Duplex, PassThrough, Writable } from 'node:stream';
 import PromiseDuplex from 'promise-duplex';
 import sinon from 'sinon';
+import DeviceClient from '../../../src/adb/DeviceClient.js';
 import Scrcpy from '../../../src/adb/thirdparty/scrcpy/Scrcpy.js';
+import type { ScrcpyOptions } from '../../../src/adb/thirdparty/scrcpy/ScrcpyModels.js';
 import { parseScrcpyVersion, getDefaultScrcpyJarPath, downloadScrcpyServer } from '../../../src/adb/thirdparty/scrcpy/ScrcpyDownload.js';
 import { CaptureOrientationMap, OrientationMap } from '../../../src/adb/thirdparty/scrcpy/ScrcpyConst.js';
 
+interface ScrcpyTestAccess {
+  controlSocket: PromiseDuplex<Duplex>;
+  videoSocket: PromiseDuplex<Duplex> | { stream: EventEmitter; destroy: sinon.SinonSpy };
+  startStreamWithMeta(): Promise<void>;
+  _setFatalError(msg: string | Error): void;
+}
+
+const internal = (scrcpy: Scrcpy): ScrcpyTestAccess => scrcpy as unknown as ScrcpyTestAccess;
+
 describe('Scrcpy 3.0 Support & Backwards Compatibility', () => {
-  const dummyClient: any = {
+  const dummyClient = {
     serial: 'dummy-serial',
     openLocal: async () => new PassThrough(),
     shell: async () => {},
     push: async () => {},
     stat: async () => null,
-  };
+  } as unknown as DeviceClient;
 
   describe('parseScrcpyVersion', () => {
     it('should parse simple version string', () => {
@@ -120,7 +131,7 @@ describe('Scrcpy 3.0 Support & Backwards Compatibility', () => {
           cb(Object.assign(new Error('ENOSPC: no space left on device'), { code: 'ENOSPC' }));
         },
       });
-      const createWriteStreamStub = sinon.stub(fs, 'createWriteStream').returns(failingStream as any);
+      const createWriteStreamStub = sinon.stub(fs, 'createWriteStream').returns(failingStream as unknown as fs.WriteStream);
       try {
         let caught: Error | undefined;
         try {
@@ -424,7 +435,7 @@ describe('Scrcpy 3.0 Support & Backwards Compatibility', () => {
     });
 
     it('should parse version string without dots cleanly without NaN', () => {
-      const scrcpy = new Scrcpy(dummyClient, { version: '3' });
+      const scrcpy = new Scrcpy(dummyClient, { version: '3' as ScrcpyOptions['version'] });
       expect(scrcpy.major).to.equal(3);
       expect(scrcpy.minor).to.equal(0);
       expect(scrcpy.patch).to.equal(0);
@@ -452,11 +463,11 @@ describe('Scrcpy 3.0 Support & Backwards Compatibility', () => {
 
   describe('Scrcpy v4.0 control messages', () => {
     let writtenChunks: Buffer[] = [];
-    const mockControlSocket: any = {
+    const mockControlSocket = {
       write: async (buf: Buffer) => {
         writtenChunks.push(buf);
       },
-    };
+    } as unknown as PromiseDuplex<Duplex>;
 
     beforeEach(() => {
       writtenChunks = [];
@@ -464,7 +475,7 @@ describe('Scrcpy 3.0 Support & Backwards Compatibility', () => {
 
     it('should send TYPE_CAMERA_SET_TORCH control message', async () => {
       const scrcpy = new Scrcpy(dummyClient, { version: '4.0' });
-      (scrcpy as any).controlSocket = mockControlSocket;
+      internal(scrcpy).controlSocket = mockControlSocket;
 
       await scrcpy.setCameraTorch(true);
       expect(writtenChunks).to.have.lengthOf(1);
@@ -477,7 +488,7 @@ describe('Scrcpy 3.0 Support & Backwards Compatibility', () => {
 
     it('should send TYPE_CAMERA_ZOOM_IN control message', async () => {
       const scrcpy = new Scrcpy(dummyClient, { version: '4.0' });
-      (scrcpy as any).controlSocket = mockControlSocket;
+      internal(scrcpy).controlSocket = mockControlSocket;
 
       await scrcpy.cameraZoomIn();
       expect(writtenChunks).to.have.lengthOf(1);
@@ -486,7 +497,7 @@ describe('Scrcpy 3.0 Support & Backwards Compatibility', () => {
 
     it('should send TYPE_CAMERA_ZOOM_OUT control message', async () => {
       const scrcpy = new Scrcpy(dummyClient, { version: '4.0' });
-      (scrcpy as any).controlSocket = mockControlSocket;
+      internal(scrcpy).controlSocket = mockControlSocket;
 
       await scrcpy.cameraZoomOut();
       expect(writtenChunks).to.have.lengthOf(1);
@@ -495,7 +506,7 @@ describe('Scrcpy 3.0 Support & Backwards Compatibility', () => {
 
     it('should send TYPE_RESIZE_DISPLAY control message', async () => {
       const scrcpy = new Scrcpy(dummyClient, { version: '4.0' });
-      (scrcpy as any).controlSocket = mockControlSocket;
+      internal(scrcpy).controlSocket = mockControlSocket;
 
       await scrcpy.resizeDisplay(1920, 1080);
       expect(writtenChunks).to.have.lengthOf(1);
@@ -508,7 +519,7 @@ describe('Scrcpy 3.0 Support & Backwards Compatibility', () => {
 
     it('should send TYPE_SCAN_FILE control message in v4.1', async () => {
       const scrcpy = new Scrcpy(dummyClient, { version: '4.1' });
-      (scrcpy as any).controlSocket = mockControlSocket;
+      internal(scrcpy).controlSocket = mockControlSocket;
 
       await scrcpy.scanFile('/sdcard/Download/test.jpg');
       expect(writtenChunks).to.have.lengthOf(1);
@@ -522,7 +533,7 @@ describe('Scrcpy 3.0 Support & Backwards Compatibility', () => {
 
     it('should send TYPE_COLLAPSE_PANELS control message for collapsePanels and collapsePannels', async () => {
       const scrcpy = new Scrcpy(dummyClient, { version: '4.1' });
-      (scrcpy as any).controlSocket = mockControlSocket;
+      internal(scrcpy).controlSocket = mockControlSocket;
 
       await scrcpy.collapsePanels();
       await scrcpy.collapsePannels();
@@ -537,10 +548,10 @@ describe('Scrcpy 3.0 Support & Backwards Compatibility', () => {
       const scrcpy = new Scrcpy(dummyClient, { version: '4.0' });
       const mockStream = new PassThrough();
       const mockPromiseDuplex = new PromiseDuplex(mockStream);
-      (scrcpy as any).videoSocket = mockPromiseDuplex;
+      internal(scrcpy).videoSocket = mockPromiseDuplex;
 
       // Start stream in background
-      const streamPromise = (scrcpy as any).startStreamWithMeta();
+      const streamPromise = internal(scrcpy).startStreamWithMeta();
 
       // 1. Device name (64 bytes)
       const nameBuf = Buffer.alloc(64);
@@ -582,10 +593,10 @@ describe('Scrcpy 3.0 Support & Backwards Compatibility', () => {
       const scrcpy = new Scrcpy(dummyClient, { version: '3.0' });
       const mockStream = new PassThrough();
       const mockPromiseDuplex = new PromiseDuplex(mockStream);
-      (scrcpy as any).videoSocket = mockPromiseDuplex;
+      internal(scrcpy).videoSocket = mockPromiseDuplex;
 
       // Start stream in background
-      const streamPromise = (scrcpy as any).startStreamWithMeta();
+      const streamPromise = internal(scrcpy).startStreamWithMeta();
 
       // 1. Device name (64 bytes)
       const nameBuf = Buffer.alloc(64);
@@ -617,9 +628,9 @@ describe('Scrcpy 3.0 Support & Backwards Compatibility', () => {
       const scrcpy = new Scrcpy(dummyClient, { version: '4.1' });
       const mockStream = new PassThrough();
       const mockPromiseDuplex = new PromiseDuplex(mockStream);
-      (scrcpy as any).videoSocket = mockPromiseDuplex;
+      internal(scrcpy).videoSocket = mockPromiseDuplex;
 
-      const streamPromise = (scrcpy as any).startStreamWithMeta();
+      const streamPromise = internal(scrcpy).startStreamWithMeta();
 
       const nameBuf = Buffer.alloc(64);
       nameBuf.write('VP9Device', 'utf8');
@@ -655,7 +666,7 @@ describe('Scrcpy 3.0 Support & Backwards Compatibility', () => {
       expect(scrcpy.isRunning()).to.be.false;
 
       const mockStream = new PassThrough();
-      (scrcpy as any).videoSocket = new PromiseDuplex(mockStream);
+      internal(scrcpy).videoSocket = new PromiseDuplex(mockStream);
       expect(scrcpy.isRunning()).to.be.true;
 
       expect(scrcpy.stop()).to.be.true;
@@ -664,7 +675,7 @@ describe('Scrcpy 3.0 Support & Backwards Compatibility', () => {
   });
 
   describe('start', () => {
-    const createMockClient = (videoStream: PassThrough): any => {
+    const createMockClient = (videoStream: PassThrough): DeviceClient => {
       const pkgPath = path.resolve('package.json');
       const pkgSize = fs.statSync(pkgPath).size;
       const shellStream = new PassThrough();
@@ -675,7 +686,7 @@ describe('Scrcpy 3.0 Support & Backwards Compatibility', () => {
         push: async () => ({}),
         shell: async () => shellStream,
         openLocal: async () => videoStream,
-      };
+      } as unknown as DeviceClient;
     };
 
     it('should resolve without hanging when sendFrameMeta is false', async () => {
@@ -756,13 +767,13 @@ describe('Scrcpy 3.0 Support & Backwards Compatibility', () => {
           cb(Object.assign(new Error('EACCES: permission denied'), { code: 'EACCES' }));
         },
       });
-      const createWriteStreamStub = sinon.stub(fs, 'createWriteStream').returns(failingStream as any);
+      const createWriteStreamStub = sinon.stub(fs, 'createWriteStream').returns(failingStream as unknown as fs.WriteStream);
       const startStub = sinon.stub(scrcpy, 'start').callsFake(async () => {
         scrcpy.emit('frame', { keyframe: true, pts: 0n, data: new Uint8Array([1, 2, 3]) });
         return scrcpy;
       });
       const stopStub = sinon.stub(scrcpy, 'stop').callsFake(() => {
-        (scrcpy as any)._setFatalError('stopped');
+        internal(scrcpy)._setFatalError('stopped');
         return true;
       });
 
@@ -793,7 +804,7 @@ describe('Scrcpy 3.0 Support & Backwards Compatibility', () => {
         resume: sinon.spy(),
         destroy: sinon.spy(),
       });
-      (scrcpy as any).videoSocket = { stream: fakeSocketStream, destroy: sinon.spy() };
+      internal(scrcpy).videoSocket = { stream: fakeSocketStream, destroy: sinon.spy() };
 
       const fakeFileStream = Object.assign(new EventEmitter(), {
         destroyed: false,
@@ -803,13 +814,13 @@ describe('Scrcpy 3.0 Support & Backwards Compatibility', () => {
           this.emit('finish');
         }),
       });
-      const createWriteStreamStub = sinon.stub(fs, 'createWriteStream').returns(fakeFileStream as any);
+      const createWriteStreamStub = sinon.stub(fs, 'createWriteStream').returns(fakeFileStream as unknown as fs.WriteStream);
       const startStub = sinon.stub(scrcpy, 'start').callsFake(async () => {
         scrcpy.emit('frame', { keyframe: true, pts: 0n, data: new Uint8Array([1, 2, 3]) });
         expect(fakeSocketStream.pause.calledOnce).to.be.true;
         fakeFileStream.emit('drain');
         expect(fakeSocketStream.resume.calledOnce).to.be.true;
-        (scrcpy as any)._setFatalError('done');
+        internal(scrcpy)._setFatalError('done');
         return scrcpy;
       });
 
@@ -832,7 +843,7 @@ describe('Scrcpy 3.0 Support & Backwards Compatibility', () => {
       const startStub = sinon.stub(scrcpy, 'start').callsFake(async () => {
         // Emit invalid h264 data so ffmpeg remuxing is guaranteed to fail (or ffmpeg missing)
         scrcpy.emit('frame', { keyframe: true, pts: 0n, data: new Uint8Array([0, 1, 2, 3]) });
-        (scrcpy as any)._setFatalError('done');
+        internal(scrcpy)._setFatalError('done');
         return scrcpy;
       });
 

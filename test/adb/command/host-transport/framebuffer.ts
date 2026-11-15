@@ -105,4 +105,81 @@ describe('FrameBufferCommand', () => {
         raw.end(Buffer.alloc(16));
         await donePromise;
     });
+    it("should transform non-rgb/rgba formats via RgbTransform in _convert", async () => {
+        const conn = new MockConnection();
+        const cmd = new FrameBufferCommand(conn);
+        const meta: FramebufferMeta = {
+            version: 1,
+            bpp: 32,
+            size: 16,
+            width: 2,
+            height: 2,
+            red_offset: 16,
+            red_length: 8,
+            blue_offset: 0,
+            blue_length: 8,
+            green_offset: 8,
+            green_length: 8,
+            alpha_offset: 24,
+            alpha_length: 8,
+            format: 'bgra',
+        };
+        const raw = new PassThrough();
+        cmd.parser.raw = () => raw as unknown as ReturnType<typeof cmd.parser.raw>;
+
+        const out = cmd._convert(meta, 'png');
+        expect(meta.format).to.equal('rgb');
+        expect(raw.listenerCount('data')).to.be.greaterThan(0);
+
+        const donePromise = new Promise<void>((resolve) => {
+            out.on('error', () => resolve());
+            out.on('close', () => resolve());
+            out.on('end', () => resolve());
+            out.resume();
+        });
+        raw.end(Buffer.alloc(16));
+        await donePromise;
+    });
+    it("should call _convert and attach meta when execute() is called with non-raw format", async () => {
+        const conn = new MockConnection();
+        const cmd = new FrameBufferCommand(conn);
+        setImmediate(() => {
+            const meta = Buffer.alloc(52);
+            let offset = 0;
+            meta.writeUInt32LE(1, offset);
+            meta.writeUInt32LE(32, (offset += 4));
+            meta.writeUInt32LE(16, (offset += 4));
+            meta.writeUInt32LE(2, (offset += 4));
+            meta.writeUInt32LE(2, (offset += 4));
+            meta.writeUInt32LE(0, (offset += 4));
+            meta.writeUInt32LE(8, (offset += 4));
+            meta.writeUInt32LE(16, (offset += 4));
+            meta.writeUInt32LE(8, (offset += 4));
+            meta.writeUInt32LE(8, (offset += 4));
+            meta.writeUInt32LE(8, (offset += 4));
+            meta.writeUInt32LE(24, (offset += 4));
+            meta.writeUInt32LE(8, (offset += 4));
+            conn.getSocket().causeRead(Protocol.OKAY);
+            conn.getSocket().causeRead(meta);
+            conn.getSocket().causeRead(Buffer.alloc(16));
+            conn.getSocket().causeEnd();
+        });
+        const stream = await cmd.execute('png');
+        expect(stream.meta.format).to.equal('rgba');
+        expect(stream.meta.width).to.equal(2);
+        expect(stream.meta.height).to.equal(2);
+        await new Promise<void>((resolve) => {
+            stream.on('error', () => resolve());
+            stream.on('close', () => resolve());
+            stream.on('end', () => resolve());
+            stream.resume();
+        });
+    });
+    it("should reject unsupported version 16 framebuffer headers", () => {
+        const conn = new MockConnection();
+        const cmd = new FrameBufferCommand(conn);
+        const header = Buffer.alloc(52);
+        header.writeUInt32LE(16, 0);
+        expect(() => cmd._parseHeader(header)).to.throw(Error, 'Old-style raw images are not supported');
+    });
 });

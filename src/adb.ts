@@ -32,7 +32,7 @@ export interface AdbOptions {
  * @example
  * Function you should import and call first
  * ```ts
- * import { createClient } fronm @u4/adbkit
+ * import { createClient } from '@u4/adbkit';
  * 
  * const client = createClient();
  * ```
