@@ -193,8 +193,6 @@ export default class Utils {
   }
 
   public static debug(name: string) {
-    const debug = Debug(name);
-    debug.log = console.log.bind(console);
-    return debug;
+    return Debug(name);
   }
 }

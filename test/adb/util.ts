@@ -1,6 +1,8 @@
 import Stream from 'node:stream';
 import { expect, use } from 'chai';
+import Debug from 'debug';
 import PromiseDuplex from 'promise-duplex';
+import sinon from 'sinon';
 import simonChai from 'sinon-chai';
 import Utils from '../../src/adb/utils.js';
 use(simonChai); 
@@ -85,6 +87,26 @@ describe('util', () => {
             const match = await Utils.waitforText(duplex, /hello world!/, 500);
             expect(match).to.equal('world!');
             stream.destroy();
+        });
+    });
+
+    describe('debug(name)', () => {
+        it('should write to stderr rather than stdout', () => {
+            const prevNamespaces = Debug.disable();
+            const stderrStub = sinon.stub(process.stderr, 'write').returns(true);
+            const stdoutStub = sinon.stub(process.stdout, 'write').returns(true);
+            try {
+                Debug.enable('adb:test-stderr');
+                const log = Utils.debug('adb:test-stderr');
+                log('hello stderr');
+                expect(stderrStub).to.have.been.calledOnce;
+                expect(String(stderrStub.firstCall.args[0])).to.include('hello stderr');
+                expect(stdoutStub).to.not.have.been.called;
+            } finally {
+                stderrStub.restore();
+                stdoutStub.restore();
+                Debug.enable(prevNamespaces);
+            }
         });
     });
 });
