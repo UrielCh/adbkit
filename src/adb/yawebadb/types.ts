@@ -106,7 +106,16 @@ export type AdbDaemonAuthenticateFn = (options: AdbDaemonAuthenticateOptions) =>
 export interface AdbPacketSerializeStreamLike {
   readonly readable: {
     getReader(): {
-      read(): Promise<{ done: boolean; value?: Uint8Array | { value: Uint8Array } }>;
+      read(): Promise<{
+        done: boolean;
+        value?:
+          | Uint8Array
+          | {
+            value: Uint8Array;
+            consume?: () => void;
+            tryConsume?: <T>(fn: (value: Uint8Array) => Promise<T> | T) => Promise<T>;
+          };
+      }>;
       cancel(reason?: unknown): Promise<void>;
       releaseLock(): void;
     };

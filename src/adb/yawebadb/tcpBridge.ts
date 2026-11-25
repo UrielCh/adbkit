@@ -208,13 +208,22 @@ export function createNetDaemonConnection(netSocket: Net.Socket, adbMod: AdbModu
   const reader = serializeStream.readable.getReader();
   void (async () => {
     try {
+      const writeChunk = (chunk: Uint8Array) =>
+        new Promise<void>((resolve, reject) => {
+          netSocket.write(chunk, (err) => (err ? reject(err) : resolve()));
+        });
       for (; ;) {
         const { done, value } = await reader.read();
         if (done || !value) break;
-        const chunk: Uint8Array = 'value' in value ? value.value : value;
-        await new Promise<void>((resolve, reject) => {
-          netSocket.write(chunk, (err) => (err ? reject(err) : resolve()));
-        });
+        if ('tryConsume' in value && typeof value.tryConsume === 'function') {
+          await value.tryConsume(writeChunk);
+        } else {
+          const chunk: Uint8Array = 'value' in value ? value.value : value;
+          await writeChunk(chunk);
+          if ('consume' in value && typeof value.consume === 'function') {
+            value.consume();
+          }
+        }
       }
     } catch (err) {
       netSocket.destroy();

@@ -568,6 +568,47 @@ describe('ya-webadb integration', () => {
       expect(cancelled).to.equal(true);
     });
 
+    it('consumes Consumable chunks from AdbPacketSerializeStream so multi-chunk packets flush', async () => {
+      const socket = new EventEmitter() as unknown as Net.Socket;
+      socket.destroy = (() => socket) as Net.Socket['destroy'];
+      const written: Buffer[] = [];
+      socket.write = ((chunk: Uint8Array, cb?: (err?: Error | null) => void) => {
+        written.push(Buffer.from(chunk));
+        cb?.(null);
+        return true;
+      }) as unknown as Net.Socket['write'];
+
+      const header = new Uint8Array([1, 2, 3, 4]);
+      const payload = new Uint8Array([5, 6]);
+      const adbMod = {
+        AdbPacketSerializeStream: class {
+          readable = new globalThis.ReadableStream({
+            start(controller) {
+              controller.enqueue({
+                value: header,
+                async tryConsume(fn: (v: Uint8Array) => Promise<void> | void) {
+                  await fn(header);
+                  controller.enqueue({
+                    value: payload,
+                    async tryConsume(fn2: (v: Uint8Array) => Promise<void> | void) {
+                      await fn2(payload);
+                    },
+                  });
+                  controller.close();
+                },
+              });
+            },
+          });
+          writable = new globalThis.WritableStream();
+        },
+      } as unknown as AdbModuleLike;
+
+      createNetDaemonConnection(socket, adbMod);
+      await new Promise<void>(resolve => setTimeout(resolve, 20));
+      expect(written).to.have.lengthOf(2);
+      expect(Buffer.concat(written)).to.deep.equal(Buffer.from([1, 2, 3, 4, 5, 6]));
+    });
+
     it('ends an incomplete packet and destroys the socket on cancellation', async () => {
       const socket = new EventEmitter() as unknown as Net.Socket;
       const destroy = sinon.stub().returns(socket);

@@ -50,6 +50,8 @@
         "servicemap": "tsx tasks/servicemap.ts",
         "download:scrcpy": "tsx tasks/downloadScrcpy.ts",
         "test:video": "tsx tasks/testVideo.ts",
+        "apps:hide": "tsx tasks/hideApps.ts",
+        "tv:cleanup": "tsx tasks/tvCleanup.ts",
         "prepublishOnly": "rimraf dist && tsc -p .",
         "docker-clean": "bunx modclean -r",
         "docs": "typedoc --entryPointStrategy expand",
